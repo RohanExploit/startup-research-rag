@@ -16,7 +16,7 @@ from datetime import datetime
 from retrieval.router import QueryRouter
 from generation.answer import generate_answer
 from api.audit_router import router as audit_router
-from config import DATA_ROOT, validate_tenant_id, safe_filename
+from config import DATA_ROOT, validate_tenant_id, safe_filename, MAX_FILE_SIZE
 
 logging.basicConfig(level=logging.INFO)
 OLLAMA_MODEL = "qwen3:4b-instruct-2507-q4_K_M"
@@ -335,9 +335,15 @@ async def upload_file(tenant_id: str = Form(...), file: UploadFile = File(...)):
     staging_dir = DATA_ROOT.parent / "staging" / upload_id
     staging_dir.mkdir(parents=True, exist_ok=True)
 
+    data = await file.read()
+    if len(data) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large ({len(data)} bytes > MAX_FILE_SIZE {MAX_FILE_SIZE}).",
+        )
     file_path = staging_dir / filename
     with open(file_path, "wb") as f:
-        f.write(await file.read())
+        f.write(data)
 
     # Update live manifest to PENDING so frontend sees it immediately
     tenant_dir = DATA_ROOT / tenant_id

@@ -37,3 +37,8 @@ Branch: overnight-hardening
     - generated embeddings.npy (8.86 MB) + embeddings_chunks.json; shape (5769, 384), 5769 chunks — matches pickle.
 - Data sidecars live under data/ (gitignored) — never committed.
 - Tests: tests/test_safe_store.py — 5 passed (roundtrip, safe-preferred-over-pickle, pickle fallback, additive+nondestructive migration proven by byte-equality, no-pickle case).
+
+### [2026-08-08 01:02:13] P1.4 — Upload path-traversal fix + size guard  ✅ COMMITTED
+- safe_filename() reduces any crafted filename to a bare basename on all upload entry points (/upload, /upload/{id}/process, /upload/{id}/status). Chosen sanitize-not-reject (more robust; neutralizes instead of erroring).
+- New tests/test_upload_filename.py — 19 passed. Proves ../.. , absolute, Windows, and dot-only names cannot escape staging dir (resolved parent == staging).
+- Bonus (rank-26): added 413 file-size guard using config.MAX_FILE_SIZE (default 50MB, env-overridable) on /upload.
