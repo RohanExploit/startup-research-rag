@@ -22,3 +22,9 @@ Branch: overnight-hardening
 - Verify: compiled all non-venv .py; 18/18 core+ingestion modules import clean; PROJECT_ROOT auto-resolves to repo location.
 - 1 remaining literal is inside a docstring in scripts/test_part_b.py (documentation only, not executable) — intentionally left.
 - KNOWN PRE-EXISTING BREAK (not caused here, not fixed): benchmark_models_flushed.py has invalid `print(flush=True, "...")` lines (dead "_flushed" duplicate). Out of scope; logged.
+
+### [2026-08-08 00:56:47] P1.2 — Strict tenant_id validation everywhere paths are built  ✅ COMMITTED
+- config.validate_tenant_id already blocks traversal (pattern ^[A-Za-z0-9_-]{1,64}$, env-toggleable). Added _require_tenant() HTTP-400 helper in api/main.py.
+- Wired validation into remaining client-facing endpoints: /documents, /upload/{id}/process, /upload/{id}/status (were building DATA_ROOT/tenant_id unvalidated). Retrieval classes + pipeline already go through tenant_dir().
+- New test tests/test_tenant_isolation.py: 28 cases. Proves '../../other_tenant' (and 10 other payloads) raise ValueError at validate_tenant_id AND tenant_dir; proves valid ids accepted; proves the naive DATA_ROOT/bad WOULD escape but tenant_dir blocks it.
+- Result: 28 passed in 0.10s. api.main imports clean.

@@ -23,6 +23,13 @@ OLLAMA_MODEL = "qwen3:4b-instruct-2507-q4_K_M"
 
 routers = {}
 
+def _require_tenant(tenant_id: str) -> str:
+    """Validate a client-supplied tenant_id or raise HTTP 400 (blocks path traversal)."""
+    try:
+        return validate_tenant_id(tenant_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 def get_router(tenant_id: str) -> QueryRouter:
     tenant_id = validate_tenant_id(tenant_id)
     if tenant_id not in routers:
@@ -286,6 +293,7 @@ def review_queue():
 @app.get("/documents")
 def documents_list(tenant_id: str = "tenant_1"):
     """Return manifest entries for a tenant — all documents with parse status."""
+    tenant_id = _require_tenant(tenant_id)
     tenant_dir = DATA_ROOT / tenant_id
     manifest_db = tenant_dir / "manifest.db"
     if not manifest_db.exists():
@@ -321,10 +329,7 @@ from ingestion.parse import main as parse_main, _get_manifest_conn, _manifest_up
 
 @app.post("/upload")
 async def upload_file(tenant_id: str = Form(...), file: UploadFile = File(...)):
-    try:
-        tenant_id = validate_tenant_id(tenant_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    tenant_id = _require_tenant(tenant_id)
     filename = safe_filename(file.filename)
     upload_id = str(uuid.uuid4())
     staging_dir = DATA_ROOT.parent / "staging" / upload_id
@@ -398,12 +403,16 @@ def _process_upload(upload_id: str, tenant_id: str, filename: str):
 
 @app.post("/upload/{upload_id}/process")
 def process_upload(upload_id: str, tenant_id: str, filename: str, background_tasks: BackgroundTasks):
+    tenant_id = _require_tenant(tenant_id)
+    filename = safe_filename(filename)
     background_tasks.add_task(_process_upload, upload_id, tenant_id, filename)
     return {"status": "processing_started"}
 
 
 @app.get("/upload/{upload_id}/status")
 def upload_status(upload_id: str, tenant_id: str, filename: str):
+    tenant_id = _require_tenant(tenant_id)
+    filename = safe_filename(filename)
     tenant_dir = DATA_ROOT / tenant_id
     try:
         manifest_conn = _get_manifest_conn(tenant_dir)
