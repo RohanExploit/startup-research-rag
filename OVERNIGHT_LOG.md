@@ -63,3 +63,9 @@ Fixes to stop hangs / PII overwrites / false failures (NOT weakening):
 - python-multipart present in requirements (test_api can import).
 
 TODO (manual diagnostic scripts left as-is per instructions — convert later): test_all_pdfs, test_camelot, test_diagnose, test_full_pass, test_pdfplumber, test_production_import, test_sgpa_diag, test_sgpa_invest2, test_table_broken, test_visual_proof, test_telegram_bot, test_router_fallback, plus the __main__ manual harnesses (test_parse/table_extract/q/name/ollama_context/live_api/tabular).
+
+### [2026-08-08 01:27:05] P3.9 — Consolidated exam_results analytics table  ✅ COMMITTED
+- ingestion/build_exam_results.py: one row per (student,subject); denormalized students⋈student_subjects; derived semester (regex on subject_code, e.g. BTCOC501→5) + is_fail (grade in FF/XX/AB) + provenance columns (source_file, department=NULL where not derivable, provenance text).
+- RETENTION-SAFE: reads tabular.duckdb via ATTACH ... (READ_ONLY); writes ONLY a NEW analytics.duckdb. Proven: tabular.duckdb sha256 identical before/after (UNTOUCHED: YES).
+- Built: 2952 rows, 369 students, 315 fail-rows. Sanity vs ground truth: failed>=4 = 10, failed>=2 = 77. ✅
+- analytics.duckdb is gitignored (PII-derived) — not committed.
