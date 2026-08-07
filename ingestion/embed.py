@@ -1,3 +1,9 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import os
 import json
 import logging
@@ -45,6 +51,6 @@ def process_chunk_embeddings(chunked_dir, embed_dir):
     logging.info(f"Saved {len(embeddings)} embeddings to {out_path}")
 
 if __name__ == "__main__":
-    chunked_dir = "R:/Startup research/Start up V2/data/tenants/tenant_1/chunked"
-    embed_dir = "R:/Startup research/Start up V2/data/tenants/tenant_1/embeddings"
+    chunked_dir = f"{PROJECT_ROOT}/data/tenants/tenant_1/chunked"
+    embed_dir = f"{PROJECT_ROOT}/data/tenants/tenant_1/embeddings"
     process_chunk_embeddings(chunked_dir, embed_dir)

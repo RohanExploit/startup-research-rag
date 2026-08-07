@@ -1,3 +1,9 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import json
 import logging
 from pathlib import Path
@@ -135,6 +141,6 @@ def process_extractions(chunked_dir, graph_dir):
     logging.info(f"Saved {len(all_nodes)} nodes and {len(all_edges)} edges to {out_path}")
 
 if __name__ == "__main__":
-    chunked_dir = "R:/Startup research/Start up V2/data/tenants/tenant_1/chunked"
-    graph_dir = "R:/Startup research/Start up V2/data/tenants/tenant_1/graph"
+    chunked_dir = f"{PROJECT_ROOT}/data/tenants/tenant_1/chunked"
+    graph_dir = f"{PROJECT_ROOT}/data/tenants/tenant_1/graph"
     process_extractions(chunked_dir, graph_dir)

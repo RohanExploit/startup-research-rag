@@ -1,9 +1,15 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import asyncio
 import sys
 import httpx
 import logging
 
-sys.path.insert(0, "R:/Startup research/Start up V2")
+sys.path.insert(0, f"{PROJECT_ROOT}")
 from retrieval.router import QueryRouter
 import retrieval.router
 

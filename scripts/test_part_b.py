@@ -4,11 +4,17 @@ Part B: Text-to-SQL test harness with known-answer verification.
 Ground truth established from direct DuckDB queries run against
 R:/Startup research/Start up V2/data/tenants/tenant_1/tabular.duckdb
 """
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import asyncio
 import io
 import sys
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-sys.path.insert(0, 'R:/Startup research/Start up V2')
+sys.path.insert(0, f'{PROJECT_ROOT}')
 
 from retrieval.tabular_queries import generate_and_run_sql, _sanitize_sql
 

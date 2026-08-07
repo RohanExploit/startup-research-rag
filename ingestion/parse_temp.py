@@ -1,3 +1,9 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import os
 import json
 import logging
@@ -21,12 +27,12 @@ def check_table_broken(markdown_text):
     return False # Keep it simple for now, we'll let humans eyeball it as requested by the user, but we can flag obvious issues if we implement deeper checks.
 
 def main():
-    input_dir = Path("R:/Startup research/Start up V2/data/tenants/tenant_2/raw")
-    output_dir = Path("R:/Startup research/Start up V2/data/tenants/tenant_2/parsed")
+    input_dir = Path(f"{PROJECT_ROOT}/data/tenants/tenant_2/raw")
+    output_dir = Path(f"{PROJECT_ROOT}/data/tenants/tenant_2/parsed")
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Validation log path
-    val_log_path = Path("R:/Startup research/Start up V2/validation_log.md")
+    val_log_path = Path(f"{PROJECT_ROOT}/validation_log.md")
     
     converter = DocumentConverter()
     

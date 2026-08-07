@@ -1,10 +1,16 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import asyncio
 import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-project_root = Path("R:/Startup research/Start up V2")
+project_root = Path(f"{PROJECT_ROOT}")
 sys.path.append(str(project_root))
 load_dotenv(project_root / ".env")
 

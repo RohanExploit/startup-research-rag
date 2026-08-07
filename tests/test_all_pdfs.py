@@ -3,6 +3,12 @@ Per-PDF diagnostic runner.
 Runs the same block-parsing + self-validation logic used in test_full_pass.py
 against every PDF supplied on the command line, and reports results.
 """
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 
 import pdfplumber
 import re
@@ -225,11 +231,11 @@ def run_on_pdf(path):
 
 def main():
     pdfs = [
-        "R:/Startup research/Start up V2/Results Dataset/127f859d-372d-4367-862e-1a9147714a74.pdf",
-        "R:/Startup research/Start up V2/Results Dataset/6757_results_groupA.pdf",
-        "R:/Startup research/Start up V2/Results Dataset/6757_results_groupB.pdf",
-        "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_1(APRIL_2024) - CR Report (2).pdf",
-        "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_2(May_2025) - CR Report.pdf",
+        f"{PROJECT_ROOT}/Results Dataset/127f859d-372d-4367-862e-1a9147714a74.pdf",
+        f"{PROJECT_ROOT}/Results Dataset/6757_results_groupA.pdf",
+        f"{PROJECT_ROOT}/Results Dataset/6757_results_groupB.pdf",
+        f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_1(APRIL_2024) - CR Report (2).pdf",
+        f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_2(May_2025) - CR Report.pdf",
     ]
     already_validated = [
         "cse 5 reg.pdf",

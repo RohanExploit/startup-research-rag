@@ -4,6 +4,12 @@ Targeted investigation:
 2. CSE_2 subject-code wrapping — raw header rows showing splits
 3. Cross-check same layout variants in 127f859d, groupA, groupB
 """
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import pdfplumber
 import re
 
@@ -99,11 +105,11 @@ def show_header_raw(path, page_idx=0):
 
 
 def main():
-    CSE1 = "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_1(APRIL_2024) - CR Report (2).pdf"
-    CSE2 = "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_2(May_2025) - CR Report.pdf"
-    UUID = "R:/Startup research/Start up V2/Results Dataset/127f859d-372d-4367-862e-1a9147714a74.pdf"
-    GRPA = "R:/Startup research/Start up V2/Results Dataset/6757_results_groupA.pdf"
-    GRPB = "R:/Startup research/Start up V2/Results Dataset/6757_results_groupB.pdf"
+    CSE1 = f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_1(APRIL_2024) - CR Report (2).pdf"
+    CSE2 = f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_2(May_2025) - CR Report.pdf"
+    UUID = f"{PROJECT_ROOT}/Results Dataset/127f859d-372d-4367-862e-1a9147714a74.pdf"
+    GRPA = f"{PROJECT_ROOT}/Results Dataset/6757_results_groupA.pdf"
+    GRPB = f"{PROJECT_ROOT}/Results Dataset/6757_results_groupB.pdf"
 
     # =========================================================
     # PART 1: CSE_1 — R1 layout for PASS + FAIL + blank-SGPA

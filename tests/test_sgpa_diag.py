@@ -1,6 +1,12 @@
 """
 Diagnostic: Compare SGPA mismatches across CSE_1, CSE_2, cse_5_reg
 """
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import pdfplumber
 import re
 import json
@@ -165,9 +171,9 @@ def get_blocks_from_pdf(path, max_pages=None):
 
 def main():
     pdfs = {
-        "cse5_reg": "R:/Startup research/Start up V2/Results Dataset/cse 5 reg.pdf",
-        "cse1_2024": "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_1(APRIL_2024) - CR Report (2).pdf",
-        "cse2_2025": "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_2(May_2025) - CR Report.pdf",
+        "cse5_reg": f"{PROJECT_ROOT}/Results Dataset/cse 5 reg.pdf",
+        "cse1_2024": f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_1(APRIL_2024) - CR Report (2).pdf",
+        "cse2_2025": f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_2(May_2025) - CR Report.pdf",
     }
 
     results = {}

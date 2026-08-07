@@ -1,3 +1,9 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import os
 import shutil
 import glob
@@ -7,14 +13,14 @@ import zipfile
 import random
 
 def main():
-    raw_dir = Path("R:/Startup research/Start up V2/data/tenants/tenant_1/raw")
+    raw_dir = Path(f"{PROJECT_ROOT}/data/tenants/tenant_1/raw")
     # Clean the raw dir so we don't have the synthetic data mixed in
     # if raw_dir.exists():
     #     shutil.rmtree(raw_dir)
     raw_dir.mkdir(parents=True, exist_ok=True)
     
     print("1. Copying real office documents from Dataset/...")
-    dataset_dir = Path("R:/Startup research/Start up V2/Dataset")
+    dataset_dir = Path(f"{PROJECT_ROOT}/Dataset")
     extensions = ("*.docx", "*.xlsx", "*.pptx", "*.pdf")
     real_docs = []
     for ext in extensions:

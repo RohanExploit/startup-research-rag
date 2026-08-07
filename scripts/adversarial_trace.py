@@ -3,9 +3,15 @@ Adversarial trace for Task 1.
 Extracts specific blocks from CSE_1 and CSE_2 using the production parser,
 then dumps the raw text and the parsed block to verify correctness manually.
 """
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import sys
 import pdfplumber
-sys.path.insert(0, "R:/Startup research/Start up V2")
+sys.path.insert(0, f"{PROJECT_ROOT}")
 from ingestion.parse_tabular import extract_rows, parse_header, parse_single_block
 import re
 ROLL_PATTERN = re.compile(r'^\d{10,15}$')
@@ -70,8 +76,8 @@ def trace_student(pdf_path, target_roll):
                     return
 
 def main():
-    CSE1 = "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_1(APRIL_2024) - CR Report (2).pdf"
-    CSE2 = "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_2(May_2025) - CR Report.pdf"
+    CSE1 = f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_1(APRIL_2024) - CR Report (2).pdf"
+    CSE2 = f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_2(May_2025) - CR Report.pdf"
     
     # 24067571242100 (PASS from CSE1)
     trace_student(CSE1, "24067571242100")

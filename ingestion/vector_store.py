@@ -1,3 +1,9 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import os
 import logging
 import pickle
@@ -42,5 +48,5 @@ def build_faiss_index(embed_dir):
     logging.info(f"Built FAISS index with {index.ntotal} vectors of dimension {dimension}.")
 
 if __name__ == "__main__":
-    embed_dir = "R:/Startup research/Start up V2/data/tenants/tenant_1/embeddings"
+    embed_dir = f"{PROJECT_ROOT}/data/tenants/tenant_1/embeddings"
     build_faiss_index(embed_dir)

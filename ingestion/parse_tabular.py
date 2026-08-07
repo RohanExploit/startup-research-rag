@@ -1,3 +1,9 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import pdfplumber
 import re
 import json
@@ -392,11 +398,11 @@ def store_in_duckdb(clean_records, needs_review, all_cancelled_seats, db_path):
 
 if __name__ == '__main__':
     pdfs = [
-        "R:/Startup research/Start up V2/Results Dataset/cse 5 reg.pdf",
-        "R:/Startup research/Start up V2/Results Dataset/AIDS Result.pdf",
-        "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_5(DECEMBER_2025) - CR Report.pdf"
+        f"{PROJECT_ROOT}/Results Dataset/cse 5 reg.pdf",
+        f"{PROJECT_ROOT}/Results Dataset/AIDS Result.pdf",
+        f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_5(DECEMBER_2025) - CR Report.pdf"
     ]
-    db_path = "R:/Startup research/Start up V2/data/tenants/tenant_1/tabular.duckdb"
+    db_path = f"{PROJECT_ROOT}/data/tenants/tenant_1/tabular.duckdb"
     
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     

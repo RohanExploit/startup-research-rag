@@ -1,16 +1,22 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import camelot
 from pathlib import Path
 import json
 import pandas as pd
 
 def extract_with_camelot():
-    input_file = "R:/Startup research/Start up V2/Results Dataset/cse 5 reg.pdf"
+    input_file = f"{PROJECT_ROOT}/Results Dataset/cse 5 reg.pdf"
     print(f"Running camelot on {input_file} (flavor='stream', first 5 pages for testing)")
     # Just run on first 5 pages to see if it works without OOM
     tables = camelot.read_pdf(input_file, flavor='stream', pages='1-5')
     print(f"Total tables extracted on first 5 pages: {tables.n}")
     
-    out_dir = Path("R:/Startup research/Start up V2/Results Dataset/camelot_out")
+    out_dir = Path(f"{PROJECT_ROOT}/Results Dataset/camelot_out")
     out_dir.mkdir(exist_ok=True, parents=True)
     
     all_data = []
