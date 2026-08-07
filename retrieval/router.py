@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from retrieval.vector_search import VectorSearch
 from retrieval.graph_traverse import GraphSearch
@@ -25,7 +26,18 @@ class QueryRouter:
         # single-request-at-a-time on the 4B model, so every skipped call is
         # a full inference round-trip saved).
         lower_q = query.lower()
-        if any(k in lower_q for k in ["score of", "student", "roll", "result for", "search for"]):
+        # Student-record shaped queries
+        student_kw = ["score of", "student", "roll", "result for", "search for"]
+        # Aggregation/analytical shaped queries — rule-based route to TABULAR BEFORE
+        # any LLM classify call (P3.10). Deterministic + works with Ollama offline.
+        agg_kw = [
+            "how many", "how much", "list all", "list of student", "which students",
+            "at least", "atleast", "or more", "average", "count of", "number of",
+            "toppers", "topper", "pass percentage", "pass rate", "pass %",
+            "failed", "fail", "below sgpa", "sgpa below", "most subjects", "backlog",
+            "top ",
+        ]
+        if any(k in lower_q for k in student_kw) or any(k in lower_q for k in agg_kw):
             return "TABULAR", None
 
         prompt = f"""
@@ -90,8 +102,20 @@ Query: "{query}"
         elif qtype == "TABULAR":
             import re
             from retrieval.tabular_queries import get_average_sgpa, count_failures, list_students_below_sgpa, get_student_record, get_student_by_name, generate_and_run_sql
+            from retrieval.sql_templates import match_template
             q_lower = query.lower()
-            
+
+            # P3.12: try a deterministic parameterized template FIRST (no LLM,
+            # works offline). Only unmatched patterns fall through to the cascade
+            # / LLM text-to-SQL below.
+            matched = match_template(query)
+            if matched:
+                fn, kwargs = matched
+                result = await asyncio.to_thread(fn, tenant_id=self.tenant_id, **kwargs)
+                metadata["debug_sql"] = result.get("debug_sql")
+                metadata["template"] = result.get("template")
+                return qtype, result["answer"], metadata
+
             # Route to dynamic SQL generator for complex/list queries
             if "search for" in q_lower or "list all" in q_lower or "which students" in q_lower or "at least" in q_lower or "atleast" in q_lower:
                 # If it is a simple single student name search

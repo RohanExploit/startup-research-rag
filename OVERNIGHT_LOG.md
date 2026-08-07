@@ -69,3 +69,16 @@ TODO (manual diagnostic scripts left as-is per instructions — convert later): 
 - RETENTION-SAFE: reads tabular.duckdb via ATTACH ... (READ_ONLY); writes ONLY a NEW analytics.duckdb. Proven: tabular.duckdb sha256 identical before/after (UNTOUCHED: YES).
 - Built: 2952 rows, 369 students, 315 fail-rows. Sanity vs ground truth: failed>=4 = 10, failed>=2 = 77. ✅
 - analytics.duckdb is gitignored (PII-derived) — not committed.
+
+### [2026-08-08 01:30:34] P3.10 + P3.11 + P3.12 + P3.13 — Four-way router SQL path  ✅ COMMITTED
+- P3.11 (text-to-SQL guardrails) was ALREADY implemented in retrieval/tabular_queries.py by prior work: schema-in-prompt (_SQL_SCHEMA), read-only DuckDB, LIMIT cap (200), threaded query timeout (10s), table allowlist, and one-shot execution self-correction (generate_and_run_sql). Verified present; left as-is.
+- P3.10: added rule-based aggregation-keyword detection to router.classify_query's deterministic override (how many / list all / at least / failed / average / count / toppers / pass % / most subjects / top N ...). These route to TABULAR BEFORE any LLM call — works with Ollama offline.
+- P3.12: new retrieval/sql_templates.py — parameterized SELECTs over exam_results: students_failed_at_least(n), students_failed_most, pass_percentage, toppers_by_sgpa, subject_failure_counts + match_template(). Router tries a template FIRST; only unmatched patterns fall to the LLM text-to-SQL path.
+- P3.13 RESULT — the exact previously-failing query, end-to-end, WITH OLLAMA FORBIDDEN (test asserts no _http_client.post):
+    Q: "give me a list of students who failed at least 4 subjects"
+       -> TABULAR / template=students_failed_at_least
+       -> "Found 10 students who failed at least 4 subjects:" (JAGTAP ANANT TANAJI & SHELKE MANISH SURESH: 5 each; 8 more at 4). CORRECT vs ground truth (10).
+    Q: "students who failed at least 2 subjects" -> "Found 77 students" (CORRECT).
+    Q: "which student failed the most subjects?" -> "max = 5" (JAGTAP/SHELKE). CORRECT.
+- tests/test_sql_route.py: 6 passed (3 template-level + 3 router-e2e, all asserting no Ollama).
+- FULL SUITE now: **73 passed, 1 skipped, 0 failed** in ~10.7s.
