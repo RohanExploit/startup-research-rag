@@ -8,7 +8,9 @@ import json
 from pathlib import Path
 from docling.document_converter import DocumentConverter
 
-def test_docling():
+# NOTE: renamed from test_docling so pytest does NOT collect it — it runs heavy
+# Docling AND overwrites a PII-derived .md. Manual only.
+def run_docling():
     input_file = Path(f"{PROJECT_ROOT}/Results Dataset/cse 5 reg.pdf")
     converter = DocumentConverter()
     print("Running docling on", input_file)
@@ -29,4 +31,4 @@ def test_docling():
         print(l)
 
 if __name__ == '__main__':
-    test_docling()
+    run_docling()

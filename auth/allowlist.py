@@ -47,6 +47,11 @@ class AllowlistManager:
         # Fallback to 'users' for backwards compatibility
         return user_id in tenant.get("whatsapp_users", tenant.get("users", []))
 
+    def is_user_allowed(self, tenant_id: str, user_id: str) -> bool:
+        """Channel-agnostic check: allowed if the user is on either channel's list."""
+        return (self.is_telegram_user_allowed(tenant_id, user_id)
+                or self.is_whatsapp_user_allowed(tenant_id, user_id))
+
 if __name__ == "__main__":
     mgr = AllowlistManager()
     print(f"Is Telegram user allowed? {mgr.is_telegram_user_allowed('tenant_1', 'telegram_user_123')}")

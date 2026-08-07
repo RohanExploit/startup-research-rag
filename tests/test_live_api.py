@@ -1,7 +1,7 @@
 import asyncio
 import httpx
 
-async def test_live():
+async def run_live():   # renamed from test_live: manual script, needs API on :8000
     print("=== LIVE API TEST ===")
     queries = [
         "search for damle sandip devshri",
@@ -23,4 +23,4 @@ async def test_live():
             print("-" * 40)
 
 if __name__ == "__main__":
-    asyncio.run(test_live())
+    asyncio.run(run_live())

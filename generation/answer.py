@@ -1,7 +1,12 @@
 import logging
 import os
+import sys
 import httpx
+from pathlib import Path
 from openai import AsyncOpenAI
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
+from config import API_TIMEOUT
 
 logging.basicConfig(level=logging.INFO)
 
@@ -10,7 +15,7 @@ OLLAMA_API_URL = "http://127.0.0.1:11434/api/generate"
 MODEL_NAME = "qwen3:4b-instruct-2507-q4_K_M"
 OLLAMA_KEEP_ALIVE = "10m"
 
-_http_client = httpx.AsyncClient(timeout=60.0)
+_http_client = httpx.AsyncClient(timeout=API_TIMEOUT)
 
 async def generate_answer(query: str, context: str, qtype: str = "LOCAL") -> str:
     if qtype == "GLOBAL":
@@ -68,7 +73,8 @@ Answer:
         try:
             client = AsyncOpenAI(
                 base_url="https://integrate.api.nvidia.com/v1",
-                api_key=nvidia_api_key
+                api_key=nvidia_api_key,
+                timeout=API_TIMEOUT,
             )
             completion = await client.chat.completions.create(
                 model="meta/llama3-70b-instruct",

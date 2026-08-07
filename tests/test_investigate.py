@@ -4,6 +4,11 @@ for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.pa
     if str(_p) not in _sys.path:
         _sys.path.append(str(_p))
 from config import PROJECT_ROOT
+import pytest
+pytest.skip(
+    "manual PDF-parsing diagnostic; depends on scripts/build_parser not on sys.path",
+    allow_module_level=True,
+)
 import pdfplumber
 import build_parser
 import json

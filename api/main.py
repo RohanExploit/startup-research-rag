@@ -179,9 +179,12 @@ class QueryResponse(BaseModel):
 
 @app.post("/query", response_model=QueryResponse)
 async def query_documents(req: QueryRequest):
-    # We remove the hardcoded tenant_1 rejection so we can serve any valid tenant
+    # Validate tenant_id first (clean 400); then load its data (500 on load failure).
+    tenant_id = _require_tenant(req.tenant_id)
     try:
-        tenant_router = get_router(req.tenant_id)
+        tenant_router = get_router(tenant_id)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load tenant data: {e}")
         
