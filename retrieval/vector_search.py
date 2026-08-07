@@ -1,6 +1,5 @@
 import os
 import sys
-import pickle
 import faiss
 import numpy as np
 from pathlib import Path
@@ -8,6 +7,7 @@ from sentence_transformers import SentenceTransformer
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from config import tenant_dir
+from utils.safe_store import load_chunks
 
 class VectorSearch:
     def __init__(self, tenant_id="tenant_1"):
@@ -22,14 +22,14 @@ class VectorSearch:
         self.load_index()
 
     def load_index(self):
-        if not self.faiss_path.exists() or not self.data_path.exists():
+        # chunks load from the safe .npy/.json format, falling back to legacy pickle
+        if not self.faiss_path.exists():
             return
-            
+        self.chunks = load_chunks(self.embed_dir)
+        if not self.chunks:
+            return
+
         self.index = faiss.read_index(str(self.faiss_path))
-        with open(self.data_path, "rb") as f:
-            data = pickle.load(f)
-            self.chunks = data["chunks"]
-            
         self.model = SentenceTransformer('all-MiniLM-L6-v2')
 
     def search(self, query: str, top_k: int = 5):

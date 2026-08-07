@@ -28,3 +28,12 @@ Branch: overnight-hardening
 - Wired validation into remaining client-facing endpoints: /documents, /upload/{id}/process, /upload/{id}/status (were building DATA_ROOT/tenant_id unvalidated). Retrieval classes + pipeline already go through tenant_dir().
 - New test tests/test_tenant_isolation.py: 28 cases. Proves '../../other_tenant' (and 10 other payloads) raise ValueError at validate_tenant_id AND tenant_dir; proves valid ids accepted; proves the naive DATA_ROOT/bad WOULD escape but tenant_dir blocks it.
 - Result: 28 passed in 0.10s. api.main imports clean.
+
+### [2026-08-08 01:00:15] P1.3 — Safe deserialization (drop pickle.load on the read path)  ✅ COMMITTED
+- New utils/safe_store.py: stores embeddings as embeddings.npy + embeddings_chunks.json (no code-exec on load). Readers prefer safe format, fall back to legacy pickle with a warning.
+- Wired: retrieval/vector_search.py (load_chunks), ingestion/embed.py (writes safe format, keep_pickle=True for back-compat), ingestion/vector_store.py (load_embeddings).
+- ADDITIVE migration of existing data (per HARD RULE — pkl never moved/deleted):
+    - tenant_1/embeddings/embeddings.pkl sha256 BEFORE == AFTER (UNTOUCHED): 2ba734f1fa511ae5...40c5860
+    - generated embeddings.npy (8.86 MB) + embeddings_chunks.json; shape (5769, 384), 5769 chunks — matches pickle.
+- Data sidecars live under data/ (gitignored) — never committed.
+- Tests: tests/test_safe_store.py — 5 passed (roundtrip, safe-preferred-over-pickle, pickle fallback, additive+nondestructive migration proven by byte-equality, no-pickle case).
