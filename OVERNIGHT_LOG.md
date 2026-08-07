@@ -90,3 +90,33 @@ TODO (manual diagnostic scripts left as-is per instructions — convert later): 
 - num_ctx = 2048 verified at ALL call sites (unchanged). keep_alive=10m already in payloads.
 - Ollama server flags (FLASH_ATTENTION, KV_CACHE_TYPE=q8_0, KEEP_ALIVE) documented in docs/PERFORMANCE.md — server-side env, NOT measurable (Ollama was DOWN overnight).
 - Full suite after caching: 73 passed, 1 skipped, 0 failed (~7.7s).
+
+---
+
+## MORNING SUMMARY  (2026-08-08 01:35:05)
+
+**Branch:** overnight-hardening (8 commits, off `main` baseline). 66 files changed, +1513/-285. Nothing pushed/deployed. No PII file deleted, moved, or modified — verified by sha256 on tabular.duckdb and embeddings.pkl (identical before/after).
+
+### DONE + COMMITTED (each its own commit, reversible)
+- **P1.1** all absolute path literals -> config.PROJECT_ROOT (42 files). Whole codebase compiles + imports.
+- **P1.2** tenant_id validation on every path-building endpoint; tests/test_tenant_isolation.py (28) proves `../../other_tenant` rejected.
+- **P1.3** safe deserialization: utils/safe_store.py (.npy/.json), readers prefer it, pickle only fallback. Existing embeddings.pkl migrated ADDITIVELY (sha256 unchanged); tests/test_safe_store.py (5).
+- **P1.4** upload filename sanitized to basename + 413 size guard; tests/test_upload_filename.py (19).
+- **P2** test suite made real & hermetic. Honest full-suite result: **73 passed, 1 skipped, 0 failed (~7.7s)**. Rewrote fake/broken tests (api, router, rag, components); stopped a collection hang and two import-time PII-file overwrites.
+- **P3.9** consolidated exam_results table (analytics.duckdb, built READ-ONLY from tabular.duckdb).
+- **P3.10** rule-based aggregation routing before LLM. **P3.11** guardrails already present (verified). **P3.12** parameterized SQL templates tried before LLM.
+- **P3.13** THE TARGET QUERY WORKS. "students who failed at least 4 subjects" -> correct **10 students** (JAGTAP & SHELKE at 5; 8 more at 4), produced **deterministically with Ollama offline**. "at least 2" -> 77. "failed the most" -> max 5. tests/test_sql_route.py (6).
+- **P4** caches: model load 6.5s->0ms shared, SQL templates 78-173x warm; Ollama server flags documented (docs/PERFORMANCE.md).
+
+### HONEST STATE OF "failed >= 4 subjects"
+FULLY WORKING and tested end-to-end, no Ollama needed. Fail definition = grade in (FF, XX, AB) — matches the existing count_failures + documented schema. Ground truth cross-checked directly against DuckDB: 10 students.
+
+### NEEDS YOUR REVIEW / NOT DONE
+- **Router rank-1 / rank-25 (from earlier judged workflow):** /review + /tenants endpoints iterate ALL tenants with NO auth (cross-tenant read). I did NOT auto-scope them — that changes the admin-dashboard contract. Decide: add auth, or scope per tenant. (These are admin endpoints; whole API is currently unauthenticated.)
+- **P2 leftover manual scripts** (test_all_pdfs, test_camelot, test_diagnose, test_full_pass, test_pdfplumber, test_production_import, test_sgpa_diag, test_sgpa_invest2, test_table_broken, test_visual_proof, test_telegram_bot, test_router_fallback, + the __main__ harnesses): left as diagnostics, listed for conversion.
+- **department/source_file in exam_results are NULL** — not derivable from parsed data without fabricating; semester IS derived. If you want department, tell me the source (roll-number segment? subject prefix map?).
+- **benchmark_models_flushed.py** has pre-existing invalid `print(flush=True, "...")` lines (dead _flushed dup) — left untouched.
+- **Merge:** work is on branch overnight-hardening; not merged to main. Review the 8 commits, then merge when happy.
+
+### FAILURES / BLOCKERS
+- None blocking. Ollama was DOWN all night -> LLM-path latency (P4) and any live-LLM behavior could not be measured; the SQL analytical path is LLM-free and fully verified. NVIDIA fallback not exercised (no live call made).
