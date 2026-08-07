@@ -34,9 +34,17 @@ OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 OLLAMA_KEEP_ALIVE=10m ollama 
 - **`num_ctx` is 2048 everywhere** (verified across all call sites) — do not raise it
   on the 4 GB-VRAM box; it directly drives KV-cache size.
 
-## LLM-path latency (not measured — Ollama offline overnight)
+## LLM-path latency (measured live — Ollama 0.19.0, qwen3:4b-instruct-2507-q4_K_M, warm)
 
-The analytical SQL route (templates) is **LLM-free** and already fast (sub-ms warm).
-LLM latency (router classify, text-to-SQL fallback, answer generation) should be
-re-measured with the flags above once Ollama is running. The 3 canonical queries
-in `tests/test_sql_route.py` run entirely without Ollama.
+| Path | Latency | Result |
+|---|---|---|
+| Router classify (`classify_query`) | 214–265 ms | correct (FACT / GLOBAL) |
+| Answer generation (`generate_answer`) | ~640 ms | correct |
+| LLM text-to-SQL fallback (`generate_and_run_sql`, unmatched query) | ~1071 ms | valid SQL + correct rows (top-5 by total_marks); guardrails + 1-shot self-correction active |
+
+Notes:
+- The analytical SQL route (templates) is **LLM-free** and stays sub-ms warm — the
+  canonical `failed >= N` queries never pay these LLM costs.
+- Measured against the running desktop Ollama (may not have the server flags above);
+  re-measure after setting `OLLAMA_FLASH_ATTENTION`/`OLLAMA_KV_CACHE_TYPE` for the
+  VRAM/throughput gains.

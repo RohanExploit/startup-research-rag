@@ -120,3 +120,10 @@ FULLY WORKING and tested end-to-end, no Ollama needed. Fail definition = grade i
 
 ### FAILURES / BLOCKERS
 - None blocking. Ollama was DOWN all night -> LLM-path latency (P4) and any live-LLM behavior could not be measured; the SQL analytical path is LLM-free and fully verified. NVIDIA fallback not exercised (no live call made).
+
+### [2026-08-08 02:00:17] P4 addendum — LLM path measured LIVE (Ollama started, kept running)
+- Ollama 0.19.0 up on :11434, model qwen3:4b-instruct-2507-q4_K_M present. Left running per instruction.
+- Live latency (warm): classify 214-265 ms (FACT/GLOBAL correct); generate_answer ~640 ms; LLM text-to-SQL fallback ~1071 ms (valid SQL, correct top-5 by total_marks; guardrails + self-correction confirmed working end-to-end).
+- Regression check with Ollama up: full suite still 73 passed / 1 skipped / 0 failed; target query "failed at least 4 subjects" still returns the correct 10 (deterministic template path, LLM not invoked).
+- docs/PERFORMANCE.md updated with real numbers.
+- Note: harmless "Event loop is closed" teardown noise from the module-level httpx AsyncClient on Windows proactor at interpreter exit — cosmetic, not an error.
