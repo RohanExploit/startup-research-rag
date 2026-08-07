@@ -82,3 +82,11 @@ TODO (manual diagnostic scripts left as-is per instructions — convert later): 
     Q: "which student failed the most subjects?" -> "max = 5" (JAGTAP/SHELKE). CORRECT.
 - tests/test_sql_route.py: 6 passed (3 template-level + 3 router-e2e, all asserting no Ollama).
 - FULL SUITE now: **73 passed, 1 skipped, 0 failed** in ~10.7s.
+
+### [2026-08-08 01:33:26] PHASE 4 — Performance  ✅ COMMITTED
+- Model-load cache (retrieval/vector_search.py::_get_model): first load 6484 ms -> cached 0.001 ms (shared across tenants; same object). Was reloading ~6.5s per VectorSearch instance.
+- Query-embedding cache in VectorSearch.search (repeated query skips encode).
+- SQL result cache (sql_templates._rows), mtime-keyed auto-invalidation: cold ~20 ms -> warm ~0.15 ms (78-173x) on the 3 canonical queries.
+- num_ctx = 2048 verified at ALL call sites (unchanged). keep_alive=10m already in payloads.
+- Ollama server flags (FLASH_ATTENTION, KV_CACHE_TYPE=q8_0, KEEP_ALIVE) documented in docs/PERFORMANCE.md — server-side env, NOT measurable (Ollama was DOWN overnight).
+- Full suite after caching: 73 passed, 1 skipped, 0 failed (~7.7s).

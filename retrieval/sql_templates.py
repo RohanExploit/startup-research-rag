@@ -33,14 +33,40 @@ def get_analytics_connection(tenant_id: str = None):
     return duckdb.connect(str(path), read_only=True)
 
 
+# Bounded result cache (P4.14). Key includes analytics.duckdb mtime so a rebuild
+# transparently invalidates stale entries. Data is static between ingests.
+_SQL_CACHE = {}
+_SQL_CACHE_MAX = 256
+
+
+def clear_sql_cache():
+    _SQL_CACHE.clear()
+
+
 def _rows(tenant_id, sql, params=()):
-    con = get_analytics_connection(tenant_id)
+    tid = tenant_id or DEFAULT_TENANT_ID
+    path = _analytics_path(tid)
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        mtime = None
+    key = (tid, mtime, sql, tuple(params))
+    cached = _SQL_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    con = get_analytics_connection(tid)
     try:
         cur = con.execute(sql, params)
         cols = [d[0] for d in con.description]
-        return cur.fetchall(), cols
+        result = (cur.fetchall(), cols)
     finally:
         con.close()
+
+    if len(_SQL_CACHE) >= _SQL_CACHE_MAX:
+        _SQL_CACHE.pop(next(iter(_SQL_CACHE)))
+    _SQL_CACHE[key] = result
+    return result
 
 
 # --------------------------------------------------------------------------
