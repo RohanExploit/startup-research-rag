@@ -1,0 +1,32 @@
+# --- Environments / caches ---
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.agent/
+.agents/
+
+# --- Secrets / keys ---
+.env
+.encryption_key
+
+# --- Student PII & derived outputs (retention hold — never in git) ---
+data/
+Dataset/
+Results Dataset/
+graphify-out/
+debug_outputs/
+sample_documents/
+*.duckdb
+*.pkl
+*.pkl.bak
+*.npy
+*.index
+faiss.index
+manifest.db
+*.graphml
+*.parquet
+
+# --- Misc build/output ---
+*.log
+test_enc_*.txt

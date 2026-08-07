@@ -1,0 +1,102 @@
+import os
+import json
+import logging
+import httpx
+import time
+from pathlib import Path
+from dotenv import load_dotenv
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
+logging.basicConfig(level=logging.INFO)
+
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+if not TOKEN:
+    raise RuntimeError("TELEGRAM_BOT_TOKEN not set in .env")
+
+API_URL = "http://localhost:8000/query"
+
+ADMIN_ID = "1990648223"
+user_last_message_time = {}
+RATE_LIMIT_SECONDS = 5
+
+http_client = httpx.AsyncClient(timeout=120.0)
+
+def is_admin(user_id: int) -> bool:
+    return str(user_id) == ADMIN_ID
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    admin_tag = " (Admin)" if is_admin(uid) else ""
+    await update.message.reply_text(
+        "Hello! I am the Company Brain.\n"
+        "Ask me anything about our internal documents."
+    )
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    
+    if not is_admin(uid):
+        now = time.time()
+        last_time = user_last_message_time.get(uid, 0)
+        if now - last_time < RATE_LIMIT_SECONDS:
+            await update.message.reply_text("⏳ Please wait a few seconds before asking another question.")
+            return
+        user_last_message_time[uid] = now
+
+    user_query = update.message.text
+
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+    thinking_msg = await update.message.reply_text("🤔 Thinking...")
+
+    try:
+        response = await http_client.post(API_URL, json={
+            "query": user_query,
+            "tenant_id": "tenant_1"
+        })
+        response.raise_for_status()
+        data = response.json()
+
+        answer = data.get("answer", "No answer generated.")
+        qtype = data.get("query_type", "UNKNOWN")
+        context_used = data.get("context_used", "")
+        metadata = data.get("metadata", {})
+
+        tag = {"FACT": "🔍 FACT", "LOCAL": "🔗 LOCAL", "GLOBAL": "🌐 GLOBAL", "TABULAR": "📊 TABULAR"}.get(qtype, qtype)
+        text = f"[{tag}]\n\n{answer}"
+
+        fallback_reason = metadata.get("fallback_reason")
+        if fallback_reason:
+            text += f"\n\n⚠️ *Note:* Request was routed as fallback due to: `{fallback_reason}`"
+
+        if context_used and is_admin(uid) and answer.strip() != context_used.strip():
+            text += "\n\n─── Context snippet (Admin) ───\n" + context_used[:400]
+
+        await thinking_msg.edit_text(text)
+
+    except httpx.HTTPStatusError as exc:
+        await thinking_msg.edit_text(
+            f"Backend returned error {exc.response.status_code}.\n"
+            f"Detail: {exc.response.text[:200]}"
+        )
+    except httpx.RequestError as exc:
+        await thinking_msg.edit_text(
+            f"Cannot reach the Company Brain API.\n"
+            f"Make sure the FastAPI server is running on port 8000.\n"
+            f"Error: {exc}"
+        )
+    except Exception as e:
+        logging.exception("Unexpected error in handle_message")
+        await thinking_msg.edit_text(f"An unexpected error occurred: {e}")
+
+if __name__ == "__main__":
+
+    app = ApplicationBuilder().token(TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    logging.info("Telegram bot starting (Open access, rate limit %s, Admin: %s)", RATE_LIMIT_SECONDS, ADMIN_ID)
+    app.run_polling()
