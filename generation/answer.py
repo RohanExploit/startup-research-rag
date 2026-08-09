@@ -77,7 +77,7 @@ Answer:
                 timeout=API_TIMEOUT,
             )
             completion = await client.chat.completions.create(
-                model="meta/llama3-70b-instruct",
+                model="meta/llama-3.1-70b-instruct",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2,
                 max_tokens=1024,

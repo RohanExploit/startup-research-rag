@@ -21,7 +21,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 export default function HealthPage() {
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
   const refresh = () => {
     setLoading(true);
@@ -31,7 +31,12 @@ export default function HealthPage() {
       .catch(() => setLoading(false));
   };
 
-  useEffect(() => { refresh(); const id = setInterval(refresh, 15000); return () => clearInterval(id); }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount, not derived-state sync
+    refresh();
+    const id = setInterval(refresh, 15000);
+    return () => clearInterval(id);
+  }, []);
 
   const ollama = status?.ollama;
 
@@ -45,7 +50,7 @@ export default function HealthPage() {
           </div>
           <div style={{ paddingBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
             <span className="font-data" style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)" }}>
-              {lastRefresh.toLocaleTimeString()}
+              {lastRefresh ? lastRefresh.toLocaleTimeString() : "—"}
             </span>
             <button onClick={refresh} disabled={loading}
               style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid var(--color-border)", background: "none", color: "var(--color-muted)", fontSize: "var(--text-xs)", cursor: "pointer" }}>

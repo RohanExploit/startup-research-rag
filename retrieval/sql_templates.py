@@ -163,11 +163,18 @@ def subject_failure_counts(limit: int = 50, tenant_id: str = None) -> dict:
 _AT_LEAST_N = re.compile(r"(?:at\s*least|atleast|>=|minimum(?:\s+of)?|min)\s*(\d+)", re.I)
 _N_OR_MORE = re.compile(r"(\d+)\s*(?:or\s+more|\+)\s*subject", re.I)
 _TOP_N = re.compile(r"top\s+(\d+)", re.I)
+_SUBJECT_CODE = re.compile(r"\bBT[A-Z]{2,5}\d{3}[A-Z]?\b", re.I)
 
 
 def match_template(query: str):
     """Return (callable, kwargs) for a matched analytical template, else None."""
     q = query.lower()
+
+    # queries naming specific subject codes (e.g. "compare BTCOE504A and
+    # BTCOL506") are targeted comparisons, not requests for the full
+    # per-subject ranking — let these fall through to LLM text-to-SQL
+    # instead of being swallowed by subject_failure_counts below.
+    named_subjects = _SUBJECT_CODE.findall(query)
 
     # if "subject" is mentioned before "fail", the question is scoped to
     # per-subject breakdown, not per-student — don't let the failed-most-
@@ -194,7 +201,8 @@ def match_template(query: str):
         return toppers_by_sgpa, ({"limit": int(m.group(1))} if m else {})
 
     # per-subject failure counts
-    if ("subject" in q and "fail" in q and ("per" in q or "each" in q or "which" in q or "wise" in q or "count" in q)):
+    if (not named_subjects and "subject" in q and "fail" in q
+            and ("per" in q or "each" in q or "which" in q or "wise" in q or "count" in q)):
         return subject_failure_counts, {}
 
     return None

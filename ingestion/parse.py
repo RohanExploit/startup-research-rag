@@ -41,6 +41,11 @@ def _get_manifest_conn(tenant_dir: Path) -> sqlite3.Connection:
     manifest_db = tenant_dir / "manifest.db"
     conn = sqlite3.connect(manifest_db)
     conn.execute(MANIFEST_SCHEMA)
+    # CREATE TABLE IF NOT EXISTS is a no-op on manifest.db files created
+    # before the `flags` column was added — migrate those in place.
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(manifest)")}
+    if "flags" not in cols:
+        conn.execute("ALTER TABLE manifest ADD COLUMN flags TEXT")
     conn.commit()
     return conn
 

@@ -37,6 +37,7 @@ export default function DocumentsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount, not derived-state sync
     setLoading(true);
     fetch(`${API}/documents?tenant_id=${tenant}`)
       .then(r => r.json())

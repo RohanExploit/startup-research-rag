@@ -31,3 +31,4 @@ manifest.db
 *.log
 test_enc_*.txt
 .gstack/
+.playwright-mcp/

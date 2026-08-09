@@ -13,11 +13,18 @@ import os
 import re
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # --------------------------------------------------------------------------
 # PATHS  (your knob: set env PROJECT_ROOT to force a location; else auto-detect)
 # --------------------------------------------------------------------------
 # config.py sits at the repo root, so its parent IS the project root.
 PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", Path(__file__).resolve().parent))
+
+# Load .env before anything else in the app reads os.environ (e.g.
+# NVIDIA_API_KEY for the Ollama fallback in generation/answer.py). Every
+# module imports config first, so this is the one place that guarantees it.
+load_dotenv(PROJECT_ROOT / ".env")
 
 DATA_ROOT           = PROJECT_ROOT / "data" / "tenants"
 STAGING_ROOT        = PROJECT_ROOT / "data" / "staging"

@@ -79,7 +79,7 @@ export default function UploadPage() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Data Ingestion</h1>
-        <p className="page-subtitle">Securely upload result PDFs or other documents to a tenant's live database</p>
+        <p className="page-subtitle">Securely upload result PDFs or other documents to a tenant&apos;s live database</p>
       </div>
       
       <div className="page-body" style={{ maxWidth: 600 }}>

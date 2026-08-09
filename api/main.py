@@ -135,7 +135,7 @@ def _get_tenant_info() -> list:
     tenants = []
     if DATA_ROOT.exists():
         for tenant_dir in sorted(DATA_ROOT.iterdir()):
-            if not tenant_dir.is_dir():
+            if not tenant_dir.is_dir() or tenant_dir.name.startswith("{"):
                 continue
             tid = tenant_dir.name
             raw_dir = tenant_dir / "raw"
@@ -316,7 +316,7 @@ def documents_list(tenant_id: str = "tenant_1"):
     if not manifest_db.exists():
         return {"documents": [], "total": 0, "error": "manifest.db not found"}
     try:
-        conn = sqlite3.connect(manifest_db)
+        conn = _get_manifest_conn(tenant_dir)
         rows = conn.execute(
             "SELECT doc_id, file_hash, parse_status, last_indexed_at, "
             "error_message, page_count, file_size_bytes, flags "

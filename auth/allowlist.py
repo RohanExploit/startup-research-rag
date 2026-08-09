@@ -26,12 +26,12 @@ class AllowlistManager:
             self._save(default)
             return default
             
-        with open(self.auth_file, "r") as f:
+        with open(self.auth_file, "r", encoding="utf-8") as f:
             return json.load(f)
-            
+
     def _save(self, data):
-        with open(self.auth_file, "w") as f:
-            json.dump(data, f, indent=2)
+        with open(self.auth_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
             
     def is_telegram_user_allowed(self, tenant_id: str, user_id: str) -> bool:
         tenant = self.allowlist.get(tenant_id)

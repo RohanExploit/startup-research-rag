@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import type { AdminStatus } from "@/lib/api";
 import { getAdminStatus } from "@/lib/api";
 
+function Sep() {
+  return <span className="strip-sep">▪</span>;
+}
+
 export default function StatusStrip() {
   const [status, setStatus] = useState<AdminStatus | null>(null);
   const [error, setError] = useState(false);
@@ -19,8 +23,9 @@ export default function StatusStrip() {
   };
 
   useEffect(() => {
-    fetchStatus();
     const id = setInterval(fetchStatus, 15_000);   // refresh every 15s
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount, not derived-state sync
+    void fetchStatus();
     return () => clearInterval(id);
   }, []);
 
@@ -43,8 +48,6 @@ export default function StatusStrip() {
     const d = dates[0];
     return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
   })();
-
-  const Sep = () => <span className="strip-sep">▪</span>;
 
   return (
     <div className="status-strip">
