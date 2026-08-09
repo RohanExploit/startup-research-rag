@@ -203,27 +203,27 @@ async def query_documents(req: QueryRequest):
         
     qtype, context, metadata = await tenant_router.route_query(req.query)
     context_text = str(context).strip()
-    
-    # Short-circuit formatting for disambiguation, error messages, and perfectly formatted student records
-    if (context_text.startswith("Did you mean") or 
-        context_text.startswith("Student matching") or 
-        context_text.startswith("Could not extract") or
-        context_text.startswith("🎓 **Student Record for")):
-        return {
-            "query_type": qtype,
-            "answer": context_text,
-            "context_used": context_text,
-            "metadata": metadata
-        }
 
     if not context_text:
-        return {
-            "query_type": qtype,
-            "answer": "I don't have enough information to answer that.",
-            "context_used": "",
-            "metadata": metadata
-        }
-    
+        return QueryResponse(
+            query_type=qtype,
+            answer="I don't have enough information to answer that.",
+            context_used="",
+            metadata=metadata
+        )
+
+    # TABULAR context is always a finished, deterministic answer (SQL templates,
+    # tabular_queries helpers, or generate_and_run_sql's markdown table) — never
+    # raw material for LLM synthesis. Short-circuit unconditionally to protect
+    # exact figures from LLM paraphrase/rounding (see P3.12).
+    if qtype == "TABULAR":
+        return QueryResponse(
+            query_type=qtype,
+            answer=context_text,
+            context_used=context_text,
+            metadata=metadata
+        )
+
     answer = await generate_answer(req.query, context, qtype)
     
     return QueryResponse(
