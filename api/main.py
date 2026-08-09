@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sys
@@ -8,6 +8,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 import asyncio
 import contextlib
 import logging
+import secrets
 import httpx
 import sqlite3
 import subprocess
@@ -17,7 +18,35 @@ from datetime import datetime
 from retrieval.router import QueryRouter
 from generation.answer import generate_answer
 from api.audit_router import router as audit_router
+import config
 from config import DATA_ROOT, validate_tenant_id, validate_upload_id, safe_filename, MAX_FILE_SIZE
+
+
+async def require_api_key(request: Request, x_api_key: str | None = Header(default=None)):
+    """Global auth gate. When REQUIRE_API_KEY is set, every request except
+    /health must carry an X-API-Key header matching API_KEY. OFF by default so
+    localhost dev stays frictionless; turn ON before binding 0.0.0.0.
+
+    Applied as an app-level dependency so it also covers the audit router.
+    CORS preflight (OPTIONS) is answered by CORSMiddleware before reaching here.
+    """
+    if not config.require_api_key_enabled():
+        return
+    if request.url.path == "/health":
+        return  # unauthenticated liveness probe for load balancers
+    expected = config.get_api_key()
+    if not expected:
+        # Gate demanded but no key configured — fail closed, never open.
+        raise HTTPException(
+            status_code=500,
+            detail="REQUIRE_API_KEY is set but API_KEY is empty (server misconfig)",
+        )
+    # Accept the key from the X-API-Key header OR an ?api_key= query param. The
+    # query-param path exists for EventSource/SSE (/audit/stream), which cannot
+    # set custom request headers.
+    presented = x_api_key or request.query_params.get("api_key")
+    if not presented or not secrets.compare_digest(presented, expected):
+        raise HTTPException(status_code=401, detail="Missing or invalid X-API-Key")
 
 logging.basicConfig(level=logging.INFO)
 OLLAMA_MODEL = "qwen3:4b-instruct-2507-q4_K_M"
@@ -82,7 +111,8 @@ async def lifespan(app: FastAPI):
         
     yield
 
-app = FastAPI(title="Company Brain API", lifespan=lifespan)
+app = FastAPI(title="Company Brain API", lifespan=lifespan,
+              dependencies=[Depends(require_api_key)])
 app.include_router(audit_router)
 
 app.add_middleware(

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { apiFetch, API_BASE } from "@/lib/api";
 
 interface Tenant {
   id: string;
@@ -10,14 +11,12 @@ interface Tenant {
   last_indexed: string | null;
 }
 
-const API = "http://localhost:8000";
-
 export default function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API}/tenants`)
+    apiFetch(`/tenants`)
       .then(r => r.json())
       .then(d => { setTenants(d.tenants ?? []); setLoading(false); })
       .catch(() => setLoading(false));
@@ -36,7 +35,7 @@ export default function TenantsPage() {
           <div className="empty-state">
             <div style={{ fontSize: 24, opacity: 0.3 }}>⬡</div>
             <div className="empty-state-title">No tenant data returned from API</div>
-            <div className="empty-state-sub">Ensure backend is running at {API}</div>
+            <div className="empty-state-sub">Ensure backend is running at {API_BASE}</div>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

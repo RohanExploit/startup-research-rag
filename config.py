@@ -112,6 +112,26 @@ MAX_FILE_SIZE = int(os.environ.get("MAX_FILE_SIZE", str(50 * 1024 * 1024)))
 # Seed for Louvain community detection so pipeline runs are reproducible.
 LOUVAIN_SEED = int(os.environ.get("LOUVAIN_SEED", "42"))
 
+# --------------------------------------------------------------------------
+# API AUTH  (optional gate — OFF by default so local dev on 127.0.0.1 is
+# frictionless. Turn ON before ever binding 0.0.0.0. See start.py docstring.)
+# --------------------------------------------------------------------------
+def _truthy(v) -> bool:
+    return str(v).strip().lower() in ("1", "true", "yes", "on")
+
+
+def require_api_key_enabled() -> bool:
+    """Whether the X-API-Key gate is active. Read live from env so tests (and a
+    running server told to reload) reflect the current value without reimport."""
+    return _truthy(os.environ.get("REQUIRE_API_KEY", "0"))
+
+
+def get_api_key() -> str:
+    """The expected X-API-Key value. Empty when unset (misconfig if the gate is
+    enabled — the dependency fails closed in that case)."""
+    return os.environ.get("API_KEY", "").strip()
+
+
 # --- Text-to-SQL guardrails (retrieval/tabular_queries.py) ---
 # Row cap injected when the generated SQL has no LIMIT.
 SQL_ROW_LIMIT = int(os.environ.get("SQL_ROW_LIMIT", "200"))

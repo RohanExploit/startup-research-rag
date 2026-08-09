@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-
-const API = "http://localhost:8000";
+import { apiFetch } from "@/lib/api";
 
 interface ReviewItem {
   roll_no: string;
@@ -28,7 +27,7 @@ export default function ReviewPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API}/review`)
+    apiFetch(`/review`)
       .then(r => r.json())
       .then(d => { setItems(d.items ?? []); setLoading(false); })
       .catch(() => setLoading(false));

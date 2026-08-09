@@ -3,7 +3,36 @@
  * All types mirror the actual Pydantic response models in api/main.py
  */
 
-const BASE = "http://127.0.0.1:8000";
+export const API_BASE = "http://127.0.0.1:8000";
+
+/**
+ * Optional admin API key. When the backend runs with REQUIRE_API_KEY=1, set
+ * NEXT_PUBLIC_API_KEY at build time and every request carries X-API-Key.
+ * Left undefined for local dev, where the backend gate is off.
+ */
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
+/**
+ * fetch wrapper: prepends API_BASE (pass a leading-slash path) and injects the
+ * X-API-Key header when configured. Use this instead of raw fetch everywhere so
+ * the auth gate and base URL live in exactly one place.
+ */
+export function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  if (API_KEY) headers.set("X-API-Key", API_KEY);
+  return fetch(`${API_BASE}${path}`, { ...init, headers });
+}
+
+/**
+ * Build an absolute API URL for EventSource/SSE, which cannot set request
+ * headers — so the key rides as an ?api_key= query param the backend also
+ * accepts. No key configured → plain URL.
+ */
+export function apiUrl(path: string): string {
+  const url = `${API_BASE}${path}`;
+  if (!API_KEY) return url;
+  return url + (path.includes("?") ? "&" : "?") + `api_key=${encodeURIComponent(API_KEY)}`;
+}
 
 export type QueryType = "FACT" | "LOCAL" | "GLOBAL" | "TABULAR";
 
@@ -46,7 +75,7 @@ export async function postQuery(
   tenant_id: string,
   signal?: AbortSignal
 ): Promise<QueryResponse> {
-  const res = await fetch(`${BASE}/query`, {
+  const res = await apiFetch(`/query`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, tenant_id }),
@@ -60,16 +89,16 @@ export async function postQuery(
 }
 
 export async function getAdminStatus(): Promise<AdminStatus> {
-  const res = await fetch(`${BASE}/admin/status`, {
+  const res = await apiFetch(`/admin/status`, {
     next: { revalidate: 0 },   // no cache — always live
-  });
+  } as RequestInit);
   if (!res.ok) throw new Error(`Status fetch failed: ${res.status}`);
   return res.json();
 }
 
 export async function getHealth(): Promise<boolean> {
   try {
-    const res = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(2000) });
+    const res = await apiFetch(`/health`, { signal: AbortSignal.timeout(2000) });
     return res.ok;
   } catch {
     return false;

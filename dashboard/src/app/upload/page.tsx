@@ -1,7 +1,6 @@
 "use client";
 import { useState, useRef, ChangeEvent } from "react";
-
-const API = "http://localhost:8000";
+import { apiFetch } from "@/lib/api";
 
 type UploadStatus = "IDLE" | "STAGING" | "PROCESSING" | "SUCCESS" | "FAILED";
 
@@ -31,7 +30,7 @@ export default function UploadPage() {
 
     try {
       // 1. Upload to staging
-      const uploadRes = await fetch(`${API}/upload`, {
+      const uploadRes = await apiFetch(`/upload`, {
         method: "POST",
         body: formData,
       });
@@ -44,14 +43,14 @@ export default function UploadPage() {
       setStatus("PROCESSING");
 
       // 2. Trigger processing
-      await fetch(`${API}/upload/${upload_id}/process?tenant_id=${tenant}&filename=${encodeURIComponent(filename)}`, {
+      await apiFetch(`/upload/${upload_id}/process?tenant_id=${tenant}&filename=${encodeURIComponent(filename)}`, {
         method: "POST",
       });
 
       // 3. Poll for status
       const pollInterval = setInterval(async () => {
         try {
-          const statusRes = await fetch(`${API}/upload/${upload_id}/status?tenant_id=${tenant}&filename=${encodeURIComponent(filename)}`);
+          const statusRes = await apiFetch(`/upload/${upload_id}/status?tenant_id=${tenant}&filename=${encodeURIComponent(filename)}`);
           const statusData = await statusRes.json();
           
           if (statusData.status === "SUCCESS") {

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import styles from "./audit.module.css";
+import { apiUrl } from "@/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,8 +77,6 @@ const ALL_AUDITS = [
   { id: "20", name: "Enterprise Chaos",         category: "reliability",  gate: false },
   { id: "21", name: "Decision Intelligence",    category: "decision",     gate: false },
 ];
-
-const API = "http://localhost:8000";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -235,7 +234,7 @@ export default function AuditPage() {
     setCurrentAuditId(null);
     setRunTs(null);
 
-    const es = new EventSource(`${API}/audit/stream`);
+    const es = new EventSource(apiUrl(`/audit/stream`));
     evtRef.current = es;
 
     es.onmessage = (e) => {

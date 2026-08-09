@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-
-const API = "http://localhost:8000";
+import { apiFetch } from "@/lib/api";
 
 interface OllamaStatus { reachable: boolean; model: string; vram_used_gb: number | null; vram_total_gb: number | null; }
 interface SystemStatus { ollama: OllamaStatus; registered_tenant_count: number; total_docs: number; timestamp: string; }
@@ -25,7 +24,7 @@ export default function HealthPage() {
 
   const refresh = () => {
     setLoading(true);
-    fetch(`${API}/admin/status`)
+    apiFetch(`/admin/status`)
       .then(r => r.json())
       .then(d => { setStatus(d); setLoading(false); setLastRefresh(new Date()); })
       .catch(() => setLoading(false));
