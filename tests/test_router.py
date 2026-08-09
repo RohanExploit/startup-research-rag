@@ -56,6 +56,24 @@ async def test_deterministic_tabular_override_skips_llm(router, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_bare_student_word_does_not_force_tabular(router, monkeypatch):
+    # "student" appears but with no record/lookup context — must fall through
+    # to the LLM classifier rather than being force-routed to TABULAR.
+    _mock_ollama(monkeypatch, "FACT")
+    qtype, reason = await router.classify_query(
+        "Tell me about the student mentorship program described in the handbook"
+    )
+    assert qtype == "FACT"
+
+
+@pytest.mark.asyncio
+async def test_bare_student_word_in_council_notes_does_not_force_tabular(router, monkeypatch):
+    _mock_ollama(monkeypatch, "GLOBAL")
+    qtype, reason = await router.classify_query("summarize the student council meeting notes")
+    assert qtype == "GLOBAL"
+
+
+@pytest.mark.asyncio
 async def test_classify_ollama_down_falls_back_to_fact(router, monkeypatch):
     import httpx
     monkeypatch.setattr(

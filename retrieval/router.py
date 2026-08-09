@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from retrieval.vector_search import VectorSearch
 from retrieval.graph_traverse import GraphSearch
 from retrieval.community_search import CommunitySearch
@@ -26,8 +27,18 @@ class QueryRouter:
         # single-request-at-a-time on the 4B model, so every skipped call is
         # a full inference round-trip saved).
         lower_q = query.lower()
-        # Student-record shaped queries
-        student_kw = ["score of", "student", "roll", "result for", "search for"]
+        # Student-record shaped queries. Unambiguous multi-word phrases are matched
+        # as plain substrings; the bare words "student"/"roll" are ambiguous (they
+        # also appear in ordinary FACT/GLOBAL document questions, e.g. "student
+        # mentorship program"), so those only count when paired with record/lookup
+        # context (a roll number, or a record/marks/score/result/grade keyword).
+        student_phrase_kw = ["score of", "result for", "search for"]
+        roll_number_re = re.compile(r'\broll\s*(no\.?|number)?\s*[:#]?\s*\d{4,}\b', re.IGNORECASE)
+        student_record_re = re.compile(
+            r'\bstudent\b.*\b(record|marks|score|result|grade|sgpa|cgpa|roll)\b'
+            r'|\b(record|marks|score|result|grade|sgpa|cgpa)\b.*\bstudent\b',
+            re.IGNORECASE,
+        )
         # Aggregation/analytical shaped queries — rule-based route to TABULAR BEFORE
         # any LLM classify call (P3.10). Deterministic + works with Ollama offline.
         agg_kw = [
@@ -37,7 +48,12 @@ class QueryRouter:
             "failed", "fail", "below sgpa", "sgpa below", "most subjects", "backlog",
             "top ",
         ]
-        if any(k in lower_q for k in student_kw) or any(k in lower_q for k in agg_kw):
+        is_tabular_kw = (
+            any(k in lower_q for k in student_phrase_kw)
+            or bool(roll_number_re.search(lower_q))
+            or bool(student_record_re.search(lower_q))
+        )
+        if is_tabular_kw or any(k in lower_q for k in agg_kw):
             return "TABULAR", None
 
         prompt = f"""
