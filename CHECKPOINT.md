@@ -4,7 +4,7 @@ Snapshot to resume work. Full timestamped trail: `OVERNIGHT_LOG.md`.
 
 ## State
 - **Branch:** `overnight-hardening` (10 commits off `main` baseline). Not merged, not pushed, not deployed.
-- **Tests:** 73 passed, 1 skipped, 0 failed (~7s). Hermetic, no live services required.
+- **Tests:** 127 passed, 1 skipped, 0 failed (~12s). Hermetic, no live services required.
 - **Ollama:** UP on :11434 (v0.19.0, model `qwen3:4b-instruct-2507-q4_K_M`). Left running.
 - **PII:** untouched. `tabular.duckdb` + `embeddings.pkl` sha256 identical before/after. Retention rule honored.
 - **Git:** repo init'd this session; `.gitignore` excludes venv + all PII/data (history is code-only).
@@ -41,7 +41,7 @@ e6fb741 security(tenant): validate tenant_id on all path-building endpoints + tr
 - `docs/PERFORMANCE.md`, `OVERNIGHT_LOG.md`
 
 ## PENDING — needs user decision (NOT auto-changed)
-1. **`/review` + `/tenants` endpoints: no auth, iterate ALL tenants** (cross-tenant read). Whole API is currently unauthenticated. Decide: add auth vs scope per tenant.
+1. ~~`/review` + `/tenants`: no auth, cross-tenant read.~~ **DONE (`cb8ddef`).** Optional `REQUIRE_API_KEY` X-API-Key gate now covers every endpoint (audit router incl.) except `/health`; OFF by default for localhost, fail-closed when on, `?api_key=` accepted for the SSE audit stream. Frontend routes through one `apiFetch`/`apiUrl` client (`NEXT_PUBLIC_API_KEY`). `.env.example` documents it. Admin console shows all tenants by design, so per-tenant scoping was NOT added — the gate is the trust boundary.
 2. **`exam_results.department` / `source_file` = NULL** — not derivable without fabricating; `semester` IS derived. Provide source rule to populate.
 3. **Merge** `overnight-hardening` → `main` after review.
 4. **Ollama server flags** (`OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=q8_0`) — set before `ollama serve` for VRAM/throughput (see `docs/PERFORMANCE.md`). Current running server may lack them.
@@ -49,7 +49,7 @@ e6fb741 security(tenant): validate tenant_id on all path-building endpoints + tr
 ## Known, left as-is
 - Manual diagnostic scripts in `tests/` (no assertions) — listed in `OVERNIGHT_LOG.md` P2 TODO.
 - `benchmark_models_flushed.py` — pre-existing invalid `print(flush=True, ...)` (dead `_flushed` dup).
-- Harmless `Event loop is closed` teardown noise from module-level httpx client on Windows.
+- ~~Harmless `Event loop is closed` teardown noise from module-level httpx client on Windows.~~ Fixed in `a3efa9f` (lazy per-loop httpx client closed via lifespan shutdown).
 
 ## Resume commands
 ```bash

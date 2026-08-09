@@ -68,30 +68,34 @@ def seed_manifest(tenant_info: dict, records: list[dict]):
     Each record: {doc_id, file_hash, parse_status, last_indexed_at?}
     """
     conn = sqlite3.connect(tenant_info["manifest_db"])
-    for r in records:
-        conn.execute(
-            """INSERT OR REPLACE INTO manifest
-               (doc_id, file_hash, parse_status, last_indexed_at, error_message)
-               VALUES (?, ?, ?, ?, ?)""",
-            (
-                r["doc_id"],
-                r["file_hash"],
-                r.get("parse_status", "SUCCESS"),
-                r.get("last_indexed_at", None),
-                r.get("error_message", None),
-            ),
-        )
-    conn.commit()
-    conn.close()
+    try:
+        for r in records:
+            conn.execute(
+                """INSERT OR REPLACE INTO manifest
+                   (doc_id, file_hash, parse_status, last_indexed_at, error_message)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (
+                    r["doc_id"],
+                    r["file_hash"],
+                    r.get("parse_status", "SUCCESS"),
+                    r.get("last_indexed_at", None),
+                    r.get("error_message", None),
+                ),
+            )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def read_manifest(tenant_info: dict) -> list[dict]:
     """Read all manifest records for a tenant."""
     conn = sqlite3.connect(tenant_info["manifest_db"])
-    rows = conn.execute(
-        "SELECT doc_id, file_hash, parse_status, last_indexed_at, error_message FROM manifest"
-    ).fetchall()
-    conn.close()
+    try:
+        rows = conn.execute(
+            "SELECT doc_id, file_hash, parse_status, last_indexed_at, error_message FROM manifest"
+        ).fetchall()
+    finally:
+        conn.close()
     return [
         dict(zip(["doc_id", "file_hash", "parse_status", "last_indexed_at", "error_message"], r))
         for r in rows

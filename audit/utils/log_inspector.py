@@ -89,10 +89,17 @@ class AuditLogInspector:
         Returns list of indices where hash differs (tampered events).
         """
         current_hashes = self.compute_chain_hashes()
-        return [
+        tampered = [
             i for i, (orig, curr) in enumerate(zip(original_hashes, current_hashes))
             if orig != curr
         ]
+        # zip() stops at the shorter list, so a change in event COUNT (events
+        # added or removed since the snapshot) would go undetected. A count
+        # change IS tampering — flag every index in the non-overlapping tail.
+        overlap = min(len(original_hashes), len(current_hashes))
+        longer = max(len(original_hashes), len(current_hashes))
+        tampered.extend(range(overlap, longer))
+        return tampered
 
     # ── Timestamp ordering ──────────────────────────────────────────────────
 

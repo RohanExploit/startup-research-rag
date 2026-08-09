@@ -26,8 +26,19 @@ class AllowlistManager:
             self._save(default)
             return default
             
-        with open(self.auth_file, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(self.auth_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            # A corrupt/unreadable allowlist must not crash auth construction
+            # (it would 500 /admin/status and break bot auth). Fail CLOSED: log
+            # loudly and treat as an empty allowlist so every is_*_allowed check
+            # denies, rather than silently granting the built-in default users.
+            logging.error(
+                "Allowlist at %s is corrupt/unreadable (%s); failing closed to an "
+                "empty allowlist (all users denied until fixed).", self.auth_file, e
+            )
+            return {}
 
     def _save(self, data):
         with open(self.auth_file, "w", encoding="utf-8") as f:
