@@ -56,7 +56,7 @@ def count_failures(subject_code=None):
     if subject_code:
         query = """
             SELECT COUNT(*) FROM student_subjects
-            WHERE subject_code = ? AND (grade = 'FF' OR grade = 'AB' OR grade LIKE 'F%')
+            WHERE subject_code = ? AND grade IN ('FF', 'XX', 'AB')
         """
         res = conn.execute(query, (subject_code,)).fetchone()
         conn.close()
