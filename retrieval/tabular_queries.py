@@ -343,9 +343,19 @@ _QUERY_TIMEOUT_SECONDS = 10  # kill runaway scans on the 4GB-VRAM / shared-CPU b
 _ALLOWED_TABLES = {"students", "student_subjects"}
 _TABLE_REF = re.compile(r'\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)', re.IGNORECASE)
 
+# DuckDB also supports FROM/JOIN directly against a quoted string literal
+# (e.g. FROM 'C:/some/file.csv' or FROM "some_ident") for its file-scanning
+# table functions. That's a quoted literal, not a bareword identifier, so it
+# is invisible to _TABLE_REF above — reject it outright rather than trying to
+# allowlist it, since no allowlisted table ever needs to be referenced by a
+# quoted literal.
+_FROM_NONIDENT = re.compile(r'\b(?:FROM|JOIN)\s+[\'"]', re.IGNORECASE)
+
 
 def _check_table_allowlist(sql: str) -> str | None:
     """Returns a rejection reason if any FROM/JOIN targets a non-allowed table."""
+    if _FROM_NONIDENT.search(sql):
+        return "Guardrail: query references a file/path literal instead of an allowlisted table."
     referenced = {m.group(1).lower() for m in _TABLE_REF.finditer(sql)}
     disallowed = referenced - _ALLOWED_TABLES
     if disallowed:
