@@ -10,8 +10,9 @@ import logging
 import numpy as np
 import faiss
 from pathlib import Path
+from utils.logging_config import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 
 def build_faiss_index(embed_dir):
     embed_dir = Path(embed_dir)

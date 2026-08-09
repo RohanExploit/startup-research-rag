@@ -9,8 +9,9 @@ import logging
 from pathlib import Path
 import networkx as nx
 from networkx.algorithms.community import louvain_communities
+from utils.logging_config import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 
 def detect_communities(graph_dir):
     graph_dir = Path(graph_dir)

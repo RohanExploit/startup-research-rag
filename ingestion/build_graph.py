@@ -8,8 +8,9 @@ import json
 import logging
 from pathlib import Path
 import networkx as nx
+from utils.logging_config import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 
 def build_graph(graph_dir):
     graph_dir = Path(graph_dir)

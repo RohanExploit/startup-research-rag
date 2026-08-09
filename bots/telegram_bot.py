@@ -11,10 +11,11 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 import sys
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from auth.allowlist import AllowlistManager
+from utils.logging_config import setup_logging
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 if not TOKEN:

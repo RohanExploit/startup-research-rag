@@ -20,6 +20,7 @@ from generation.answer import generate_answer, aclose_http_client
 from api.audit_router import router as audit_router
 import config
 from config import DATA_ROOT, validate_tenant_id, validate_upload_id, safe_filename, MAX_FILE_SIZE
+from utils.logging_config import setup_logging
 
 
 async def require_api_key(request: Request, x_api_key: str | None = Header(default=None)):
@@ -48,7 +49,7 @@ async def require_api_key(request: Request, x_api_key: str | None = Header(defau
     if not presented or not secrets.compare_digest(presented, expected):
         raise HTTPException(status_code=401, detail="Missing or invalid X-API-Key")
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 OLLAMA_MODEL = config.OLLAMA_MODEL
 
 routers = {}

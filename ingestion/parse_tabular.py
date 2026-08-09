@@ -7,9 +7,14 @@ from config import PROJECT_ROOT
 import pdfplumber
 import re
 import json
+import logging
 import duckdb
 from pathlib import Path
 import traceback
+from utils.logging_config import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 def extract_rows(page):
     words = page.extract_words()
@@ -274,7 +279,7 @@ def parse_tabular_data(pdf_paths):
             except Exception:
                 pass
             if "Total Marks(" not in full_text:
-                print(f"[schema_unsupported] {path} — no 'Total Marks(' header found. "
+                logger.warning(f"[schema_unsupported] {path} — no 'Total Marks(' header found. "
                       f"Likely flat-summary-table format (v1.1 scope). Skipping.")
                 continue
 
@@ -319,7 +324,7 @@ def parse_tabular_data(pdf_paths):
                         # Identify the dropped student so a parse failure is
                         # traceable in logs instead of a silent data loss.
                         roll = b[0][0]['text'] if b and b[0] else "?"
-                        print(f"Exception parsing block (roll {roll}): {e}")
+                        logger.error(f"Exception parsing block (roll {roll}): {e}")
                         
     # Apply cancelled seat flag to all records
     for r in clean_records + needs_review:

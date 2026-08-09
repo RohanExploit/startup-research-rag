@@ -9,8 +9,9 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from pipeline import run_pipeline
 from auth.allowlist import AllowlistManager
+from utils.logging_config import setup_logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+setup_logging()
 
 def run_incremental_ingest_for_all():
     logging.info("Starting scheduled incremental ingestion for all tenants...")

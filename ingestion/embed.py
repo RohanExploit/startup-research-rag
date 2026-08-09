@@ -10,8 +10,9 @@ import json
 import logging
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
+from utils.logging_config import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 
 def process_chunk_embeddings(chunked_dir, embed_dir):
     chunked_dir = Path(chunked_dir)

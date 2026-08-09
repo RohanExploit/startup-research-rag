@@ -12,8 +12,9 @@ import logging
 from pathlib import Path
 from datetime import datetime, timezone
 from docling.document_converter import DocumentConverter
+from utils.logging_config import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 
 # ─── Manifest helpers ──────────────────────────────────────────────────────────
 

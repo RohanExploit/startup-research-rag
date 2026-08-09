@@ -10,8 +10,9 @@ from retrieval.community_search import CommunitySearch
 import httpx
 
 import config
+from utils.logging_config import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 
 OLLAMA_API_URL = f"{config.OLLAMA_BASE_URL}/api/generate"
 MODEL_NAME = config.OLLAMA_MODEL

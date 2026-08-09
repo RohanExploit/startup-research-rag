@@ -5,8 +5,9 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from config import tenant_dir
+from utils.logging_config import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 
 class CommunitySearch:
     def __init__(self, tenant_id="tenant_1"):

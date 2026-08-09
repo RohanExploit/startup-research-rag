@@ -21,8 +21,9 @@ from pathlib import Path
 import duckdb
 
 from config import tenant_dir, DEFAULT_TENANT_ID
+from utils.logging_config import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 
 # Grades treated as a fail/absent (matches the documented schema + count_failures).
 FAIL_GRADES = ("FF", "XX", "AB")

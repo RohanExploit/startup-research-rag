@@ -9,8 +9,9 @@ import json
 import logging
 from pathlib import Path
 import requests
+from utils.logging_config import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 
 # Ollama Configuration
 OLLAMA_API_URL = f"{config.OLLAMA_BASE_URL}/api/generate"

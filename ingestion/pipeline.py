@@ -9,8 +9,9 @@ import ingestion.embed as embed
 import ingestion.extract_entities as extract
 import ingestion.build_graph as graph
 import ingestion.build_communities as communities
+from utils.logging_config import setup_logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+setup_logging()
 
 def run_pipeline(tenant_id: str):
     logging.info(f"Starting ingestion pipeline for tenant: {tenant_id}")

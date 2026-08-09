@@ -9,8 +9,9 @@ import json
 import logging
 from pathlib import Path
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
+from utils.logging_config import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 
 def process_markdown_files(parsed_dir, chunked_dir):
     parsed_dir = Path(parsed_dir)

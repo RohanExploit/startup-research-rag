@@ -17,8 +17,9 @@ from ingestion.extract_entities import process_extractions
 from ingestion.build_graph import build_graph
 from ingestion.build_communities import detect_communities
 from ingestion.summarize_communities import process_community_summaries
+from utils.logging_config import setup_logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+setup_logging()
 
 def get_file_hash(filepath: Path) -> str:
     h = hashlib.sha256()
