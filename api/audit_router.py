@@ -240,7 +240,7 @@ def _check_extraction_verification() -> list[dict]:
             if total_cr == 0:
                 continue
                 
-            computed = round(sum(s.credit * s.grade_point for s in student.subjects) / total_cr, 2)
+            computed = round(sum(s.grade_point for s in student.subjects) / total_cr, 2)
             checked += 1
             if abs(computed - stored_sgpa) > 0.05:   # 0.05 tolerance for rounding
                 violations.append({"roll": roll_no, "stored": stored_sgpa, "computed": computed})
@@ -281,7 +281,7 @@ def _check_extraction_verification() -> list[dict]:
         false_fail = 0
         for (roll_no,) in fail_students[:20]:  # sample first 20
             avg_gp = con.execute(
-                "SELECT AVG(grade_point) FROM student_subjects WHERE roll_no = ? AND credit > 0",
+                "SELECT SUM(grade_point) / NULLIF(SUM(credit), 0) FROM student_subjects WHERE roll_no = ? AND credit > 0",
                 [roll_no]
             ).fetchone()[0]
             if avg_gp and avg_gp > 9.0:   # clearly passing but marked FAIL = inconsistency
