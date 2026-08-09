@@ -1,18 +1,21 @@
 import pytest
 from models.canonical import StudentRecord
+import adapters.result_pdf_adapter as result_pdf_adapter
 from adapters.result_pdf_adapter import load_student_record
 
-def test_load_student_record_valid():
-    tenant_id = "tenant_1"
-    roll_no = "2267571242025"
-    
-    student = load_student_record(tenant_id, roll_no)
-    
+def test_load_student_record_valid(seeded_tenant, monkeypatch):
+    # Hermetic: points the adapter's DATA_ROOT at a tmp_path tenant seeded with
+    # synthetic rows instead of the real (gitignored, CI-absent) tenant data.
+    monkeypatch.setattr(result_pdf_adapter, "DATA_ROOT", seeded_tenant.data_root)
+
+    roll_no = seeded_tenant.roll_nos[0]
+    student = load_student_record(seeded_tenant.tenant_id, roll_no)
+
     assert isinstance(student, StudentRecord)
-    assert student.roll_no == "2267571242025"
+    assert student.roll_no == roll_no
     assert student.sgpa is not None
     assert len(student.subjects) > 0
-    
+
     # Check shape of subject
     subject = student.subjects[0]
     assert hasattr(subject, "code")

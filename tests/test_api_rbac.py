@@ -32,7 +32,13 @@ TENANT1_KEY = "tenant1-s3cret"
 def rbac_env(tmp_path, monkeypatch):
     """REQUIRE_API_KEY on, env API_KEY as admin key, temp api_keys.json with a
     tenant_1-scoped key. Monkeypatches the module _keys_path so the loader
-    reads our temp file instead of the real auth/api_keys.json."""
+    reads our temp file instead of the real auth/api_keys.json.
+
+    Also monkeypatches main.DATA_ROOT to a tmp_path tree containing an empty
+    tenant_1/ directory, so /tenants has something to discover hermetically —
+    real data/tenants/ is gitignored and absent in CI. /tenants degrades
+    gracefully (doc/student counts default to 0) when raw/manifest.db/
+    tabular.duckdb are missing, so an empty dir is sufficient here."""
     monkeypatch.setenv("REQUIRE_API_KEY", "1")
     monkeypatch.setenv("API_KEY", ADMIN_KEY)
 
@@ -41,6 +47,10 @@ def rbac_env(tmp_path, monkeypatch):
         {"key": TENANT1_KEY, "role": "tenant", "tenant_id": "tenant_1"},
     ]))
     monkeypatch.setattr(api_keys_module, "_keys_path", lambda: keys_file)
+
+    fake_data_root = tmp_path / "data" / "tenants"
+    (fake_data_root / "tenant_1").mkdir(parents=True)
+    monkeypatch.setattr(main, "DATA_ROOT", fake_data_root)
 
     return keys_file
 
