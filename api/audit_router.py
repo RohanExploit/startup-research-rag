@@ -16,13 +16,26 @@ from pathlib import Path
 from datetime import datetime
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from auth.api_keys import Principal
+
 logger = logging.getLogger("audit.api")
 
-router = APIRouter(prefix="/audit", tags=["audit"])
+
+def _require_admin(request: Request) -> None:
+    """The audit suite runs integrity checks across ALL tenants, so it is
+    admin-only. authenticate() (app-level) has already stashed the Principal;
+    a tenant-scoped key must not read cross-tenant audit data. When the auth
+    gate is off (dev), authenticate sets an admin principal, so this is a no-op."""
+    p = getattr(request.state, "principal", None) or Principal("admin")
+    if not p.is_admin:
+        raise HTTPException(status_code=403, detail="admin only")
+
+
+router = APIRouter(prefix="/audit", tags=["audit"], dependencies=[Depends(_require_admin)])
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_ROOT = PROJECT_ROOT / "data" / "tenants"

@@ -9,6 +9,7 @@ __pycache__/
 # --- Secrets / keys ---
 .env
 .encryption_key
+auth/api_keys.json
 
 # --- Student PII & derived outputs (retention hold — never in git) ---
 data/

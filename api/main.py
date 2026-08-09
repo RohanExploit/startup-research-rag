@@ -8,7 +8,6 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 import asyncio
 import contextlib
 import logging
-import secrets
 import httpx
 import sqlite3
 import subprocess
@@ -21,33 +20,45 @@ from api.audit_router import router as audit_router
 import config
 from config import DATA_ROOT, validate_tenant_id, validate_upload_id, safe_filename, MAX_FILE_SIZE
 from utils.logging_config import setup_logging
+from auth import api_keys as api_keys_module
+from auth.api_keys import Principal, resolve_principal
 
 
-async def require_api_key(request: Request, x_api_key: str | None = Header(default=None)):
+async def authenticate(request: Request, x_api_key: str | None = Header(default=None)):
     """Global auth gate. When REQUIRE_API_KEY is set, every request except
-    /health must carry an X-API-Key header matching API_KEY. OFF by default so
-    localhost dev stays frictionless; turn ON before binding 0.0.0.0.
+    /health must carry an X-API-Key header resolving to a Principal (an admin
+    key, i.e. env API_KEY, or a scoped tenant key from auth/api_keys.json).
+    OFF by default so localhost dev stays frictionless; turn ON before binding
+    0.0.0.0.
 
     Applied as an app-level dependency so it also covers the audit router.
     CORS preflight (OPTIONS) is answered by CORSMiddleware before reaching here.
+
+    Resolved principal is stashed on request.state.principal for downstream
+    per-tenant authorization checks (_authorize_tenant, _principal).
     """
     if not config.require_api_key_enabled():
+        request.state.principal = Principal("admin")  # dev mode = full access
         return
     if request.url.path == "/health":
         return  # unauthenticated liveness probe for load balancers
-    expected = config.get_api_key()
-    if not expected:
-        # Gate demanded but no key configured — fail closed, never open.
-        raise HTTPException(
-            status_code=500,
-            detail="REQUIRE_API_KEY is set but API_KEY is empty (server misconfig)",
-        )
+
     # Accept the key from the X-API-Key header OR an ?api_key= query param. The
     # query-param path exists for EventSource/SSE (/audit/stream), which cannot
     # set custom request headers.
     presented = x_api_key or request.query_params.get("api_key")
-    if not presented or not secrets.compare_digest(presented, expected):
+
+    if not config.get_api_key() and not api_keys_module._keys_path().exists():
+        # Gate demanded but no key configured anywhere — fail closed, never open.
+        raise HTTPException(
+            status_code=500,
+            detail="REQUIRE_API_KEY is set but no keys configured (server misconfig)",
+        )
+
+    principal = resolve_principal(presented)
+    if principal is None:
         raise HTTPException(status_code=401, detail="Missing or invalid X-API-Key")
+    request.state.principal = principal
 
 setup_logging()
 OLLAMA_MODEL = config.OLLAMA_MODEL
@@ -117,7 +128,7 @@ async def lifespan(app: FastAPI):
     await aclose_http_client()
 
 app = FastAPI(title="Company Brain API", lifespan=lifespan,
-              dependencies=[Depends(require_api_key)])
+              dependencies=[Depends(authenticate)])
 app.include_router(audit_router)
 
 app.add_middleware(
@@ -127,6 +138,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _principal(request: Request) -> Principal:
+    """Current caller's Principal. Defaults to admin when unset (gate-off/dev
+    path never populates request.state.principal via the authenticate 500/401
+    branches, but does set it in the dev-mode early return; this default keeps
+    any other unauthenticated code path open rather than crashing)."""
+    return getattr(request.state, "principal", Principal("admin"))
+
+
+def _authorize_tenant(request: Request, tenant_id: str) -> None:
+    """Raise 403 unless the caller is admin or is a tenant key scoped to tenant_id."""
+    p = _principal(request)
+    if not p.is_admin and p.tenant_id != tenant_id:
+        raise HTTPException(status_code=403, detail="API key is not authorized for this tenant")
 
 
 def _get_ollama_status() -> dict:
@@ -207,8 +233,10 @@ def _get_tenant_info() -> list:
 
 
 @app.get("/admin/status")
-async def admin_status():
-    """Live system status for the admin dashboard status strip."""
+async def admin_status(request: Request):
+    """Live system status for the admin dashboard status strip. Admin only."""
+    if not _principal(request).is_admin:
+        raise HTTPException(status_code=403, detail="admin only")
     ollama = await asyncio.to_thread(_get_ollama_status)
     tenants = await asyncio.to_thread(_get_tenant_info)
     registered = [t for t in tenants if t["registered"]]
@@ -232,9 +260,10 @@ class QueryResponse(BaseModel):
     metadata: dict = {}
 
 @app.post("/query", response_model=QueryResponse)
-async def query_documents(req: QueryRequest):
-    # Validate tenant_id first (clean 400); then load its data (500 on load failure).
+async def query_documents(req: QueryRequest, request: Request):
+    # Validate tenant_id first (clean 400); authorize; then load its data (500 on load failure).
     tenant_id = _require_tenant(req.tenant_id)
+    _authorize_tenant(request, tenant_id)
     try:
         tenant_router = get_router(tenant_id)
     except HTTPException:
@@ -281,8 +310,9 @@ def health():
 
 
 @app.get("/tenants")
-def tenants_overview():
-    """Return all tenant directories with doc count, student count, manifest status."""
+def tenants_overview(request: Request):
+    """Return all tenant directories with doc count, student count, manifest status.
+    Non-admin (tenant-scoped) keys only see their own tenant."""
     result = []
     if DATA_ROOT.exists():
         for tenant_dir in sorted(DATA_ROOT.iterdir()):
@@ -322,12 +352,16 @@ def tenants_overview():
                 "has_duckdb": has_duckdb,
                 "last_indexed": last_indexed,
             })
+    p = _principal(request)
+    if not p.is_admin:
+        result = [t for t in result if t["id"] == p.tenant_id]
     return {"tenants": result}
 
 
 @app.get("/review")
-def review_queue():
-    """Return all records in the needs_review table across tenants."""
+def review_queue(request: Request):
+    """Return all records in the needs_review table across tenants.
+    Non-admin (tenant-scoped) keys only see their own tenant's items."""
     items = []
     if DATA_ROOT.exists():
         for tenant_dir in sorted(DATA_ROOT.iterdir()):
@@ -348,13 +382,17 @@ def review_queue():
                     items.append(item)
             except Exception:
                 pass
+    p = _principal(request)
+    if not p.is_admin:
+        items = [i for i in items if i["tenant_id"] == p.tenant_id]
     return {"items": items, "total": len(items)}
 
 
 @app.get("/documents")
-def documents_list(tenant_id: str = "tenant_1"):
+def documents_list(request: Request, tenant_id: str = "tenant_1"):
     """Return manifest entries for a tenant — all documents with parse status."""
     tenant_id = _require_tenant(tenant_id)
+    _authorize_tenant(request, tenant_id)
     tenant_dir = DATA_ROOT / tenant_id
     manifest_db = tenant_dir / "manifest.db"
     if not manifest_db.exists():
@@ -417,8 +455,9 @@ def _check_upload_ownership(upload_id: str, tenant_id: str, filename: str) -> No
 
 
 @app.post("/upload")
-async def upload_file(tenant_id: str = Form(...), file: UploadFile = File(...)):
+async def upload_file(request: Request, tenant_id: str = Form(...), file: UploadFile = File(...)):
     tenant_id = _require_tenant(tenant_id)
+    _authorize_tenant(request, tenant_id)
     filename = safe_filename(file.filename)
     upload_id = str(uuid.uuid4())
     staging_dir = DATA_ROOT.parent / "staging" / upload_id
@@ -506,9 +545,10 @@ def _process_upload(upload_id: str, tenant_id: str, filename: str):
 
 
 @app.post("/upload/{upload_id}/process")
-def process_upload(upload_id: str, tenant_id: str, filename: str, background_tasks: BackgroundTasks):
+def process_upload(upload_id: str, tenant_id: str, filename: str, background_tasks: BackgroundTasks, request: Request):
     upload_id = _require_upload_id(upload_id)
     tenant_id = _require_tenant(tenant_id)
+    _authorize_tenant(request, tenant_id)
     filename = safe_filename(filename)
     _check_upload_ownership(upload_id, tenant_id, filename)
     background_tasks.add_task(_process_upload, upload_id, tenant_id, filename)
@@ -516,9 +556,10 @@ def process_upload(upload_id: str, tenant_id: str, filename: str, background_tas
 
 
 @app.get("/upload/{upload_id}/status")
-def upload_status(upload_id: str, tenant_id: str, filename: str):
+def upload_status(upload_id: str, tenant_id: str, filename: str, request: Request):
     upload_id = _require_upload_id(upload_id)
     tenant_id = _require_tenant(tenant_id)
+    _authorize_tenant(request, tenant_id)
     filename = safe_filename(filename)
     _check_upload_ownership(upload_id, tenant_id, filename)
     tenant_dir = DATA_ROOT / tenant_id
