@@ -319,82 +319,107 @@ def parse_tabular_data(pdf_paths):
 
 def store_in_duckdb(clean_records, needs_review, all_cancelled_seats, db_path):
     conn = duckdb.connect(db_path)
-    
-    conn.execute("DROP TABLE IF EXISTS student_subjects CASCADE")
-    conn.execute("DROP TABLE IF EXISTS students CASCADE")
-    conn.execute("DROP TABLE IF EXISTS needs_review CASCADE")
-    conn.execute("DROP TABLE IF EXISTS cancelled_seats CASCADE")
-    
-    # Cancelled Seats table
-    conn.execute("""
-        CREATE TABLE cancelled_seats (
-            roll_no VARCHAR PRIMARY KEY
-        )
-    """)
-    
-    # Students table
-    conn.execute("""
-        CREATE TABLE students (
-            roll_no VARCHAR PRIMARY KEY,
-            name VARCHAR,
-            sgpa DOUBLE,
-            estimated_sgpa DOUBLE,
-            total_marks INTEGER,
-            result VARCHAR,
-            is_supply BOOLEAN,
-            seat_cancelled BOOLEAN
-        )
-    """)
-    
-    # Subjects table
-    conn.execute("""
-        CREATE TABLE student_subjects (
-            roll_no VARCHAR,
-            subject_code VARCHAR,
-            credit INTEGER,
-            grade VARCHAR,
-            grade_point DOUBLE,
-            raw_grade_string VARCHAR,
-            PRIMARY KEY (roll_no, subject_code),
-            FOREIGN KEY (roll_no) REFERENCES students(roll_no)
-        )
-    """)
-    
-    # Needs Review table
-    conn.execute("""
-        CREATE TABLE needs_review (
-            roll_no VARCHAR PRIMARY KEY,
-            name VARCHAR,
-            flags VARCHAR,
-            gap INTEGER,
-            derived_max INTEGER,
-            raw_block VARCHAR
-        )
-    """)
-    
-    for c in all_cancelled_seats:
-        conn.execute("INSERT INTO cancelled_seats (roll_no) VALUES (?)", (c,))
-        
-    for r in clean_records:
+
+    conn.execute("BEGIN TRANSACTION")
+    try:
+        # Capture existing row counts (if tables already exist) before dropping,
+        # so we can refuse to commit a rebuild that would silently shrink the
+        # students table (e.g. a re-run with a stale/incomplete PDF list).
+        old_student_count = 0
+        try:
+            old_student_count = conn.execute(
+                "SELECT COUNT(*) FROM students"
+            ).fetchone()[0]
+        except Exception:
+            old_student_count = 0
+
+        conn.execute("DROP TABLE IF EXISTS student_subjects CASCADE")
+        conn.execute("DROP TABLE IF EXISTS students CASCADE")
+        conn.execute("DROP TABLE IF EXISTS needs_review CASCADE")
+        conn.execute("DROP TABLE IF EXISTS cancelled_seats CASCADE")
+
+        # Cancelled Seats table
         conn.execute("""
-            INSERT INTO students (roll_no, name, sgpa, estimated_sgpa, total_marks, result, is_supply, seat_cancelled)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (r['roll_no'], r['name'], r['sgpa'], r['estimated_sgpa_partial_credits'], 
-              r['total_marks'], r['result'], r['is_supply'], r['seat_cancelled']))
-        
-        for sub in r['subjects']:
+            CREATE TABLE cancelled_seats (
+                roll_no VARCHAR PRIMARY KEY
+            )
+        """)
+
+        # Students table
+        conn.execute("""
+            CREATE TABLE students (
+                roll_no VARCHAR PRIMARY KEY,
+                name VARCHAR,
+                sgpa DOUBLE,
+                estimated_sgpa DOUBLE,
+                total_marks INTEGER,
+                result VARCHAR,
+                is_supply BOOLEAN,
+                seat_cancelled BOOLEAN
+            )
+        """)
+
+        # Subjects table
+        conn.execute("""
+            CREATE TABLE student_subjects (
+                roll_no VARCHAR,
+                subject_code VARCHAR,
+                credit INTEGER,
+                grade VARCHAR,
+                grade_point DOUBLE,
+                raw_grade_string VARCHAR,
+                PRIMARY KEY (roll_no, subject_code),
+                FOREIGN KEY (roll_no) REFERENCES students(roll_no)
+            )
+        """)
+
+        # Needs Review table
+        conn.execute("""
+            CREATE TABLE needs_review (
+                roll_no VARCHAR PRIMARY KEY,
+                name VARCHAR,
+                flags VARCHAR,
+                gap INTEGER,
+                derived_max INTEGER,
+                raw_block VARCHAR
+            )
+        """)
+
+        for c in all_cancelled_seats:
+            conn.execute("INSERT INTO cancelled_seats (roll_no) VALUES (?)", (c,))
+
+        for r in clean_records:
             conn.execute("""
-                INSERT INTO student_subjects (roll_no, subject_code, credit, grade, grade_point, raw_grade_string)
+                INSERT INTO students (roll_no, name, sgpa, estimated_sgpa, total_marks, result, is_supply, seat_cancelled)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (r['roll_no'], r['name'], r['sgpa'], r['estimated_sgpa_partial_credits'],
+                  r['total_marks'], r['result'], r['is_supply'], r['seat_cancelled']))
+
+            for sub in r['subjects']:
+                conn.execute("""
+                    INSERT INTO student_subjects (roll_no, subject_code, credit, grade, grade_point, raw_grade_string)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (r['roll_no'], sub['code'], sub['credit'], sub['grade'], sub['grade_point'], sub['raw']))
+
+        for r in needs_review:
+            conn.execute("""
+                INSERT INTO needs_review (roll_no, name, flags, gap, derived_max, raw_block)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (r['roll_no'], sub['code'], sub['credit'], sub['grade'], sub['grade_point'], sub['raw']))
-            
-    for r in needs_review:
-        conn.execute("""
-            INSERT INTO needs_review (roll_no, name, flags, gap, derived_max, raw_block)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (r['roll_no'], r['name'], json.dumps(r['flags']), r['gap'], r['derived_max'], r['raw_block']))
-            
-    conn.close()
+            """, (r['roll_no'], r['name'], json.dumps(r['flags']), r['gap'], r['derived_max'], r['raw_block']))
+
+        new_student_count = conn.execute("SELECT COUNT(*) FROM students").fetchone()[0]
+        if new_student_count < old_student_count:
+            raise RuntimeError(
+                f"Refusing to commit: rebuild would shrink students table from "
+                f"{old_student_count} to {new_student_count} rows. Check pdf_paths list."
+            )
+
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+    finally:
+        conn.close()
 
 if __name__ == '__main__':
     pdfs = [
