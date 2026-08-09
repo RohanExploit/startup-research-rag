@@ -378,8 +378,9 @@ Table: students
 Table: student_subjects
 - roll_no (VARCHAR, Foreign Key to students)
 - subject_code (VARCHAR): e.g. 'BTCOC501', 'BTCOC502'.
-  The first digit after the letter prefix indicates semester (e.g. 'BTCOC501' is sem 5).
-  To match all sem-5 subjects use: subject_code LIKE 'BT%5%'
+  The first digit immediately after the letter-prefix run indicates semester (e.g. 'BTCOC501' -> letters 'BTCOC' then '5' = sem 5).
+  IMPORTANT: match the semester digit ONLY at that position, not anywhere in the code (a course-number digit like '504' contains '4' but is semester 5, not 4).
+  To match all sem-N subjects use: regexp_matches(subject_code, '^BT[A-Z]+N') (DuckDB regex), e.g. sem 5: regexp_matches(subject_code, '^BT[A-Z]+5')
 - credit (INTEGER)
 - grade (VARCHAR): 'AA','AB','BB','BC','CC','CD','DD','EE','DE','FF','XX'.
   Failed grades: 'FF', 'XX', 'AB' (absent).
