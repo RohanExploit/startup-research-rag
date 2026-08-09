@@ -122,10 +122,9 @@ Query: "{query}"
                 edges = self.gs.get_neighborhood(entity, hops=1)
                 context = "\n".join(edges)
         elif qtype == "TABULAR":
-            import re
             from retrieval.tabular_queries import get_average_sgpa, count_failures, list_students_below_sgpa, get_student_record, get_student_by_name, generate_and_run_sql
             from retrieval.sql_templates import match_template
-            q_lower = query.lower()
+            from retrieval.intent import classify_tabular_intent
 
             # P3.12: try a deterministic parameterized template FIRST (no LLM,
             # works offline). Only unmatched patterns fall through to the cascade
@@ -138,46 +137,22 @@ Query: "{query}"
                 metadata["template"] = result.get("template")
                 return qtype, result["answer"], metadata
 
-            # Route to dynamic SQL generator for complex/list queries
-            if "search for" in q_lower or "list all" in q_lower or "which students" in q_lower or "at least" in q_lower or "atleast" in q_lower:
-                # If it is a simple single student name search
-                if "search for" in q_lower and not ("fail" in q_lower or "sgpa" in q_lower or "subject" in q_lower or "grade" in q_lower or "sem" in q_lower):
-                    context = await get_student_by_name(query, self.tenant_id)
-                else:
-                    sql_result = await generate_and_run_sql(query, self.tenant_id)
-                    context = sql_result["answer"]
-                    metadata["debug_sql"] = sql_result["debug_sql"]
-            elif "average sgpa" in q_lower:
-                match = re.search(r'subject\s+(BT\w+)', query, re.IGNORECASE)
-                context = get_average_sgpa(match.group(1) if match else None, self.tenant_id)
-            elif "fail" in q_lower:
-                if "how many" in q_lower or "count" in q_lower or "number" in q_lower:
-                    match = re.search(r'subject\s+(BT\w+)', query, re.IGNORECASE)
-                    context = count_failures(match.group(1) if match else None, self.tenant_id)
-                else:
-                    sql_result = await generate_and_run_sql(query, self.tenant_id)
-                    context = sql_result["answer"]
-                    metadata["debug_sql"] = sql_result["debug_sql"]
-            elif "below" in q_lower and "sgpa" in q_lower:
-                # Pull the threshold tied to "below"/"under"/"sgpa" — not just the
-                # first number in the query, which could be a semester or year
-                # (e.g. "semester 3 students below 6 sgpa" must give 6, not 3).
-                # Fall back to the first decimal, then a 6.0 default.
-                match = (re.search(r'(?:below|under|sgpa)\D{0,10}(\d+(?:\.\d+)?)', q_lower)
-                         or re.search(r'(\d+\.\d+)', query))
-                threshold = float(match.group(1)) if match else 6.0
-                context = list_students_below_sgpa(threshold, self.tenant_id)
-            elif "record" in q_lower or "roll" in q_lower or "student" in q_lower or "score" in q_lower:
-                match = re.search(r'(\d{10,15})', query)
-                if match:
-                    context = get_student_record(match.group(1), self.tenant_id)
-                else:
-                    context = await get_student_by_name(query, self.tenant_id)
-            else:
+            intent = classify_tabular_intent(query)
+            if intent.kind == "name_search":
+                context = await get_student_by_name(query, self.tenant_id)
+            elif intent.kind == "dynamic_sql":
                 sql_result = await generate_and_run_sql(query, self.tenant_id)
                 context = sql_result["answer"]
                 metadata["debug_sql"] = sql_result["debug_sql"]
-                
+            elif intent.kind == "average_sgpa":
+                context = get_average_sgpa(intent.params["subject"], self.tenant_id)
+            elif intent.kind == "count_failures":
+                context = count_failures(intent.params["subject"], self.tenant_id)
+            elif intent.kind == "below_sgpa":
+                context = list_students_below_sgpa(intent.params["threshold"], self.tenant_id)
+            elif intent.kind == "record_by_roll":
+                context = get_student_record(intent.params["roll"], self.tenant_id)
+
         return qtype, context, metadata
 
 if __name__ == "__main__":
