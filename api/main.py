@@ -139,6 +139,9 @@ def _get_tenant_info() -> list:
                 continue
             tid = tenant_dir.name
             raw_dir = tenant_dir / "raw"
+            # Count indexed documents (manifest rows), not raw files: a raw file
+            # that was never ingested has no manifest row and must not inflate the
+            # count shown in the status strip / Document Library (they'd disagree).
             doc_count = len(list(raw_dir.iterdir())) if raw_dir.exists() else 0
 
             last_indexed = None
@@ -147,11 +150,13 @@ def _get_tenant_info() -> list:
                 try:
                     conn = sqlite3.connect(manifest_db)
                     row = conn.execute(
-                        "SELECT MAX(last_indexed_at) FROM manifest"
+                        "SELECT COUNT(*), MAX(last_indexed_at) FROM manifest"
                     ).fetchone()
                     conn.close()
-                    if row and row[0]:
-                        last_indexed = row[0]
+                    if row:
+                        doc_count = row[0]
+                        if row[1]:
+                            last_indexed = row[1]
                 except Exception:
                     pass
 
@@ -249,6 +254,8 @@ def tenants_overview():
             if not tenant_dir.is_dir() or tenant_dir.name.startswith("{"):
                 continue
             raw_dir = tenant_dir / "raw"
+            # Indexed-doc count (manifest rows) — matches the Document Library and
+            # the status strip. Falls back to raw file count only when no manifest.
             doc_count = len([f for f in raw_dir.iterdir() if f.is_file()]) if raw_dir.exists() else 0
             has_manifest = (tenant_dir / "manifest.db").exists()
             has_duckdb = (tenant_dir / "tabular.duckdb").exists()
@@ -257,9 +264,11 @@ def tenants_overview():
             if has_manifest:
                 try:
                     conn = sqlite3.connect(tenant_dir / "manifest.db")
-                    row = conn.execute("SELECT MAX(last_indexed_at) FROM manifest").fetchone()
+                    row = conn.execute("SELECT COUNT(*), MAX(last_indexed_at) FROM manifest").fetchone()
                     conn.close()
-                    last_indexed = row[0] if row else None
+                    if row:
+                        doc_count = row[0]
+                        last_indexed = row[1]
                 except Exception:
                     pass
             if has_duckdb:
