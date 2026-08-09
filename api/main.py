@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
+import asyncio
 import contextlib
 import logging
 import httpx
@@ -168,8 +169,8 @@ def _get_tenant_info() -> list:
 @app.get("/admin/status")
 async def admin_status():
     """Live system status for the admin dashboard status strip."""
-    ollama = _get_ollama_status()
-    tenants = _get_tenant_info()
+    ollama = await asyncio.to_thread(_get_ollama_status)
+    tenants = await asyncio.to_thread(_get_tenant_info)
     registered = [t for t in tenants if t["registered"]]
     return {
         "ollama": ollama,
