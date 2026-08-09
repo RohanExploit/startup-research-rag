@@ -17,6 +17,8 @@ in comments next to each fixture so a wrong-but-passing assertion is easy to spo
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from ingestion.parse_tabular import extract_rows, parse_header, parse_single_block
@@ -276,3 +278,13 @@ def test_parse_single_block_token_count_mismatch_flagged():
     assert "token_count_mismatch" in res["flags"]
     assert res["subjects"][1]["grade"] == "FF"
     assert res["subjects"][1]["grade_point"] == 0.0
+
+
+def test_parse_single_block_single_row_block_raises_named_valueerror():
+    # Regression: a student header row with no following R1..R4 detail rows
+    # (a 1-row block) previously hit `block[1]` -> anonymous IndexError, which
+    # the caller in parse_tabular_pdf swallows -> the student silently vanished.
+    # It must now raise a ValueError naming the roll so the drop is traceable.
+    single_row_block = [[word("1234567890123", 0, 0), word("TEST", 0, 20), word("PASS", 0, 40)]]
+    with pytest.raises(ValueError, match="1234567890123"):
+        parse_single_block(single_row_block, SUBJECTS, expected_total_max=200, printed_max_sum=100)

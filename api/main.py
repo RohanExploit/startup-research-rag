@@ -16,7 +16,7 @@ import os
 from datetime import datetime
 
 from retrieval.router import QueryRouter
-from generation.answer import generate_answer
+from generation.answer import generate_answer, aclose_http_client
 from api.audit_router import router as audit_router
 import config
 from config import DATA_ROOT, validate_tenant_id, validate_upload_id, safe_filename, MAX_FILE_SIZE
@@ -108,8 +108,12 @@ async def lifespan(app: FastAPI):
             logging.info("Ollama model warmed up successfully.")
     except Exception as e:
         logging.warning(f"Ollama warmup failed (is the server running?): {e}")
-        
+
     yield
+
+    # Shutdown: close the shared Ollama httpx client so its pool is released
+    # cleanly (avoids the "Event loop is closed" teardown noise on Windows).
+    await aclose_http_client()
 
 app = FastAPI(title="Company Brain API", lifespan=lifespan,
               dependencies=[Depends(require_api_key)])
@@ -438,8 +442,10 @@ async def upload_file(tenant_id: str = Form(...), file: UploadFile = File(...)):
     tenant_dir = DATA_ROOT / tenant_id
     tenant_dir.mkdir(parents=True, exist_ok=True)
     manifest_conn = _get_manifest_conn(tenant_dir)
-    _manifest_update(manifest_conn, filename, "staging", "PENDING")
-    manifest_conn.close()
+    try:
+        _manifest_update(manifest_conn, filename, "staging", "PENDING")
+    finally:
+        manifest_conn.close()
 
     return {"upload_id": upload_id, "filename": filename, "tenant_id": tenant_id}
 
@@ -467,10 +473,12 @@ def _process_upload(upload_id: str, tenant_id: str, filename: str):
         if md_file.exists():
             # Get actual hash and size from the temporary manifest created by parse.py
             staging_conn = _get_manifest_conn(staging_dir)
-            staging_row = staging_conn.execute(
-                "SELECT file_hash, flags, file_size_bytes FROM manifest WHERE doc_id = ?", (filename,)
-            ).fetchone()
-            staging_conn.close()
+            try:
+                staging_row = staging_conn.execute(
+                    "SELECT file_hash, flags, file_size_bytes FROM manifest WHERE doc_id = ?", (filename,)
+                ).fetchone()
+            finally:
+                staging_conn.close()
             
             # Move to live tenant
             live_raw_dir = tenant_dir / "raw"

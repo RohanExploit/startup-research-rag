@@ -153,8 +153,14 @@ Query: "{query}"
                     context = sql_result["answer"]
                     metadata["debug_sql"] = sql_result["debug_sql"]
             elif "below" in q_lower and "sgpa" in q_lower:
-                match = re.search(r'(\d+\.\d+|\d+)', query)
-                context = list_students_below_sgpa(float(match.group(1)) if match else 6.0, self.tenant_id)
+                # Pull the threshold tied to "below"/"under"/"sgpa" — not just the
+                # first number in the query, which could be a semester or year
+                # (e.g. "semester 3 students below 6 sgpa" must give 6, not 3).
+                # Fall back to the first decimal, then a 6.0 default.
+                match = (re.search(r'(?:below|under|sgpa)\D{0,10}(\d+(?:\.\d+)?)', q_lower)
+                         or re.search(r'(\d+\.\d+)', query))
+                threshold = float(match.group(1)) if match else 6.0
+                context = list_students_below_sgpa(threshold, self.tenant_id)
             elif "record" in q_lower or "roll" in q_lower or "student" in q_lower or "score" in q_lower:
                 match = re.search(r'(\d{10,15})', query)
                 if match:
@@ -169,6 +175,10 @@ Query: "{query}"
         return qtype, context, metadata
 
 if __name__ == "__main__":
+    import asyncio
     router = QueryRouter()
-    qtype, ctx = router.route_query("What is RAG-MicroSim?")
-    print(f"Type: {qtype}\nContext: {ctx[:200]}")
+    # route_query is async and returns (qtype, context, metadata) — the old
+    # smoke block called it synchronously and unpacked two values, so it always
+    # crashed when run directly.
+    qtype, ctx, meta = asyncio.run(router.route_query("What is RAG-MicroSim?"))
+    print(f"Type: {qtype}\nContext: {str(ctx)[:200]}")

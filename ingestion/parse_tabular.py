@@ -89,6 +89,14 @@ def parse_header(rows):
     return subjects, expected_total_max, printed_max_sum
 
 def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
+    # A block is a student header row (roll + PASS/FAIL) plus its R1..R4 detail
+    # rows. Nearly every access below assumes block[1]/block[-2] exist. A block
+    # with a single row (header immediately followed by the next student or a
+    # footer) would otherwise raise an anonymous IndexError that the caller
+    # swallows — silently losing the student. Fail loudly with the roll number.
+    if len(block) < 2:
+        roll = block[0][0]['text'] if block and block[0] else "?"
+        raise ValueError(f"Malformed block: roll {roll!r} has {len(block)} row(s), need >=2")
     raw_block_text = "\n".join([" ".join([w['text'] for w in r]) for r in block])
     r0_text = " ".join([w['text'] for w in block[0]])
     parts = r0_text.split()
@@ -308,7 +316,10 @@ def parse_tabular_data(pdf_paths):
                         else:
                             needs_review.append(res)
                     except Exception as e:
-                        print(f"Exception parsing block: {e}")
+                        # Identify the dropped student so a parse failure is
+                        # traceable in logs instead of a silent data loss.
+                        roll = b[0][0]['text'] if b and b[0] else "?"
+                        print(f"Exception parsing block (roll {roll}): {e}")
                         
     # Apply cancelled seat flag to all records
     for r in clean_records + needs_review:

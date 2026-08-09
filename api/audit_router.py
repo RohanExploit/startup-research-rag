@@ -201,6 +201,7 @@ def _check_extraction_verification() -> list[dict]:
     Real SGPA recomputation against live tabular.duckdb, using canonical adapter.
     """
     results = []
+    con = None
     try:
         import duckdb
         import sys
@@ -294,12 +295,18 @@ def _check_extraction_verification() -> list[dict]:
         results.append({"name": "needs_review table accessible", "passed": True,
                          "detail": f"{review_count} records in review queue"})
 
-        con.close()
-
     except Exception as e:
         import traceback
         traceback.print_exc()
         results.append({"name": "Extraction verification", "passed": False, "detail": str(e)})
+    finally:
+        # Close in finally so a raising check (any con.execute above) can't leak
+        # the read-only DuckDB handle.
+        if con is not None:
+            try:
+                con.close()
+            except Exception:
+                pass
     return results
 
 

@@ -267,37 +267,39 @@ async def get_student_by_name(name_query: str, tenant_id: str = None):
     except FileNotFoundError as e:
         return str(e)
 
-    # 1. Try robust tokenized search
-    tokens = [t.strip() for t in name_ext.lower().split() if len(t.strip()) > 2]
-    if tokens:
-        query_parts = []
-        params = []
-        for token in tokens:
-            query_parts.append("LOWER(name) LIKE ?")
-            params.append(f"%{token}%")
-        where_clause = " AND ".join(query_parts)
-        sql = f"SELECT roll_no, name FROM students WHERE {where_clause} LIMIT 10"
-        exact_matches = conn.execute(sql, params).fetchall()
-        
-        if len(exact_matches) == 1:
-            conn.close()
-            return get_student_record(exact_matches[0][0], tenant_id)
-        elif len(exact_matches) > 1 and len(exact_matches) <= 3:
-            # Disambiguate exact matches
-            conn.close()
-            lines = [f"Found {len(exact_matches)} students matching '{name_ext}':"]
-            for idx, match in enumerate(exact_matches):
-                lines.append(f"{idx+1}. {match[1]} (Roll: {match[0]})")
-            lines.append("Reply with the roll number to confirm.")
-            return "\n".join(lines)
-            
-    # Fallback to rapidfuzz. Bounded with a generous cap so an ambiguous
-    # name search can't pull an unbounded, ever-growing full-table read.
-    _FUZZY_FALLBACK_LIMIT = 5000
-    all_students = conn.execute(
-        "SELECT roll_no, name FROM students LIMIT ?", (_FUZZY_FALLBACK_LIMIT,)
-    ).fetchall()
-    conn.close()
+    # All DB access is wrapped so the connection is always closed, even if a
+    # conn.execute() raises mid-query (otherwise the handle leaks on error).
+    try:
+        # 1. Try robust tokenized search
+        tokens = [t.strip() for t in name_ext.lower().split() if len(t.strip()) > 2]
+        if tokens:
+            query_parts = []
+            params = []
+            for token in tokens:
+                query_parts.append("LOWER(name) LIKE ?")
+                params.append(f"%{token}%")
+            where_clause = " AND ".join(query_parts)
+            sql = f"SELECT roll_no, name FROM students WHERE {where_clause} LIMIT 10"
+            exact_matches = conn.execute(sql, params).fetchall()
+
+            if len(exact_matches) == 1:
+                return get_student_record(exact_matches[0][0], tenant_id)
+            elif len(exact_matches) > 1 and len(exact_matches) <= 3:
+                # Disambiguate exact matches
+                lines = [f"Found {len(exact_matches)} students matching '{name_ext}':"]
+                for idx, match in enumerate(exact_matches):
+                    lines.append(f"{idx+1}. {match[1]} (Roll: {match[0]})")
+                lines.append("Reply with the roll number to confirm.")
+                return "\n".join(lines)
+
+        # Fallback to rapidfuzz. Bounded with a generous cap so an ambiguous
+        # name search can't pull an unbounded, ever-growing full-table read.
+        _FUZZY_FALLBACK_LIMIT = 5000
+        all_students = conn.execute(
+            "SELECT roll_no, name FROM students LIMIT ?", (_FUZZY_FALLBACK_LIMIT,)
+        ).fetchall()
+    finally:
+        conn.close()
     if len(all_students) >= _FUZZY_FALLBACK_LIMIT:
         logger.warning(
             "get_student_by_name: fuzzy fallback hit the %d-row cap for tenant '%s'; "
