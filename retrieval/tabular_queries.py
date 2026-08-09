@@ -27,15 +27,53 @@ def get_connection(tenant_id: str):
         )
     return duckdb.connect(str(db_path), read_only=True)
 
+
+# Bounded result cache, mirroring retrieval/sql_templates.py's _SQL_CACHE.
+# Keyed on tabular.duckdb's mtime so an ingestion rewrite transparently
+# invalidates stale entries. Deliberately NOT a pooled/persistent connection:
+# ingestion/parse_tabular.py opens a non-read-only connection to this same
+# file out-of-band, so holding a long-lived read handle open risks lock
+# contention/staleness. This caches query *results* only.
+_TABULAR_CACHE = {}
+_TABULAR_CACHE_MAX = 256
+
+
+def clear_tabular_cache():
+    _TABULAR_CACHE.clear()
+
+
+def _cached_fetch(sql, params=(), tenant_id: str = None):
+    """Executes sql against tabular.duckdb, caching results by (tenant, mtime, sql, params).
+
+    Raises FileNotFoundError (via get_connection) if the tenant has no tabular data.
+    """
+    db_path = tenant_dir(tenant_id) / "tabular.duckdb"
+    try:
+        mtime = db_path.stat().st_mtime
+    except OSError:
+        mtime = None
+    key = (tenant_id, mtime, sql, tuple(params))
+    cached = _TABULAR_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    conn = get_connection(tenant_id)
+    try:
+        cur = conn.execute(sql, params) if params else conn.execute(sql)
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    if len(_TABULAR_CACHE) >= _TABULAR_CACHE_MAX:
+        _TABULAR_CACHE.pop(next(iter(_TABULAR_CACHE)))
+    _TABULAR_CACHE[key] = rows
+    return rows
+
 def get_average_sgpa(subject_code=None, tenant_id: str = None):
     """
     Returns the average SGPA. If a subject_code is provided,
     returns the average SGPA of students who took that subject.
     """
-    try:
-        conn = get_connection(tenant_id)
-    except FileNotFoundError as e:
-        return str(e)
     if subject_code:
         # Average SGPA of students taking this subject (they all might, but just in case)
         query = """
@@ -44,16 +82,22 @@ def get_average_sgpa(subject_code=None, tenant_id: str = None):
             JOIN student_subjects ss ON s.roll_no = ss.roll_no
             WHERE ss.subject_code = ? AND s.sgpa IS NOT NULL
         """
-        res = conn.execute(query, (subject_code,)).fetchone()
+        try:
+            rows = _cached_fetch(query, (subject_code,), tenant_id)
+        except FileNotFoundError as e:
+            return str(e)
     else:
         query = """
             SELECT AVG(sgpa) as avg_sgpa
             FROM students
             WHERE sgpa IS NOT NULL
         """
-        res = conn.execute(query).fetchone()
-        
-    conn.close()
+        try:
+            rows = _cached_fetch(query, (), tenant_id)
+        except FileNotFoundError as e:
+            return str(e)
+
+    res = rows[0] if rows else None
     if res and res[0] is not None:
         return f"The average SGPA is {res[0]:.2f}"
     return "Could not calculate average SGPA."
@@ -62,44 +106,42 @@ def count_failures(subject_code=None, tenant_id: str = None):
     """
     Counts the number of failed students overall or in a specific subject.
     """
-    try:
-        conn = get_connection(tenant_id)
-    except FileNotFoundError as e:
-        return str(e)
     if subject_code:
         query = """
             SELECT COUNT(*) FROM student_subjects
             WHERE subject_code = ? AND grade IN ('FF', 'XX', 'AB')
         """
-        res = conn.execute(query, (subject_code,)).fetchone()
-        conn.close()
-        return f"There are {res[0]} failures in subject {subject_code}."
+        try:
+            rows = _cached_fetch(query, (subject_code,), tenant_id)
+        except FileNotFoundError as e:
+            return str(e)
+        return f"There are {rows[0][0]} failures in subject {subject_code}."
     else:
         query = """
             SELECT COUNT(*) FROM students
             WHERE result = 'FAIL' OR result LIKE '%FAIL%'
         """
-        res = conn.execute(query).fetchone()
-        conn.close()
-        return f"There are {res[0]} total failed students."
+        try:
+            rows = _cached_fetch(query, (), tenant_id)
+        except FileNotFoundError as e:
+            return str(e)
+        return f"There are {rows[0][0]} total failed students."
 
 def list_students_below_sgpa(threshold: float, tenant_id: str = None):
     """
     Lists students with an SGPA strictly below the provided threshold.
     """
-    try:
-        conn = get_connection(tenant_id)
-    except FileNotFoundError as e:
-        return str(e)
     query = """
-        SELECT roll_no, name, sgpa 
+        SELECT roll_no, name, sgpa
         FROM students
         WHERE sgpa < ? AND sgpa IS NOT NULL
         ORDER BY sgpa ASC
     """
-    results = conn.execute(query, (threshold,)).fetchall()
-    conn.close()
-    
+    try:
+        results = _cached_fetch(query, (threshold,), tenant_id)
+    except FileNotFoundError as e:
+        return str(e)
+
     if not results:
         return f"No students found with SGPA below {threshold}."
         
@@ -112,23 +154,24 @@ def get_student_record(roll_no: str, tenant_id: str = None):
     """
     Retrieves the complete record of a student given their roll number.
     """
+    q_student = "SELECT name, sgpa, result, estimated_sgpa, total_marks, is_supply, seat_cancelled FROM students WHERE roll_no = ?"
     try:
-        conn = get_connection(tenant_id)
+        student_rows = _cached_fetch(q_student, (roll_no,), tenant_id)
     except FileNotFoundError as e:
         return str(e)
-    q_student = "SELECT name, sgpa, result, estimated_sgpa, total_marks, is_supply, seat_cancelled FROM students WHERE roll_no = ?"
-    student = conn.execute(q_student, (roll_no,)).fetchone()
-    
+    student = student_rows[0] if student_rows else None
+
     if not student:
-        conn.close()
         return f"Student with roll number {roll_no} not found."
-        
+
     name, sgpa, result, est_sgpa, total_marks, is_supply, seat_cancelled = student
-    
+
     q_subjects = "SELECT subject_code, grade, grade_point FROM student_subjects WHERE roll_no = ?"
-    subjects = conn.execute(q_subjects, (roll_no,)).fetchall()
-    conn.close()
-    
+    try:
+        subjects = _cached_fetch(q_subjects, (roll_no,), tenant_id)
+    except FileNotFoundError as e:
+        return str(e)
+
     lines = [f"🎓 **Student Record for {name}**"]
     lines.append(f"🆔 Roll No: `{roll_no}`")
     
@@ -248,10 +291,20 @@ async def get_student_by_name(name_query: str, tenant_id: str = None):
             lines.append("Reply with the roll number to confirm.")
             return "\n".join(lines)
             
-    # Fallback to rapidfuzz
-    all_students = conn.execute("SELECT roll_no, name FROM students").fetchall()
+    # Fallback to rapidfuzz. Bounded with a generous cap so an ambiguous
+    # name search can't pull an unbounded, ever-growing full-table read.
+    _FUZZY_FALLBACK_LIMIT = 5000
+    all_students = conn.execute(
+        "SELECT roll_no, name FROM students LIMIT ?", (_FUZZY_FALLBACK_LIMIT,)
+    ).fetchall()
     conn.close()
-    
+    if len(all_students) >= _FUZZY_FALLBACK_LIMIT:
+        logger.warning(
+            "get_student_by_name: fuzzy fallback hit the %d-row cap for tenant '%s'; "
+            "results may be truncated as the roster grows.",
+            _FUZZY_FALLBACK_LIMIT, tenant_id,
+        )
+
     matches = fuzzy_find_student(name_ext, all_students, threshold=75)
     
     if not matches:
@@ -382,7 +435,8 @@ Table: student_subjects
   IMPORTANT: match the semester digit ONLY at that position, not anywhere in the code (a course-number digit like '504' contains '4' but is semester 5, not 4).
   To match all sem-N subjects use: regexp_matches(subject_code, '^BT[A-Z]+N') (DuckDB regex), e.g. sem 5: regexp_matches(subject_code, '^BT[A-Z]+5')
 - credit (INTEGER)
-- grade (VARCHAR): 'AA','AB','BB','BC','CC','CD','DD','EE','DE','FF','XX'.
+- grade (VARCHAR): 'AA','AB','BB','BC','CC','CD','DD','EE','DE','FF','XX','EX','AU'.
+  'EX' = exempted/full credit (grade_point 20). 'AU' = audit (grade_point 0, not counted as fail).
   Failed grades: 'FF', 'XX', 'AB' (absent).
 - grade_point (DOUBLE)
 - raw_grade_string (VARCHAR)
