@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 import faiss
 import numpy as np
 from pathlib import Path
@@ -40,7 +41,25 @@ class VectorSearch:
         if not self.chunks:
             return
 
-        self.index = faiss.read_index(str(self.faiss_path))
+        index = faiss.read_index(str(self.faiss_path))
+
+        # Detect drift between faiss.index and the chunks list: they are built by
+        # two independently-invokable scripts (ingestion/embed.py writes the chunks,
+        # ingestion/vector_store.py writes the index) with no enforced linkage. If a
+        # standalone re-run of one leaves the other stale, row indices in the index
+        # no longer correspond to the same chunks. Refuse to serve from a mismatched
+        # pair rather than silently returning wrong content or raising an IndexError.
+        if index.ntotal != len(self.chunks):
+            logging.error(
+                "VectorSearch: faiss.index vector count (%d) does not match "
+                "chunks count (%d) for %s; refusing to load stale/mismatched index.",
+                index.ntotal, len(self.chunks), self.embed_dir,
+            )
+            self.index = None
+            self.chunks = None
+            return
+
+        self.index = index
         self.model = _get_model()
         self._query_cache = {}
 
