@@ -327,8 +327,36 @@ def documents_list(tenant_id: str = "tenant_1"):
 
 import uuid
 import shutil
+import json
 from fastapi import UploadFile, File, Form, BackgroundTasks
 from ingestion.parse import main as parse_main, _get_manifest_conn, _manifest_update
+
+def _check_upload_ownership(upload_id: str, tenant_id: str, filename: str) -> None:
+    """Verify upload_id was actually issued for this tenant_id/filename.
+
+    Reads the ownership sidecar written by /upload. If it's missing or
+    doesn't match, the caller is trying to act on an upload_id that was
+    never bound to that tenant/filename (cross-tenant IDOR) — reject.
+    """
+    owner_file = DATA_ROOT.parent / "staging" / upload_id / "_owner.json"
+    if not owner_file.exists():
+        raise HTTPException(
+            status_code=403,
+            detail="upload_id does not belong to the given tenant_id/filename",
+        )
+    try:
+        owner = json.loads(owner_file.read_text())
+    except (OSError, ValueError):
+        raise HTTPException(
+            status_code=403,
+            detail="upload_id does not belong to the given tenant_id/filename",
+        )
+    if owner.get("tenant_id") != tenant_id or owner.get("filename") != filename:
+        raise HTTPException(
+            status_code=403,
+            detail="upload_id does not belong to the given tenant_id/filename",
+        )
+
 
 @app.post("/upload")
 async def upload_file(tenant_id: str = Form(...), file: UploadFile = File(...)):
@@ -347,6 +375,11 @@ async def upload_file(tenant_id: str = Form(...), file: UploadFile = File(...)):
     file_path = staging_dir / filename
     with open(file_path, "wb") as f:
         f.write(data)
+
+    # Bind this upload_id to the tenant/filename that created it, so
+    # /process and /status can reject cross-tenant reuse of the id.
+    owner_file = staging_dir / "_owner.json"
+    owner_file.write_text(json.dumps({"tenant_id": tenant_id, "filename": filename}))
 
     # Update live manifest to PENDING so frontend sees it immediately
     tenant_dir = DATA_ROOT / tenant_id
@@ -414,6 +447,7 @@ def _process_upload(upload_id: str, tenant_id: str, filename: str):
 def process_upload(upload_id: str, tenant_id: str, filename: str, background_tasks: BackgroundTasks):
     tenant_id = _require_tenant(tenant_id)
     filename = safe_filename(filename)
+    _check_upload_ownership(upload_id, tenant_id, filename)
     background_tasks.add_task(_process_upload, upload_id, tenant_id, filename)
     return {"status": "processing_started"}
 
@@ -422,6 +456,7 @@ def process_upload(upload_id: str, tenant_id: str, filename: str, background_tas
 def upload_status(upload_id: str, tenant_id: str, filename: str):
     tenant_id = _require_tenant(tenant_id)
     filename = safe_filename(filename)
+    _check_upload_ownership(upload_id, tenant_id, filename)
     tenant_dir = DATA_ROOT / tenant_id
     try:
         manifest_conn = _get_manifest_conn(tenant_dir)
