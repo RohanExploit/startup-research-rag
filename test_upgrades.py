@@ -16,7 +16,7 @@ sys.path.append(str(project_root))
 from auth.allowlist import AllowlistManager
 from pipeline import check_for_changes
 
-def test_allowlist():
+def run_allowlist():
     print("Testing AllowlistManager...")
     mgr = AllowlistManager()
     
@@ -35,7 +35,7 @@ def test_allowlist():
     print(f"Unauthorized user allowed: {unauth}")
     print("Allowlist test complete.\n")
 
-def test_incremental_ingestion():
+def run_incremental_ingestion():
     print("Testing Incremental Ingestion Logic...")
     raw_dir = str(project_root / "data" / "tenants" / "tenant_1" / "raw")
     
@@ -72,5 +72,5 @@ def test_incremental_ingestion():
     print("Incremental ingestion test complete.\n")
 
 if __name__ == "__main__":
-    test_allowlist()
-    test_incremental_ingestion()
+    run_allowlist()
+    run_incremental_ingestion()
