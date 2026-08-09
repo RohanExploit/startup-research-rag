@@ -13,6 +13,10 @@ sys.path.insert(0, f"{PROJECT_ROOT}")
 from bots.telegram_bot import handle_message, start, is_admin, ADMIN_ID, user_last_message_time
 import bots.telegram_bot
 
+# Bypass the allowlist for this smoke test so it still exercises the
+# query-forwarding logic for non-admin synthetic user IDs.
+bots.telegram_bot.auth_mgr.is_telegram_user_allowed = lambda tenant_id, user_id: True
+
 # Mock httpx response to avoid needing the real backend
 class MockResponse:
     def __init__(self, data, status=200):
