@@ -169,8 +169,13 @@ def match_template(query: str):
     """Return (callable, kwargs) for a matched analytical template, else None."""
     q = query.lower()
 
+    # if "subject" is mentioned before "fail", the question is scoped to
+    # per-subject breakdown, not per-student — don't let the failed-most-
+    # subjects branch below shadow subject_failure_counts.
+    subject_asks_first = "subject" in q and "fail" in q and q.find("subject") < q.find("fail")
+
     # failed the most subjects
-    if ("fail" in q or "backlog" in q) and ("most" in q or "highest number" in q or "maximum" in q):
+    if not subject_asks_first and ("fail" in q or "backlog" in q) and ("most" in q or "highest number" in q or "maximum" in q):
         return students_failed_most, {}
 
     # failed at least N subjects  (also "N or more subjects")
