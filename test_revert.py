@@ -10,7 +10,7 @@ QUERIES = [
     "22051470"
 ]
 
-def test_query(query_text):
+def run_query(query_text):
     print(f"\n=======================================================")
     print(f"QUERY: {query_text}")
     print(f"=======================================================")
@@ -38,5 +38,5 @@ def test_query(query_text):
 
 if __name__ == "__main__":
     for q in QUERIES:
-        test_query(q)
+        run_query(q)
         time.sleep(2)

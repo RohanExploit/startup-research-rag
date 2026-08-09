@@ -1,12 +1,14 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
+import asyncio
 import contextlib
 import logging
+import secrets
 import httpx
 import sqlite3
 import subprocess
@@ -14,14 +16,62 @@ import os
 from datetime import datetime
 
 from retrieval.router import QueryRouter
-from generation.answer import generate_answer
+from generation.answer import generate_answer, aclose_http_client
 from api.audit_router import router as audit_router
-from config import DATA_ROOT, validate_tenant_id, safe_filename
+import config
+from config import DATA_ROOT, validate_tenant_id, validate_upload_id, safe_filename, MAX_FILE_SIZE
+
+
+async def require_api_key(request: Request, x_api_key: str | None = Header(default=None)):
+    """Global auth gate. When REQUIRE_API_KEY is set, every request except
+    /health must carry an X-API-Key header matching API_KEY. OFF by default so
+    localhost dev stays frictionless; turn ON before binding 0.0.0.0.
+
+    Applied as an app-level dependency so it also covers the audit router.
+    CORS preflight (OPTIONS) is answered by CORSMiddleware before reaching here.
+    """
+    if not config.require_api_key_enabled():
+        return
+    if request.url.path == "/health":
+        return  # unauthenticated liveness probe for load balancers
+    expected = config.get_api_key()
+    if not expected:
+        # Gate demanded but no key configured — fail closed, never open.
+        raise HTTPException(
+            status_code=500,
+            detail="REQUIRE_API_KEY is set but API_KEY is empty (server misconfig)",
+        )
+    # Accept the key from the X-API-Key header OR an ?api_key= query param. The
+    # query-param path exists for EventSource/SSE (/audit/stream), which cannot
+    # set custom request headers.
+    presented = x_api_key or request.query_params.get("api_key")
+    if not presented or not secrets.compare_digest(presented, expected):
+        raise HTTPException(status_code=401, detail="Missing or invalid X-API-Key")
 
 logging.basicConfig(level=logging.INFO)
 OLLAMA_MODEL = "qwen3:4b-instruct-2507-q4_K_M"
 
 routers = {}
+
+def _require_tenant(tenant_id: str) -> str:
+    """Validate a client-supplied tenant_id or raise HTTP 400 (blocks path traversal)."""
+    try:
+        return validate_tenant_id(tenant_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+def _require_upload_id(upload_id: str) -> str:
+    """Validate a client-supplied upload_id or raise HTTP 400 (blocks path traversal).
+
+    upload_id is always server-generated via uuid.uuid4() at /upload time, so
+    a value that doesn't match that shape (e.g. "..") is rejected before it
+    can be used to build staging_dir.
+    """
+    try:
+        return validate_upload_id(upload_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 def get_router(tenant_id: str) -> QueryRouter:
     tenant_id = validate_tenant_id(tenant_id)
@@ -58,10 +108,15 @@ async def lifespan(app: FastAPI):
             logging.info("Ollama model warmed up successfully.")
     except Exception as e:
         logging.warning(f"Ollama warmup failed (is the server running?): {e}")
-        
+
     yield
 
-app = FastAPI(title="Company Brain API", lifespan=lifespan)
+    # Shutdown: close the shared Ollama httpx client so its pool is released
+    # cleanly (avoids the "Event loop is closed" teardown noise on Windows).
+    await aclose_http_client()
+
+app = FastAPI(title="Company Brain API", lifespan=lifespan,
+              dependencies=[Depends(require_api_key)])
 app.include_router(audit_router)
 
 app.add_middleware(
@@ -114,10 +169,13 @@ def _get_tenant_info() -> list:
     tenants = []
     if DATA_ROOT.exists():
         for tenant_dir in sorted(DATA_ROOT.iterdir()):
-            if not tenant_dir.is_dir():
+            if not tenant_dir.is_dir() or tenant_dir.name.startswith("{"):
                 continue
             tid = tenant_dir.name
             raw_dir = tenant_dir / "raw"
+            # Count indexed documents (manifest rows), not raw files: a raw file
+            # that was never ingested has no manifest row and must not inflate the
+            # count shown in the status strip / Document Library (they'd disagree).
             doc_count = len(list(raw_dir.iterdir())) if raw_dir.exists() else 0
 
             last_indexed = None
@@ -126,11 +184,13 @@ def _get_tenant_info() -> list:
                 try:
                     conn = sqlite3.connect(manifest_db)
                     row = conn.execute(
-                        "SELECT MAX(last_indexed_at) FROM manifest"
+                        "SELECT COUNT(*), MAX(last_indexed_at) FROM manifest"
                     ).fetchone()
                     conn.close()
-                    if row and row[0]:
-                        last_indexed = row[0]
+                    if row:
+                        doc_count = row[0]
+                        if row[1]:
+                            last_indexed = row[1]
                 except Exception:
                     pass
 
@@ -148,8 +208,8 @@ def _get_tenant_info() -> list:
 @app.get("/admin/status")
 async def admin_status():
     """Live system status for the admin dashboard status strip."""
-    ollama = _get_ollama_status()
-    tenants = _get_tenant_info()
+    ollama = await asyncio.to_thread(_get_ollama_status)
+    tenants = await asyncio.to_thread(_get_tenant_info)
     registered = [t for t in tenants if t["registered"]]
     return {
         "ollama": ollama,
@@ -172,35 +232,38 @@ class QueryResponse(BaseModel):
 
 @app.post("/query", response_model=QueryResponse)
 async def query_documents(req: QueryRequest):
-    # We remove the hardcoded tenant_1 rejection so we can serve any valid tenant
+    # Validate tenant_id first (clean 400); then load its data (500 on load failure).
+    tenant_id = _require_tenant(req.tenant_id)
     try:
-        tenant_router = get_router(req.tenant_id)
+        tenant_router = get_router(tenant_id)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load tenant data: {e}")
         
     qtype, context, metadata = await tenant_router.route_query(req.query)
     context_text = str(context).strip()
-    
-    # Short-circuit formatting for disambiguation, error messages, and perfectly formatted student records
-    if (context_text.startswith("Did you mean") or 
-        context_text.startswith("Student matching") or 
-        context_text.startswith("Could not extract") or
-        context_text.startswith("🎓 **Student Record for")):
-        return {
-            "query_type": qtype,
-            "answer": context_text,
-            "context_used": context_text,
-            "metadata": metadata
-        }
-        
+
     if not context_text:
-        return {
-            "query_type": qtype,
-            "answer": "I don't have enough information to answer that.",
-            "context_used": "",
-            "metadata": metadata
-        }
-    
+        return QueryResponse(
+            query_type=qtype,
+            answer="I don't have enough information to answer that.",
+            context_used="",
+            metadata=metadata
+        )
+
+    # TABULAR context is always a finished, deterministic answer (SQL templates,
+    # tabular_queries helpers, or generate_and_run_sql's markdown table) — never
+    # raw material for LLM synthesis. Short-circuit unconditionally to protect
+    # exact figures from LLM paraphrase/rounding (see P3.12).
+    if qtype == "TABULAR":
+        return QueryResponse(
+            query_type=qtype,
+            answer=context_text,
+            context_used=context_text,
+            metadata=metadata
+        )
+
     answer = await generate_answer(req.query, context, qtype)
     
     return QueryResponse(
@@ -225,6 +288,8 @@ def tenants_overview():
             if not tenant_dir.is_dir() or tenant_dir.name.startswith("{"):
                 continue
             raw_dir = tenant_dir / "raw"
+            # Indexed-doc count (manifest rows) — matches the Document Library and
+            # the status strip. Falls back to raw file count only when no manifest.
             doc_count = len([f for f in raw_dir.iterdir() if f.is_file()]) if raw_dir.exists() else 0
             has_manifest = (tenant_dir / "manifest.db").exists()
             has_duckdb = (tenant_dir / "tabular.duckdb").exists()
@@ -233,9 +298,11 @@ def tenants_overview():
             if has_manifest:
                 try:
                     conn = sqlite3.connect(tenant_dir / "manifest.db")
-                    row = conn.execute("SELECT MAX(last_indexed_at) FROM manifest").fetchone()
+                    row = conn.execute("SELECT COUNT(*), MAX(last_indexed_at) FROM manifest").fetchone()
                     conn.close()
-                    last_indexed = row[0] if row else None
+                    if row:
+                        doc_count = row[0]
+                        last_indexed = row[1]
                 except Exception:
                     pass
             if has_duckdb:
@@ -286,12 +353,13 @@ def review_queue():
 @app.get("/documents")
 def documents_list(tenant_id: str = "tenant_1"):
     """Return manifest entries for a tenant — all documents with parse status."""
+    tenant_id = _require_tenant(tenant_id)
     tenant_dir = DATA_ROOT / tenant_id
     manifest_db = tenant_dir / "manifest.db"
     if not manifest_db.exists():
         return {"documents": [], "total": 0, "error": "manifest.db not found"}
     try:
-        conn = sqlite3.connect(manifest_db)
+        conn = _get_manifest_conn(tenant_dir)
         rows = conn.execute(
             "SELECT doc_id, file_hash, parse_status, last_indexed_at, "
             "error_message, page_count, file_size_bytes, flags "
@@ -316,30 +384,68 @@ def documents_list(tenant_id: str = "tenant_1"):
 
 import uuid
 import shutil
+import json
 from fastapi import UploadFile, File, Form, BackgroundTasks
 from ingestion.parse import main as parse_main, _get_manifest_conn, _manifest_update
 
+def _check_upload_ownership(upload_id: str, tenant_id: str, filename: str) -> None:
+    """Verify upload_id was actually issued for this tenant_id/filename.
+
+    Reads the ownership sidecar written by /upload. If it's missing or
+    doesn't match, the caller is trying to act on an upload_id that was
+    never bound to that tenant/filename (cross-tenant IDOR) — reject.
+    """
+    owner_file = DATA_ROOT.parent / "staging" / upload_id / "_owner.json"
+    if not owner_file.exists():
+        raise HTTPException(
+            status_code=403,
+            detail="upload_id does not belong to the given tenant_id/filename",
+        )
+    try:
+        owner = json.loads(owner_file.read_text())
+    except (OSError, ValueError):
+        raise HTTPException(
+            status_code=403,
+            detail="upload_id does not belong to the given tenant_id/filename",
+        )
+    if owner.get("tenant_id") != tenant_id or owner.get("filename") != filename:
+        raise HTTPException(
+            status_code=403,
+            detail="upload_id does not belong to the given tenant_id/filename",
+        )
+
+
 @app.post("/upload")
 async def upload_file(tenant_id: str = Form(...), file: UploadFile = File(...)):
-    try:
-        tenant_id = validate_tenant_id(tenant_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    tenant_id = _require_tenant(tenant_id)
     filename = safe_filename(file.filename)
     upload_id = str(uuid.uuid4())
     staging_dir = DATA_ROOT.parent / "staging" / upload_id
     staging_dir.mkdir(parents=True, exist_ok=True)
 
+    data = await file.read()
+    if len(data) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large ({len(data)} bytes > MAX_FILE_SIZE {MAX_FILE_SIZE}).",
+        )
     file_path = staging_dir / filename
     with open(file_path, "wb") as f:
-        f.write(await file.read())
+        f.write(data)
+
+    # Bind this upload_id to the tenant/filename that created it, so
+    # /process and /status can reject cross-tenant reuse of the id.
+    owner_file = staging_dir / "_owner.json"
+    owner_file.write_text(json.dumps({"tenant_id": tenant_id, "filename": filename}))
 
     # Update live manifest to PENDING so frontend sees it immediately
     tenant_dir = DATA_ROOT / tenant_id
     tenant_dir.mkdir(parents=True, exist_ok=True)
     manifest_conn = _get_manifest_conn(tenant_dir)
-    _manifest_update(manifest_conn, filename, "staging", "PENDING")
-    manifest_conn.close()
+    try:
+        _manifest_update(manifest_conn, filename, "staging", "PENDING")
+    finally:
+        manifest_conn.close()
 
     return {"upload_id": upload_id, "filename": filename, "tenant_id": tenant_id}
 
@@ -367,10 +473,12 @@ def _process_upload(upload_id: str, tenant_id: str, filename: str):
         if md_file.exists():
             # Get actual hash and size from the temporary manifest created by parse.py
             staging_conn = _get_manifest_conn(staging_dir)
-            staging_row = staging_conn.execute(
-                "SELECT file_hash, flags, file_size_bytes FROM manifest WHERE doc_id = ?", (filename,)
-            ).fetchone()
-            staging_conn.close()
+            try:
+                staging_row = staging_conn.execute(
+                    "SELECT file_hash, flags, file_size_bytes FROM manifest WHERE doc_id = ?", (filename,)
+                ).fetchone()
+            finally:
+                staging_conn.close()
             
             # Move to live tenant
             live_raw_dir = tenant_dir / "raw"
@@ -398,12 +506,20 @@ def _process_upload(upload_id: str, tenant_id: str, filename: str):
 
 @app.post("/upload/{upload_id}/process")
 def process_upload(upload_id: str, tenant_id: str, filename: str, background_tasks: BackgroundTasks):
+    upload_id = _require_upload_id(upload_id)
+    tenant_id = _require_tenant(tenant_id)
+    filename = safe_filename(filename)
+    _check_upload_ownership(upload_id, tenant_id, filename)
     background_tasks.add_task(_process_upload, upload_id, tenant_id, filename)
     return {"status": "processing_started"}
 
 
 @app.get("/upload/{upload_id}/status")
 def upload_status(upload_id: str, tenant_id: str, filename: str):
+    upload_id = _require_upload_id(upload_id)
+    tenant_id = _require_tenant(tenant_id)
+    filename = safe_filename(filename)
+    _check_upload_ownership(upload_id, tenant_id, filename)
     tenant_dir = DATA_ROOT / tenant_id
     try:
         manifest_conn = _get_manifest_conn(tenant_dir)

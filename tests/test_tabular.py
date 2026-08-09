@@ -2,7 +2,7 @@ import asyncio
 import logging
 from retrieval.router import QueryRouter
 
-async def test_queries():
+async def run_queries():   # renamed from test_queries: manual script (needs data+Ollama); see test_sql_route.py for real tests
     router = QueryRouter()
     
     questions = [
@@ -37,4 +37,4 @@ async def test_queries():
             print(f"Error: {e}")
 
 if __name__ == '__main__':
-    asyncio.run(test_queries())
+    asyncio.run(run_queries())

@@ -1,15 +1,23 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import json
 from pathlib import Path
 from docling.document_converter import DocumentConverter
 
-def test_docling():
-    input_file = Path("R:/Startup research/Start up V2/Results Dataset/cse 5 reg.pdf")
+# NOTE: renamed from test_docling so pytest does NOT collect it — it runs heavy
+# Docling AND overwrites a PII-derived .md. Manual only.
+def run_docling():
+    input_file = Path(f"{PROJECT_ROOT}/Results Dataset/cse 5 reg.pdf")
     converter = DocumentConverter()
     print("Running docling on", input_file)
     result = converter.convert(input_file)
     md_text = result.document.export_to_markdown()
     
-    out_md = Path("R:/Startup research/Start up V2/Results Dataset/cse 5 reg_docling.md")
+    out_md = Path(f"{PROJECT_ROOT}/Results Dataset/cse 5 reg_docling.md")
     with open(out_md, "w", encoding="utf-8") as f:
         f.write(md_text)
     
@@ -23,4 +31,4 @@ def test_docling():
         print(l)
 
 if __name__ == '__main__':
-    test_docling()
+    run_docling()

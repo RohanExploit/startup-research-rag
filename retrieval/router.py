@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import re
 from retrieval.vector_search import VectorSearch
 from retrieval.graph_traverse import GraphSearch
 from retrieval.community_search import CommunitySearch
@@ -25,7 +27,33 @@ class QueryRouter:
         # single-request-at-a-time on the 4B model, so every skipped call is
         # a full inference round-trip saved).
         lower_q = query.lower()
-        if any(k in lower_q for k in ["score of", "student", "roll", "result for", "search for"]):
+        # Student-record shaped queries. Unambiguous multi-word phrases are matched
+        # as plain substrings; the bare words "student"/"roll" are ambiguous (they
+        # also appear in ordinary FACT/GLOBAL document questions, e.g. "student
+        # mentorship program"), so those only count when paired with record/lookup
+        # context (a roll number, or a record/marks/score/result/grade keyword).
+        student_phrase_kw = ["score of", "result for", "search for"]
+        roll_number_re = re.compile(r'\broll\s*(no\.?|number)?\s*[:#]?\s*\d{4,}\b', re.IGNORECASE)
+        student_record_re = re.compile(
+            r'\bstudent\b.*\b(record|marks|score|result|grade|sgpa|cgpa|roll)\b'
+            r'|\b(record|marks|score|result|grade|sgpa|cgpa)\b.*\bstudent\b',
+            re.IGNORECASE,
+        )
+        # Aggregation/analytical shaped queries — rule-based route to TABULAR BEFORE
+        # any LLM classify call (P3.10). Deterministic + works with Ollama offline.
+        agg_kw = [
+            "how many", "how much", "list all", "list of student", "which students",
+            "at least", "atleast", "or more", "average", "count of", "number of",
+            "toppers", "topper", "pass percentage", "pass rate", "pass %",
+            "failed", "fail", "below sgpa", "sgpa below", "most subjects", "backlog",
+            "top ",
+        ]
+        is_tabular_kw = (
+            any(k in lower_q for k in student_phrase_kw)
+            or bool(roll_number_re.search(lower_q))
+            or bool(student_record_re.search(lower_q))
+        )
+        if is_tabular_kw or any(k in lower_q for k in agg_kw):
             return "TABULAR", None
 
         prompt = f"""
@@ -90,45 +118,67 @@ Query: "{query}"
         elif qtype == "TABULAR":
             import re
             from retrieval.tabular_queries import get_average_sgpa, count_failures, list_students_below_sgpa, get_student_record, get_student_by_name, generate_and_run_sql
+            from retrieval.sql_templates import match_template
             q_lower = query.lower()
-            
+
+            # P3.12: try a deterministic parameterized template FIRST (no LLM,
+            # works offline). Only unmatched patterns fall through to the cascade
+            # / LLM text-to-SQL below.
+            matched = match_template(query)
+            if matched:
+                fn, kwargs = matched
+                result = await asyncio.to_thread(fn, tenant_id=self.tenant_id, **kwargs)
+                metadata["debug_sql"] = result.get("debug_sql")
+                metadata["template"] = result.get("template")
+                return qtype, result["answer"], metadata
+
             # Route to dynamic SQL generator for complex/list queries
             if "search for" in q_lower or "list all" in q_lower or "which students" in q_lower or "at least" in q_lower or "atleast" in q_lower:
                 # If it is a simple single student name search
                 if "search for" in q_lower and not ("fail" in q_lower or "sgpa" in q_lower or "subject" in q_lower or "grade" in q_lower or "sem" in q_lower):
-                    context = await get_student_by_name(query)
+                    context = await get_student_by_name(query, self.tenant_id)
                 else:
-                    sql_result = await generate_and_run_sql(query)
+                    sql_result = await generate_and_run_sql(query, self.tenant_id)
                     context = sql_result["answer"]
                     metadata["debug_sql"] = sql_result["debug_sql"]
             elif "average sgpa" in q_lower:
                 match = re.search(r'subject\s+(BT\w+)', query, re.IGNORECASE)
-                context = get_average_sgpa(match.group(1) if match else None)
+                context = get_average_sgpa(match.group(1) if match else None, self.tenant_id)
             elif "fail" in q_lower:
                 if "how many" in q_lower or "count" in q_lower or "number" in q_lower:
                     match = re.search(r'subject\s+(BT\w+)', query, re.IGNORECASE)
-                    context = count_failures(match.group(1) if match else None)
+                    context = count_failures(match.group(1) if match else None, self.tenant_id)
                 else:
-                    sql_result = await generate_and_run_sql(query)
+                    sql_result = await generate_and_run_sql(query, self.tenant_id)
                     context = sql_result["answer"]
                     metadata["debug_sql"] = sql_result["debug_sql"]
             elif "below" in q_lower and "sgpa" in q_lower:
-                match = re.search(r'(\d+\.\d+|\d+)', query)
-                context = list_students_below_sgpa(float(match.group(1)) if match else 6.0)
+                # Pull the threshold tied to "below"/"under"/"sgpa" — not just the
+                # first number in the query, which could be a semester or year
+                # (e.g. "semester 3 students below 6 sgpa" must give 6, not 3).
+                # Fall back to the first decimal, then a 6.0 default.
+                match = (re.search(r'(?:below|under|sgpa)\D{0,10}(\d+(?:\.\d+)?)', q_lower)
+                         or re.search(r'(\d+\.\d+)', query))
+                threshold = float(match.group(1)) if match else 6.0
+                context = list_students_below_sgpa(threshold, self.tenant_id)
             elif "record" in q_lower or "roll" in q_lower or "student" in q_lower or "score" in q_lower:
                 match = re.search(r'(\d{10,15})', query)
                 if match:
-                    context = get_student_record(match.group(1))
+                    context = get_student_record(match.group(1), self.tenant_id)
                 else:
-                    context = await get_student_by_name(query)
+                    context = await get_student_by_name(query, self.tenant_id)
             else:
-                sql_result = await generate_and_run_sql(query)
+                sql_result = await generate_and_run_sql(query, self.tenant_id)
                 context = sql_result["answer"]
                 metadata["debug_sql"] = sql_result["debug_sql"]
                 
         return qtype, context, metadata
 
 if __name__ == "__main__":
+    import asyncio
     router = QueryRouter()
-    qtype, ctx = router.route_query("What is RAG-MicroSim?")
-    print(f"Type: {qtype}\nContext: {ctx[:200]}")
+    # route_query is async and returns (qtype, context, metadata) — the old
+    # smoke block called it synchronously and unpacked two values, so it always
+    # crashed when run directly.
+    qtype, ctx, meta = asyncio.run(router.route_query("What is RAG-MicroSim?"))
+    print(f"Type: {qtype}\nContext: {str(ctx)[:200]}")

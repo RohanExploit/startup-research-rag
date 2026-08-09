@@ -1,7 +1,13 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import pdfplumber
 
 def extract_text():
-    path = "R:/Startup research/Start up V2/Results Dataset/cse 5 reg.pdf"
+    path = f"{PROJECT_ROOT}/Results Dataset/cse 5 reg.pdf"
     with pdfplumber.open(path) as pdf:
         for i in range(min(2, len(pdf.pages))):
             text = pdf.pages[i].extract_text(layout=True)

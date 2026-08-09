@@ -8,6 +8,10 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
+import sys
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from auth.allowlist import AllowlistManager
+
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 logging.basicConfig(level=logging.INFO)
@@ -19,10 +23,12 @@ if not TOKEN:
 API_URL = "http://localhost:8000/query"
 
 ADMIN_ID = "1990648223"
+TENANT_ID = "tenant_1"
 user_last_message_time = {}
 RATE_LIMIT_SECONDS = 5
 
 http_client = httpx.AsyncClient(timeout=120.0)
+auth_mgr = AllowlistManager()
 
 def is_admin(user_id: int) -> bool:
     return str(user_id) == ADMIN_ID
@@ -37,7 +43,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
-    
+
+    if not is_admin(uid) and not auth_mgr.is_telegram_user_allowed(TENANT_ID, str(uid)):
+        logging.warning(f"Unauthorized Telegram access attempt from {uid}")
+        await update.message.reply_text("Sorry, you are not authorized to use this bot.")
+        return
+
     if not is_admin(uid):
         now = time.time()
         last_time = user_last_message_time.get(uid, 0)
@@ -54,7 +65,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         response = await http_client.post(API_URL, json={
             "query": user_query,
-            "tenant_id": "tenant_1"
+            "tenant_id": TENANT_ID
         })
         response.raise_for_status()
         data = response.json()

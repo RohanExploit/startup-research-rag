@@ -1,3 +1,9 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import json
 import logging
 from pathlib import Path
@@ -10,7 +16,7 @@ import os
 
 logging.basicConfig(level=logging.INFO)
 
-RAW_DIR = Path("R:/Startup research/Start up V2/data/tenants/tenant_1/raw")
+RAW_DIR = Path(f"{PROJECT_ROOT}/data/tenants/tenant_1/raw")
 
 def run_validation():
     # 1. Select 5 real files from RAW_DIR
@@ -70,7 +76,7 @@ def run_validation():
             }
             
     # Output to single reviewable file
-    out_file = Path("R:/Startup research/Start up V2/extraction_review.json")
+    out_file = Path(f"{PROJECT_ROOT}/extraction_review.json")
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
         

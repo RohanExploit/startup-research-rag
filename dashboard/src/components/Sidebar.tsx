@@ -17,6 +17,7 @@ const NAV = [
       { href: "/review", label: "Needs-Review Queue", icon: "⚑" },
       { href: "/health", label: "System Health", icon: "◈" },
       { href: "/documents", label: "Document Library", icon: "⊞" },
+      { href: "/upload", label: "Data Ingestion", icon: "⇪" },
     ],
   },
   {

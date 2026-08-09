@@ -13,11 +13,18 @@ import os
 import re
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # --------------------------------------------------------------------------
 # PATHS  (your knob: set env PROJECT_ROOT to force a location; else auto-detect)
 # --------------------------------------------------------------------------
 # config.py sits at the repo root, so its parent IS the project root.
 PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", Path(__file__).resolve().parent))
+
+# Load .env before anything else in the app reads os.environ (e.g.
+# NVIDIA_API_KEY for the Ollama fallback in generation/answer.py). Every
+# module imports config first, so this is the one place that guarantees it.
+load_dotenv(PROJECT_ROOT / ".env")
 
 DATA_ROOT           = PROJECT_ROOT / "data" / "tenants"
 STAGING_ROOT        = PROJECT_ROOT / "data" / "staging"
@@ -42,6 +49,13 @@ TENANT_ID_PATTERN = re.compile(os.environ.get("TENANT_ID_PATTERN", r"^[A-Za-z0-9
 # Master switch for upload filename sanitizing.
 VALIDATE_FILENAMES = os.environ.get("VALIDATE_FILENAMES", "1") != "0"
 
+# Master switch for upload_id checks. Set env VALIDATE_UPLOAD_ID=0 to disable.
+VALIDATE_UPLOAD_ID = os.environ.get("VALIDATE_UPLOAD_ID", "1") != "0"
+
+# upload_id is always server-generated via uuid.uuid4() (see api/main.py
+# upload_file). What a legal upload_id looks like. Edit freely.
+UPLOAD_ID_PATTERN = re.compile(os.environ.get("UPLOAD_ID_PATTERN", r"^[0-9a-fA-F-]{36}$"))
+
 
 def validate_tenant_id(tenant_id: str) -> str:
     """
@@ -54,6 +68,21 @@ def validate_tenant_id(tenant_id: str) -> str:
     if not isinstance(tenant_id, str) or not TENANT_ID_PATTERN.match(tenant_id):
         raise ValueError(f"Invalid tenant_id: {tenant_id!r}")
     return tenant_id
+
+
+def validate_upload_id(upload_id: str) -> str:
+    """
+    Returns upload_id if it looks like a server-generated uuid4, else raises
+    ValueError. upload_id is used to build a filesystem path
+    (staging/<upload_id>/...), so a caller-supplied value like ".." must be
+    rejected before it reaches any mkdir/move/copy call. Disable via
+    VALIDATE_UPLOAD_ID=0 if you need to.
+    """
+    if not VALIDATE_UPLOAD_ID:
+        return upload_id
+    if not isinstance(upload_id, str) or not UPLOAD_ID_PATTERN.match(upload_id):
+        raise ValueError(f"Invalid upload_id: {upload_id!r}")
+    return upload_id
 
 
 def safe_filename(name: str) -> str:
@@ -82,6 +111,26 @@ MAX_FILE_SIZE = int(os.environ.get("MAX_FILE_SIZE", str(50 * 1024 * 1024)))
 
 # Seed for Louvain community detection so pipeline runs are reproducible.
 LOUVAIN_SEED = int(os.environ.get("LOUVAIN_SEED", "42"))
+
+# --------------------------------------------------------------------------
+# API AUTH  (optional gate — OFF by default so local dev on 127.0.0.1 is
+# frictionless. Turn ON before ever binding 0.0.0.0. See start.py docstring.)
+# --------------------------------------------------------------------------
+def _truthy(v) -> bool:
+    return str(v).strip().lower() in ("1", "true", "yes", "on")
+
+
+def require_api_key_enabled() -> bool:
+    """Whether the X-API-Key gate is active. Read live from env so tests (and a
+    running server told to reload) reflect the current value without reimport."""
+    return _truthy(os.environ.get("REQUIRE_API_KEY", "0"))
+
+
+def get_api_key() -> str:
+    """The expected X-API-Key value. Empty when unset (misconfig if the gate is
+    enabled — the dependency fails closed in that case)."""
+    return os.environ.get("API_KEY", "").strip()
+
 
 # --- Text-to-SQL guardrails (retrieval/tabular_queries.py) ---
 # Row cap injected when the generated SQL has no LIMIT.

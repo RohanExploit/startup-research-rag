@@ -1,3 +1,9 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import os
 import json
 import logging
@@ -64,6 +70,6 @@ def process_markdown_files(parsed_dir, chunked_dir):
     logging.info(f"Chunking complete. Created {total_chunks} total chunks.")
 
 if __name__ == "__main__":
-    parsed_dir = "R:/Startup research/Start up V2/data/tenants/tenant_1/parsed"
-    chunked_dir = "R:/Startup research/Start up V2/data/tenants/tenant_1/chunked"
+    parsed_dir = f"{PROJECT_ROOT}/data/tenants/tenant_1/parsed"
+    chunked_dir = f"{PROJECT_ROOT}/data/tenants/tenant_1/chunked"
     process_markdown_files(parsed_dir, chunked_dir)

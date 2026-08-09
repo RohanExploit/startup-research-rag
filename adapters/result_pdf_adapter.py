@@ -1,11 +1,17 @@
+import sys
 import duckdb
 from pathlib import Path
-from models.canonical import StudentRecord, SubjectRecord
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_ROOT = PROJECT_ROOT / "data" / "tenants"
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from models.canonical import StudentRecord, SubjectRecord
+from config import DATA_ROOT, validate_tenant_id
+
 
 def load_student_record(tenant_id: str, roll_no: str) -> StudentRecord:
+    # Validate tenant_id (blocks '../..' path escape) and build the path through
+    # config, matching the repo-wide path-hardening standard. Previously this
+    # adapter derived its own DATA_ROOT and used tenant_id unchecked.
+    tenant_id = validate_tenant_id(tenant_id)
     db_path = DATA_ROOT / tenant_id / "tabular.duckdb"
     if not db_path.exists():
         raise FileNotFoundError(f"Database not found for tenant: {tenant_id}")

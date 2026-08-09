@@ -30,3 +30,9 @@ manifest.db
 # --- Misc build/output ---
 *.log
 test_enc_*.txt
+test.db
+benchmark_output.txt
+benchmark_*.txt
+*.png
+.gstack/
+.playwright-mcp/

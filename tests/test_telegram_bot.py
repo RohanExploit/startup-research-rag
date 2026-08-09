@@ -1,11 +1,21 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock
 import sys
-sys.path.insert(0, "R:/Startup research/Start up V2")
+sys.path.insert(0, f"{PROJECT_ROOT}")
 
 from bots.telegram_bot import handle_message, start, is_admin, ADMIN_ID, user_last_message_time
 import bots.telegram_bot
+
+# Bypass the allowlist for this smoke test so it still exercises the
+# query-forwarding logic for non-admin synthetic user IDs.
+bots.telegram_bot.auth_mgr.is_telegram_user_allowed = lambda tenant_id, user_id: True
 
 # Mock httpx response to avoid needing the real backend
 class MockResponse:

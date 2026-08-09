@@ -1,7 +1,12 @@
 import logging
 import os
+import sys
 import httpx
+from pathlib import Path
 from openai import AsyncOpenAI
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
+from config import API_TIMEOUT
 
 logging.basicConfig(level=logging.INFO)
 
@@ -10,7 +15,26 @@ OLLAMA_API_URL = "http://127.0.0.1:11434/api/generate"
 MODEL_NAME = "qwen3:4b-instruct-2507-q4_K_M"
 OLLAMA_KEEP_ALIVE = "10m"
 
-_http_client = httpx.AsyncClient(timeout=60.0)
+# Lazily create the shared client on first use so it binds to the running event
+# loop (creating it at import time leaks a client tied to the import-time loop and
+# produces "Event loop is closed" noise on Windows teardown). Closed on app
+# shutdown via aclose_http_client() (wired in api/main.py's lifespan).
+_http_client: httpx.AsyncClient | None = None
+
+
+def _get_http_client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(timeout=API_TIMEOUT)
+    return _http_client
+
+
+async def aclose_http_client() -> None:
+    """Close the shared Ollama client. Idempotent; safe to call on shutdown."""
+    global _http_client
+    if _http_client is not None and not _http_client.is_closed:
+        await _http_client.aclose()
+    _http_client = None
 
 async def generate_answer(query: str, context: str, qtype: str = "LOCAL") -> str:
     if qtype == "GLOBAL":
@@ -55,7 +79,7 @@ Answer:
     }
 
     try:
-        response = await _http_client.post(OLLAMA_API_URL, json=payload)
+        response = await _get_http_client().post(OLLAMA_API_URL, json=payload)
         response.raise_for_status()
         return response.json()["response"].strip()
     except Exception as e:
@@ -66,16 +90,19 @@ Answer:
             return "Sorry, the local generation engine encountered an error and no fallback API key is configured."
             
         try:
-            client = AsyncOpenAI(
+            # async-with so the fallback client's connection pool is closed even
+            # on error (it was previously created per call and never closed).
+            async with AsyncOpenAI(
                 base_url="https://integrate.api.nvidia.com/v1",
-                api_key=nvidia_api_key
-            )
-            completion = await client.chat.completions.create(
-                model="meta/llama3-70b-instruct",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.2,
-                max_tokens=1024,
-            )
+                api_key=nvidia_api_key,
+                timeout=API_TIMEOUT,
+            ) as client:
+                completion = await client.chat.completions.create(
+                    model="meta/llama-3.1-70b-instruct",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.2,
+                    max_tokens=1024,
+                )
             fallback_answer = completion.choices[0].message.content.strip()
             logging.info("Successfully generated answer using NVIDIA API fallback.")
             return fallback_answer
@@ -84,6 +111,8 @@ Answer:
             return "Sorry, both local generation and the fallback API encountered an error."
 
 if __name__ == "__main__":
+    import asyncio
     ctx = "RAG-MicroSim is a hybrid framework."
     q = "What is RAG-MicroSim?"
-    print(generate_answer(q, ctx))
+    # generate_answer is a coroutine — must be awaited, not printed directly.
+    print(asyncio.run(generate_answer(q, ctx)))

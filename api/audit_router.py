@@ -201,6 +201,7 @@ def _check_extraction_verification() -> list[dict]:
     Real SGPA recomputation against live tabular.duckdb, using canonical adapter.
     """
     results = []
+    con = None
     try:
         import duckdb
         import sys
@@ -240,7 +241,7 @@ def _check_extraction_verification() -> list[dict]:
             if total_cr == 0:
                 continue
                 
-            computed = round(sum(s.credit * s.grade_point for s in student.subjects) / total_cr, 2)
+            computed = round(sum(s.grade_point for s in student.subjects) / total_cr, 2)
             checked += 1
             if abs(computed - stored_sgpa) > 0.05:   # 0.05 tolerance for rounding
                 violations.append({"roll": roll_no, "stored": stored_sgpa, "computed": computed})
@@ -281,7 +282,7 @@ def _check_extraction_verification() -> list[dict]:
         false_fail = 0
         for (roll_no,) in fail_students[:20]:  # sample first 20
             avg_gp = con.execute(
-                "SELECT AVG(grade_point) FROM student_subjects WHERE roll_no = ? AND credit > 0",
+                "SELECT SUM(grade_point) / NULLIF(SUM(credit), 0) FROM student_subjects WHERE roll_no = ? AND credit > 0",
                 [roll_no]
             ).fetchone()[0]
             if avg_gp and avg_gp > 9.0:   # clearly passing but marked FAIL = inconsistency
@@ -294,12 +295,18 @@ def _check_extraction_verification() -> list[dict]:
         results.append({"name": "needs_review table accessible", "passed": True,
                          "detail": f"{review_count} records in review queue"})
 
-        con.close()
-
     except Exception as e:
         import traceback
         traceback.print_exc()
         results.append({"name": "Extraction verification", "passed": False, "detail": str(e)})
+    finally:
+        # Close in finally so a raising check (any con.execute above) can't leak
+        # the read-only DuckDB handle.
+        if con is not None:
+            try:
+                con.close()
+            except Exception:
+                pass
     return results
 
 
@@ -366,8 +373,9 @@ def _check_tenant_isolation() -> list[dict]:
     manifest_paths = [str(d / "manifest.db") for d in tenant_dirs]
     results.append({"name": "Each tenant has own manifest.db", "passed": len(manifest_paths) == len(set(manifest_paths)), "detail": "No path collisions"})
 
-    results.append({"name": "Router cache keyed by tenant_id", "passed": True, "detail": "api/main.py routers dict uses tenant_id as key"})
-    results.append({"name": "No shared DuckDB file", "passed": True, "detail": "Each tenant has its own tabular.duckdb"})
+    # Check no shared tabular DuckDB file (same real-path-comparison pattern as manifest.db above)
+    duckdb_paths = [str(d / "tabular.duckdb") for d in tenant_dirs]
+    results.append({"name": "No shared DuckDB file", "passed": len(duckdb_paths) == len(set(duckdb_paths)), "detail": f"{len(duckdb_paths)} tenant.duckdb paths, no collisions"})
     return results
 
 
@@ -399,12 +407,44 @@ def _check_retrieval_poisoning() -> list[dict]:
 
 
 def _check_sql_injection() -> list[dict]:
-    payloads = ["' OR 1=1--", "; DROP TABLE students;", "' UNION SELECT * FROM students--"]
+    """Exercises the real, pure _sanitize_sql() guardrail (no DB/network access,
+    no PII risk) with injection-style payloads to verify it actually rejects
+    non-SELECT / multi-statement / non-allowlisted-table SQL."""
+    from retrieval.tabular_queries import _sanitize_sql
+
+    # Raw payloads that should be rejected outright (don't start with SELECT).
+    reject_payloads = [
+        "' OR 1=1--",
+        "; DROP TABLE students;",
+        "' UNION SELECT * FROM students--",
+    ]
+    # Payloads that wrap the injection inside a SELECT, to exercise the
+    # multi-statement and table-allowlist guardrails realistically.
+    reject_select_payloads = [
+        "SELECT * FROM students; DROP TABLE students;--",
+        "SELECT * FROM students UNION SELECT * FROM sqlite_master--",
+    ]
+
     results = []
-    for p in payloads:
-        # Check that the generate_and_run_sql function uses parameterized queries
-        is_parameterized = True  # duckdb.connect().execute() with params is parameterized
-        results.append({"name": f"SQL injection blocked: {p[:30]}", "passed": is_parameterized, "detail": "DuckDB parameterized query prevents injection"})
+    for p in reject_payloads + reject_select_payloads:
+        _, rejection = _sanitize_sql(p)
+        results.append({
+            "name": f"SQL injection blocked: {p[:40]}",
+            "passed": rejection is not None,
+            "detail": rejection or "NOT REJECTED — guardrail failed to block payload",
+        })
+
+    # A legitimate, allowlisted single-statement SELECT (even one containing a
+    # tautological WHERE clause) is not the guardrail's concern — it should be
+    # allowed through, proving the guardrail isn't just blocking everything.
+    benign_sql = "SELECT * FROM students WHERE name='x' OR 1=1--'"
+    _, benign_rejection = _sanitize_sql(benign_sql)
+    results.append({
+        "name": "Guardrail permits legitimate single-statement SELECT",
+        "passed": benign_rejection is None,
+        "detail": "Guardrail scope is structural (SELECT-only/single-statement/allowlisted-tables), not WHERE-clause semantics",
+    })
+
     results.append({"name": "NL2SQL rejects DROP/TRUNCATE", "passed": True, "detail": "LLM prompt constrains to SELECT only"})
     return results
 
@@ -422,7 +462,6 @@ def _check_authorization() -> list[dict]:
     # Non-existent tenant
     no_tenant = not mgr.is_telegram_user_allowed("nonexistent_xyz", "any_user")
     results.append({"name": "Non-existent tenant returns False", "passed": no_tenant, "detail": "AllowlistManager returns False for missing tenant"})
-    results.append({"name": "RBAC roles field present in allowlist schema", "passed": True, "detail": "roles key added to allowlist.json schema"})
     return results
 
 

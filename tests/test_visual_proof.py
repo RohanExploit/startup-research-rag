@@ -4,6 +4,12 @@ Visual proof investigation:
 2. CSE_2 — 3 students with wrapped codes, y-coordinate clustering dump
 3. groupA/B — confirm table structure and scope decision
 """
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import pdfplumber
 import re
 
@@ -87,9 +93,9 @@ def get_page_header_raw(path, page_idx):
         return rows
 
 def main():
-    CSE1 = "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_1(APRIL_2024) - CR Report (2).pdf"
-    CSE2 = "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_2(May_2025) - CR Report.pdf"
-    GRPA = "R:/Startup research/Start up V2/Results Dataset/6757_results_groupA.pdf"
+    CSE1 = f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_1(APRIL_2024) - CR Report (2).pdf"
+    CSE2 = f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_2(May_2025) - CR Report.pdf"
+    GRPA = f"{PROJECT_ROOT}/Results Dataset/6757_results_groupA.pdf"
 
     # =========================================================
     # DELIVERABLE 1: CSE_1 — last 5 student blocks, annotated

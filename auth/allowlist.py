@@ -26,12 +26,23 @@ class AllowlistManager:
             self._save(default)
             return default
             
-        with open(self.auth_file, "r") as f:
-            return json.load(f)
-            
+        try:
+            with open(self.auth_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            # A corrupt/unreadable allowlist must not crash auth construction
+            # (it would 500 /admin/status and break bot auth). Fail CLOSED: log
+            # loudly and treat as an empty allowlist so every is_*_allowed check
+            # denies, rather than silently granting the built-in default users.
+            logging.error(
+                "Allowlist at %s is corrupt/unreadable (%s); failing closed to an "
+                "empty allowlist (all users denied until fixed).", self.auth_file, e
+            )
+            return {}
+
     def _save(self, data):
-        with open(self.auth_file, "w") as f:
-            json.dump(data, f, indent=2)
+        with open(self.auth_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
             
     def is_telegram_user_allowed(self, tenant_id: str, user_id: str) -> bool:
         tenant = self.allowlist.get(tenant_id)
@@ -46,6 +57,11 @@ class AllowlistManager:
             return False
         # Fallback to 'users' for backwards compatibility
         return user_id in tenant.get("whatsapp_users", tenant.get("users", []))
+
+    def is_user_allowed(self, tenant_id: str, user_id: str) -> bool:
+        """Channel-agnostic check: allowed if the user is on either channel's list."""
+        return (self.is_telegram_user_allowed(tenant_id, user_id)
+                or self.is_whatsapp_user_allowed(tenant_id, user_id))
 
 if __name__ == "__main__":
     mgr = AllowlistManager()

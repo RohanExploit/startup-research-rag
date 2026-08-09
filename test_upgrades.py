@@ -1,16 +1,22 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import os
 import sys
 from pathlib import Path
 import asyncio
 
 # Setup paths
-project_root = Path("R:/Startup research/Start up V2")
+project_root = Path(f"{PROJECT_ROOT}")
 sys.path.append(str(project_root))
 
 from auth.allowlist import AllowlistManager
 from pipeline import check_for_changes
 
-def test_allowlist():
+def run_allowlist():
     print("Testing AllowlistManager...")
     mgr = AllowlistManager()
     
@@ -29,7 +35,7 @@ def test_allowlist():
     print(f"Unauthorized user allowed: {unauth}")
     print("Allowlist test complete.\n")
 
-def test_incremental_ingestion():
+def run_incremental_ingestion():
     print("Testing Incremental Ingestion Logic...")
     raw_dir = str(project_root / "data" / "tenants" / "tenant_1" / "raw")
     
@@ -66,5 +72,5 @@ def test_incremental_ingestion():
     print("Incremental ingestion test complete.\n")
 
 if __name__ == "__main__":
-    test_allowlist()
-    test_incremental_ingestion()
+    run_allowlist()
+    run_incremental_ingestion()

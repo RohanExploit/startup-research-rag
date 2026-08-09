@@ -2,8 +2,14 @@
 Full dataset diagnostic — imports directly from ingestion/parse_tabular.py.
 Verifies all three fixes are active.
 """
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import sys
-sys.path.insert(0, "R:/Startup research/Start up V2")
+sys.path.insert(0, f"{PROJECT_ROOT}")
 
 from ingestion.parse_tabular import extract_rows, parse_header, parse_single_block
 import pdfplumber
@@ -88,13 +94,13 @@ def run_on_pdf(path):
 
 def main():
     docs = {
-        "cse5_reg (VALIDATED)": "R:/Startup research/Start up V2/Results Dataset/cse 5 reg.pdf",
-        "AI-DS supply (VALIDATED)": "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Artificial Intelligence (AI) and Data Science)_3(DECEMBER_2025) - CR Report (1).pdf",
-        "127f859d": "R:/Startup research/Start up V2/Results Dataset/127f859d-372d-4367-862e-1a9147714a74.pdf",
-        "groupA": "R:/Startup research/Start up V2/Results Dataset/6757_results_groupA.pdf",
-        "groupB": "R:/Startup research/Start up V2/Results Dataset/6757_results_groupB.pdf",
-        "CSE_1 Apr2024": "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_1(APRIL_2024) - CR Report (2).pdf",
-        "CSE_2 May2025": "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_2(May_2025) - CR Report.pdf",
+        "cse5_reg (VALIDATED)": f"{PROJECT_ROOT}/Results Dataset/cse 5 reg.pdf",
+        "AI-DS supply (VALIDATED)": f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Artificial Intelligence (AI) and Data Science)_3(DECEMBER_2025) - CR Report (1).pdf",
+        "127f859d": f"{PROJECT_ROOT}/Results Dataset/127f859d-372d-4367-862e-1a9147714a74.pdf",
+        "groupA": f"{PROJECT_ROOT}/Results Dataset/6757_results_groupA.pdf",
+        "groupB": f"{PROJECT_ROOT}/Results Dataset/6757_results_groupB.pdf",
+        "CSE_1 Apr2024": f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_1(APRIL_2024) - CR Report (2).pdf",
+        "CSE_2 May2025": f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_2(May_2025) - CR Report.pdf",
     }
 
     grand_total = grand_passed = 0

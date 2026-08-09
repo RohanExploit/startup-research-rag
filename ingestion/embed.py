@@ -1,7 +1,13 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
+from utils.safe_store import save_embeddings
 import os
 import json
 import logging
-import pickle
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 
@@ -33,18 +39,14 @@ def process_chunk_embeddings(chunked_dir, embed_dir):
     texts = [c["page_content"] for c in all_chunks]
     
     embeddings = model.encode(texts, show_progress_bar=True)
-    
-    # Save the embeddings alongside their metadata
-    out_path = embed_dir / "embeddings.pkl"
-    with open(out_path, "wb") as f:
-        pickle.dump({
-            "chunks": all_chunks,
-            "embeddings": embeddings
-        }, f)
-        
-    logging.info(f"Saved {len(embeddings)} embeddings to {out_path}")
+
+    # Save in the safe .npy/.json format (no pickle). keep_pickle=True also writes
+    # embeddings.pkl for backward compat with any older reader still expecting it.
+    save_embeddings(embed_dir, all_chunks, embeddings, keep_pickle=True)
+
+    logging.info(f"Saved {len(embeddings)} embeddings to {embed_dir} (embeddings.npy + chunks.json)")
 
 if __name__ == "__main__":
-    chunked_dir = "R:/Startup research/Start up V2/data/tenants/tenant_1/chunked"
-    embed_dir = "R:/Startup research/Start up V2/data/tenants/tenant_1/embeddings"
+    chunked_dir = f"{PROJECT_ROOT}/data/tenants/tenant_1/chunked"
+    embed_dir = f"{PROJECT_ROOT}/data/tenants/tenant_1/embeddings"
     process_chunk_embeddings(chunked_dir, embed_dir)

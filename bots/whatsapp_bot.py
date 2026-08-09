@@ -1,4 +1,5 @@
 import os
+import secrets
 import logging
 import httpx
 import time
@@ -17,6 +18,16 @@ logging.basicConfig(level=logging.INFO)
 
 API_URL = "http://localhost:8000/query"
 RATE_LIMIT_SECONDS = 10
+WHATSAPP_WEBHOOK_SECRET = os.getenv("WHATSAPP_WEBHOOK_SECRET")
+
+if not WHATSAPP_WEBHOOK_SECRET:
+    # The real Open-WA/Meta send-API integration below is still a stub (see TODO
+    # in the handler), so we don't hard-fail startup yet -- but this must be set
+    # before this bot is pointed at a live, network-reachable WhatsApp integration.
+    logging.warning(
+        "WHATSAPP_WEBHOOK_SECRET is not set. /webhook will reject all requests "
+        "until it is configured. Set it in .env (e.g. via secrets.token_urlsafe(32))."
+    )
 
 app = FastAPI(title="WhatsApp Bot Webhook")
 auth_mgr = AllowlistManager()
@@ -29,7 +40,13 @@ class WhatsAppMessage(BaseModel):
     tenant_id: str = "tenant_1"
 
 @app.post("/webhook")
-async def whatsapp_webhook(msg: WhatsAppMessage):
+async def whatsapp_webhook(request: Request, msg: WhatsAppMessage):
+    # 0. Webhook Origin Verification
+    provided_secret = request.headers.get("X-Webhook-Secret", "")
+    if not WHATSAPP_WEBHOOK_SECRET or not secrets.compare_digest(provided_secret, WHATSAPP_WEBHOOK_SECRET):
+        logging.warning("Rejected WhatsApp webhook request with invalid or missing X-Webhook-Secret header.")
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
     # 1. Authorization Check
     if not auth_mgr.is_whatsapp_user_allowed(msg.tenant_id, msg.sender_number):
         logging.warning(f"Unauthorized WhatsApp access attempt from {msg.sender_number} for tenant {msg.tenant_id}")

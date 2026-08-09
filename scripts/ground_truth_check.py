@@ -1,5 +1,11 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import duckdb
-conn = duckdb.connect('R:/Startup research/Start up V2/data/tenants/tenant_1/tabular.duckdb', read_only=True)
+conn = duckdb.connect(f'{PROJECT_ROOT}/data/tenants/tenant_1/tabular.duckdb', read_only=True)
 
 print('=== students schema ===')
 print(conn.execute('DESCRIBE students').fetchall())

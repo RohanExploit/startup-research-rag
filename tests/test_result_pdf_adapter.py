@@ -18,3 +18,14 @@ def test_load_student_record_valid():
     assert hasattr(subject, "code")
     assert hasattr(subject, "credit")
     assert hasattr(subject, "grade_point")
+
+
+@pytest.mark.parametrize("bad_tenant", [
+    "../../etc", r"..\..\x", "/abs/path", "tenant_1/../tenant_2", "..", "bad tenant",
+])
+def test_load_student_record_rejects_traversal_tenant_id(bad_tenant):
+    # Security regression: tenant_id is validated before it is used to build the
+    # duckdb path, so a traversal attempt raises ValueError (never touches disk
+    # outside DATA_ROOT).
+    with pytest.raises(ValueError):
+        load_student_record(bad_tenant, "2267571242025")

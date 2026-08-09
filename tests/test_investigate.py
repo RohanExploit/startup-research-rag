@@ -1,10 +1,21 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
+import pytest
+pytest.skip(
+    "manual PDF-parsing diagnostic; depends on scripts/build_parser not on sys.path",
+    allow_module_level=True,
+)
 import pdfplumber
 import build_parser
 import json
 
 def investigate():
-    cse_pdf = "R:/Startup research/Start up V2/Results Dataset/cse 5 reg.pdf"
-    aids_pdf = "R:/Startup research/Start up V2/Results Dataset/Bachelor of Technology (Artificial Intelligence (AI) and Data Science)_3(DECEMBER_2025) - CR Report (1).pdf"
+    cse_pdf = f"{PROJECT_ROOT}/Results Dataset/cse 5 reg.pdf"
+    aids_pdf = f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Artificial Intelligence (AI) and Data Science)_3(DECEMBER_2025) - CR Report (1).pdf"
     
     # 1. Look for FAIL students
     print("--- FAIL STUDENTS ---")

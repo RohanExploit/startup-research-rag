@@ -1,3 +1,9 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import os
 import json
 import sqlite3
@@ -35,6 +41,11 @@ def _get_manifest_conn(tenant_dir: Path) -> sqlite3.Connection:
     manifest_db = tenant_dir / "manifest.db"
     conn = sqlite3.connect(manifest_db)
     conn.execute(MANIFEST_SCHEMA)
+    # CREATE TABLE IF NOT EXISTS is a no-op on manifest.db files created
+    # before the `flags` column was added — migrate those in place.
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(manifest)")}
+    if "flags" not in cols:
+        conn.execute("ALTER TABLE manifest ADD COLUMN flags TEXT")
     conn.commit()
     return conn
 
@@ -100,15 +111,15 @@ def check_table_broken(markdown_text):
 
 # ─── Main pipeline ─────────────────────────────────────────────────────────────
 
-def main(input_dir: str = "R:/Startup research/Start up V2/data/tenants/tenant_1/raw",
-         output_dir: str = "R:/Startup research/Start up V2/data/tenants/tenant_1/parsed"):
+def main(input_dir: str = f"{PROJECT_ROOT}/data/tenants/tenant_1/raw",
+         output_dir: str = f"{PROJECT_ROOT}/data/tenants/tenant_1/parsed"):
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Derive tenant dir from input_dir (two levels up from raw/)
     tenant_dir = input_dir.parent
-    val_log_path = Path("R:/Startup research/Start up V2/validation_log.md")
+    val_log_path = Path(f"{PROJECT_ROOT}/validation_log.md")
 
     converter = DocumentConverter()
     files = list(input_dir.iterdir())

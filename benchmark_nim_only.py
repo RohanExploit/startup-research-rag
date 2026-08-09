@@ -1,3 +1,9 @@
+import sys as _sys
+from pathlib import Path as _Path
+for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.parent):
+    if str(_p) not in _sys.path:
+        _sys.path.append(str(_p))
+from config import PROJECT_ROOT
 import json
 import time
 import requests
@@ -6,7 +12,7 @@ from openai import AsyncOpenAI
 import os
 from dotenv import load_dotenv
 
-load_dotenv("R:/Startup research/Start up V2/.env")
+load_dotenv(f"{PROJECT_ROOT}/.env")
 
 NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY")
 client = AsyncOpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=NVIDIA_API_KEY)
@@ -67,11 +73,11 @@ async def nim_generate(query: str, context: str):
         return str(e), time.time() - start
 
 async def main():
-    with open("R:/Startup research/Start up V2/data/tenants/tenant_2/chunked/SESSION-STUDENT-DETAILS-2_chunks.json", "r") as f:
+    with open(f"{PROJECT_ROOT}/data/tenants/tenant_2/chunked/SESSION-STUDENT-DETAILS-2_chunks.json", "r") as f:
         chunks1 = json.load(f)
-    with open("R:/Startup research/Start up V2/data/tenants/tenant_1/chunked/Indian_Students_Data_chunks.json", "r") as f:
+    with open(f"{PROJECT_ROOT}/data/tenants/tenant_1/chunked/Indian_Students_Data_chunks.json", "r") as f:
         chunks2 = json.load(f)
-    with open("R:/Startup research/Start up V2/data/tenants/tenant_2/chunked/2026 Rohan_Gaikwad - Copy_chunks.json", "r") as f:
+    with open(f"{PROJECT_ROOT}/data/tenants/tenant_2/chunked/2026 Rohan_Gaikwad - Copy_chunks.json", "r") as f:
         chunks3 = json.load(f)
         
     docs = [
