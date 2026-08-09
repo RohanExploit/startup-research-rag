@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 from utils.encryption import encrypt_file, decrypt_file
 
-def test_encryption():
+def run_encryption():
     original_file = Path("test_enc_original.txt")
     test_file = Path("test_enc_test.txt")
     dec_file = Path("test_enc_decrypted.txt")
@@ -22,4 +22,4 @@ def test_encryption():
     decrypt_file(test_file, dec_file)
 
 if __name__ == "__main__":
-    test_encryption()
+    run_encryption()

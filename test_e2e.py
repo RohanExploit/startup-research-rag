@@ -2,7 +2,7 @@ import httpx
 import asyncio
 import time
 
-async def test_app():
+async def run_app():
     print("Testing WhatsApp Bot Webhook...")
     
     # Wait for servers to start if this is run right after
@@ -24,4 +24,4 @@ async def test_app():
         print(f"Failed to reach webhook: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(test_app())
+    asyncio.run(run_app())

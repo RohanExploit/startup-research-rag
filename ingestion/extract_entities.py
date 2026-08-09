@@ -83,7 +83,7 @@ Output:"""
         try:
             return json.loads(response_text)
         except Exception as e:
-            logging.error(f"Failed to parse JSON from Local API. Raw output: {response_text}")
+            logging.error(f"Failed to parse JSON from Local API: {e}. Raw output: {response_text}")
             return {"nodes": [], "edges": []}
     except Exception as e:
         logging.error(f"Local API extraction failed: {e}")

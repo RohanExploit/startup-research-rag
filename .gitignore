@@ -30,3 +30,4 @@ manifest.db
 # --- Misc build/output ---
 *.log
 test_enc_*.txt
+.gstack/

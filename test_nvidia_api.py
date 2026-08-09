@@ -16,7 +16,7 @@ load_dotenv(project_root / ".env")
 
 from generation.answer import generate_answer
 
-async def test_nvidia_api():
+async def run_nvidia_api():
     print("Testing NVIDIA API via generate_answer...")
     context = "NVIDIA NIM provides highly optimized inference microservices for LLMs."
     query = "What is NVIDIA NIM?"
@@ -28,4 +28,4 @@ async def test_nvidia_api():
         print(f"Failed: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(test_nvidia_api())
+    asyncio.run(run_nvidia_api())
