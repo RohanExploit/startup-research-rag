@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import sys
 import httpx
 from pathlib import Path
@@ -11,6 +12,14 @@ import config
 from utils.logging_config import setup_logging
 
 setup_logging()
+
+# Roll numbers are 10-15 digits (see get_student_record). Masked out of the
+# prompt before it leaves the machine when config.LLM_PII_REDACTION is on.
+_ROLL_RE = re.compile(r"\b\d{10,15}\b")
+
+
+def _redact_pii(text: str) -> str:
+    return _ROLL_RE.sub("[ROLL]", text)
 
 # Ollama Configuration
 OLLAMA_API_URL = f"{config.OLLAMA_BASE_URL}/api/generate"
@@ -86,12 +95,22 @@ Answer:
         return response.json()["response"].strip()
     except Exception as e:
         logging.warning(f"Local Ollama generation failed: {e}. Attempting NVIDIA API fallback...")
+
+        if not config.ALLOW_EXTERNAL_LLM:
+            logging.warning(
+                "Ollama failed and external LLM egress is disabled (ALLOW_EXTERNAL_LLM=0); "
+                "returning local error."
+            )
+            return "Sorry, the local generation engine encountered an error and external LLM egress is disabled."
+
         nvidia_api_key = os.environ.get("NVIDIA_API_KEY")
         if not nvidia_api_key:
             logging.error("NVIDIA_API_KEY not found in environment variables. Fallback aborted.")
             return "Sorry, the local generation engine encountered an error and no fallback API key is configured."
-            
+
         try:
+            logging.warning("Falling back to EXTERNAL NVIDIA cloud API — prompt leaves the machine.")
+            outbound_prompt = _redact_pii(prompt) if config.LLM_PII_REDACTION else prompt
             # async-with so the fallback client's connection pool is closed even
             # on error (it was previously created per call and never closed).
             async with AsyncOpenAI(
@@ -101,7 +120,7 @@ Answer:
             ) as client:
                 completion = await client.chat.completions.create(
                     model="meta/llama-3.1-70b-instruct",
-                    messages=[{"role": "user", "content": prompt}],
+                    messages=[{"role": "user", "content": outbound_prompt}],
                     temperature=0.2,
                     max_tokens=1024,
                 )

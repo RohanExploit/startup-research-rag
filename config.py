@@ -139,6 +139,24 @@ def get_api_key() -> str:
     return os.environ.get("API_KEY", "").strip()
 
 
+# --------------------------------------------------------------------------
+# LLM egress / PII controls  (generation/answer.py)
+#
+# generation/answer.py answers non-TABULAR queries with a local Ollama model
+# and, on failure, falls back to NVIDIA's cloud API — sending the prompt
+# (which embeds document context that may contain student PII) off-machine.
+# These two knobs let a PII-sensitive deployment forbid that egress entirely,
+# or scrub obvious PII (roll numbers) out of the prompt before it leaves the
+# machine. Both default to preserving today's behavior unchanged.
+# --------------------------------------------------------------------------
+# Default ON preserves the current NVIDIA fallback; set 0 to forbid ALL
+# external cloud LLM egress (PII-sensitive deployments).
+ALLOW_EXTERNAL_LLM = _truthy(os.environ.get("ALLOW_EXTERNAL_LLM", "1"))
+# When ON, mask roll-number-like digit runs in the prompt before it leaves
+# the machine.
+LLM_PII_REDACTION = _truthy(os.environ.get("LLM_PII_REDACTION", "0"))
+
+
 # --- Text-to-SQL guardrails (retrieval/tabular_queries.py) ---
 # Row cap injected when the generated SQL has no LIMIT.
 SQL_ROW_LIMIT = int(os.environ.get("SQL_ROW_LIMIT", "200"))
