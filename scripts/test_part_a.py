@@ -30,7 +30,7 @@ async def main():
         print(f"\n{'='*60}")
         print(f"TEST: {label}")
         print(f"Query: {query!r}")
-        result = await get_student_by_name(query)
+        result = await get_student_by_name(query, "tenant_1")
         print(f"Output:\n{result}")
         if expected_roll:
             if expected_roll in result:

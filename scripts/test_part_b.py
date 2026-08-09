@@ -167,7 +167,7 @@ async def main():
 
         # ── Real SQL generation tests ─────────────────────────────────
         print(f"Query: {query}")
-        result = await generate_and_run_sql(query)
+        result = await generate_and_run_sql(query, "tenant_1")
         print(f"debug_sql: {result['debug_sql']}")
         print(f"answer (first 400 chars): {result['answer'][:400]}")
 

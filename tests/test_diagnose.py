@@ -22,7 +22,7 @@ async def main():
         
         # Test full end-to-end to see fuzzy match and DB pull
         t0 = time.time()
-        res = await get_student_by_name(q)
+        res = await get_student_by_name(q, "tenant_1")
         t1 = time.time()
         print(f"Full DB Lookup Latency (LLM + DB): {t1-t0:.2f}s")
         # Print a snippet of the result to verify success without flooding logs
@@ -42,7 +42,7 @@ async def main():
         
     print("\nEnd-to-End simulation of disambiguation (by overriding the DB locally):")
     # Instead of overriding DB, let's just query a known vague name like "Patil" or "Deshmukh" which surely exists multiple times in this dataset.
-    res = await get_student_by_name("lookup patil")
+    res = await get_student_by_name("lookup patil", "tenant_1")
     print("Result for 'lookup patil':")
     print(res)
 

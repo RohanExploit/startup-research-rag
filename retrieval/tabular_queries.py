@@ -13,19 +13,29 @@ from config import tenant_dir
 
 logger = logging.getLogger(__name__)
 
-# NOTE: this module is single-tenant by design (module-level global). Defaults to
-# tenant_1. Multi-tenant tabular needs a refactor to pass tenant_id per call.
-db_path = str(tenant_dir("tenant_1") / "tabular.duckdb")
+def get_connection(tenant_id: str):
+    """Read-only connection to the given tenant's tabular.duckdb.
 
-def get_connection():
-    return duckdb.connect(db_path, read_only=True)
-
-def get_average_sgpa(subject_code=None):
+    Raises FileNotFoundError with a clear message if the tenant has no
+    tabular data yet, rather than silently falling back to another
+    tenant's database.
     """
-    Returns the average SGPA. If a subject_code is provided, 
+    db_path = tenant_dir(tenant_id) / "tabular.duckdb"
+    if not db_path.exists():
+        raise FileNotFoundError(
+            f"No tabular/student data available for tenant '{tenant_id}'."
+        )
+    return duckdb.connect(str(db_path), read_only=True)
+
+def get_average_sgpa(subject_code=None, tenant_id: str = None):
+    """
+    Returns the average SGPA. If a subject_code is provided,
     returns the average SGPA of students who took that subject.
     """
-    conn = get_connection()
+    try:
+        conn = get_connection(tenant_id)
+    except FileNotFoundError as e:
+        return str(e)
     if subject_code:
         # Average SGPA of students taking this subject (they all might, but just in case)
         query = """
@@ -48,11 +58,14 @@ def get_average_sgpa(subject_code=None):
         return f"The average SGPA is {res[0]:.2f}"
     return "Could not calculate average SGPA."
 
-def count_failures(subject_code=None):
+def count_failures(subject_code=None, tenant_id: str = None):
     """
     Counts the number of failed students overall or in a specific subject.
     """
-    conn = get_connection()
+    try:
+        conn = get_connection(tenant_id)
+    except FileNotFoundError as e:
+        return str(e)
     if subject_code:
         query = """
             SELECT COUNT(*) FROM student_subjects
@@ -70,11 +83,14 @@ def count_failures(subject_code=None):
         conn.close()
         return f"There are {res[0]} total failed students."
 
-def list_students_below_sgpa(threshold: float):
+def list_students_below_sgpa(threshold: float, tenant_id: str = None):
     """
     Lists students with an SGPA strictly below the provided threshold.
     """
-    conn = get_connection()
+    try:
+        conn = get_connection(tenant_id)
+    except FileNotFoundError as e:
+        return str(e)
     query = """
         SELECT roll_no, name, sgpa 
         FROM students
@@ -92,11 +108,14 @@ def list_students_below_sgpa(threshold: float):
         lines.append(f"- {row[1]} (Roll: {row[0]}): SGPA {row[2]:.2f}")
     return "\n".join(lines)
 
-def get_student_record(roll_no: str):
+def get_student_record(roll_no: str, tenant_id: str = None):
     """
     Retrieves the complete record of a student given their roll number.
     """
-    conn = get_connection()
+    try:
+        conn = get_connection(tenant_id)
+    except FileNotFoundError as e:
+        return str(e)
     q_student = "SELECT name, sgpa, result, estimated_sgpa, total_marks, is_supply, seat_cancelled FROM students WHERE roll_no = ?"
     student = conn.execute(q_student, (roll_no,)).fetchone()
     
@@ -186,22 +205,25 @@ def fuzzy_find_student(extracted_name: str, all_db_names: list[tuple[str, str]],
             results.append((all_db_names[idx][0], match_name, score))
     return results
 
-async def get_student_by_name(name_query: str):
+async def get_student_by_name(name_query: str, tenant_id: str = None):
     """
     Searches for a student by name using LLM extraction and rapidfuzz.
     """
     extracted = await extract_student_identifier(name_query)
     roll_no_ext = extracted.get("roll_no")
     name_ext = extracted.get("name")
-    
+
     if roll_no_ext:
-        return get_student_record(str(roll_no_ext))
-        
+        return get_student_record(str(roll_no_ext), tenant_id)
+
     if not name_ext:
         return "Could not extract a valid student name or roll number from the query."
-        
-    conn = get_connection()
-    
+
+    try:
+        conn = get_connection(tenant_id)
+    except FileNotFoundError as e:
+        return str(e)
+
     # 1. Try robust tokenized search
     tokens = [t.strip() for t in name_ext.lower().split() if len(t.strip()) > 2]
     if tokens:
@@ -216,7 +238,7 @@ async def get_student_by_name(name_query: str):
         
         if len(exact_matches) == 1:
             conn.close()
-            return get_student_record(exact_matches[0][0])
+            return get_student_record(exact_matches[0][0], tenant_id)
         elif len(exact_matches) > 1 and len(exact_matches) <= 3:
             # Disambiguate exact matches
             conn.close()
@@ -244,7 +266,7 @@ async def get_student_by_name(name_query: str):
         is_clear_winner = True
         
     if is_clear_winner:
-        return get_student_record(matches[0][0])
+        return get_student_record(matches[0][0], tenant_id)
         
     # Disambiguation
     lines = [f"Did you mean one of these? (Extracted: '{name_ext}')"]
@@ -306,10 +328,13 @@ def _sanitize_sql(raw: str) -> tuple[str, str | None]:
     return sql, None
 
 
-def _execute_with_timeout(sql: str) -> tuple[list | None, list | None, str | None]:
+def _execute_with_timeout(sql: str, tenant_id: str = None) -> tuple[list | None, list | None, str | None]:
     """Runs sql against a fresh read-only connection, interrupting it after
     _QUERY_TIMEOUT_SECONDS. Returns (rows, columns, error_message)."""
-    conn = get_connection()
+    try:
+        conn = get_connection(tenant_id)
+    except FileNotFoundError as e:
+        return None, None, str(e)
     result_holder: dict = {}
 
     def _run():
@@ -390,7 +415,7 @@ async def _ask_llm_for_sql(prompt: str) -> str | None:
         return None
 
 
-async def generate_and_run_sql(raw_query: str) -> dict:
+async def generate_and_run_sql(raw_query: str, tenant_id: str = None) -> dict:
     """
     Uses LLM to generate DuckDB SQL for complex queries and executes it.
     On execution error, feeds the error back to the model once for a self-correction
@@ -420,7 +445,7 @@ async def generate_and_run_sql(raw_query: str) -> dict:
         }
 
     logger.info("generate_and_run_sql executing: %s", sql)
-    results, columns, error = await asyncio.to_thread(_execute_with_timeout, sql)
+    results, columns, error = await asyncio.to_thread(_execute_with_timeout, sql, tenant_id)
 
     if error:
         logger.warning("generate_and_run_sql DB error, retrying once: %s | sql=%r", error, sql)
@@ -440,7 +465,7 @@ async def generate_and_run_sql(raw_query: str) -> dict:
                     "debug_sql": retry_raw_sql,
                 }
             logger.info("generate_and_run_sql retry executing: %s", retry_sql)
-            results, columns, error = await asyncio.to_thread(_execute_with_timeout, retry_sql)
+            results, columns, error = await asyncio.to_thread(_execute_with_timeout, retry_sql, tenant_id)
             sql = retry_sql
 
         if error:
