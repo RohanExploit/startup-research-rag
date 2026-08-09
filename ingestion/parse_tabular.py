@@ -12,6 +12,7 @@ import duckdb
 from pathlib import Path
 import traceback
 from utils.logging_config import setup_logging
+from ingestion.record_schema import validate_parsed_record
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -316,7 +317,15 @@ def parse_tabular_data(pdf_paths):
                 for b in blocks:
                     try:
                         res = parse_single_block(b, subjects, exp_max, printed_sum)
-                        if res['passed_all']:
+                        violations = validate_parsed_record(res)
+                        if violations:
+                            logger.warning(
+                                f"[schema_violation] roll {res.get('roll_no')!r} quarantined: {violations}"
+                            )
+                            res["flags"].extend([f"schema:{v}" for v in violations])
+                            res["passed_all"] = False
+                            needs_review.append(res)
+                        elif res['passed_all']:
                             clean_records.append(res)
                         else:
                             needs_review.append(res)
