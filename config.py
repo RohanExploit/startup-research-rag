@@ -103,6 +103,13 @@ def safe_filename(name: str) -> str:
 # --------------------------------------------------------------------------
 DEFAULT_TENANT_ID = os.environ.get("DEFAULT_TENANT_ID", "tenant_1")
 
+# Ollama model id + base URL. Previously hardcoded and duplicated across
+# api/main.py, generation/answer.py, retrieval/router.py,
+# retrieval/tabular_queries.py, ingestion/extract_entities.py and
+# ingestion/summarize_communities.py — centralized here so it's set once.
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:4b-instruct-2507-q4_K_M")
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+
 # Seconds before an outbound LLM/API call is abandoned.
 API_TIMEOUT = float(os.environ.get("API_TIMEOUT", "60"))
 

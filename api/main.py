@@ -49,7 +49,7 @@ async def require_api_key(request: Request, x_api_key: str | None = Header(defau
         raise HTTPException(status_code=401, detail="Missing or invalid X-API-Key")
 
 logging.basicConfig(level=logging.INFO)
-OLLAMA_MODEL = "qwen3:4b-instruct-2507-q4_K_M"
+OLLAMA_MODEL = config.OLLAMA_MODEL
 
 routers = {}
 
@@ -94,9 +94,9 @@ async def lifespan(app: FastAPI):
         logging.error(f"Failed to eager load VectorSearch index: {e}")
         
     # 2. Warmup Ollama model to avoid first-query latency penalty
-    logging.info("Sending warmup query to Ollama (qwen3:4b-instruct-2507-q4_K_M)...")
+    logging.info(f"Sending warmup query to Ollama ({config.OLLAMA_MODEL})...")
     payload = {
-        "model": "qwen3:4b-instruct-2507-q4_K_M",
+        "model": config.OLLAMA_MODEL,
         "prompt": "Hello",
         "stream": False,
         "keep_alive": "10m",
@@ -104,7 +104,7 @@ async def lifespan(app: FastAPI):
     }
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            await client.post("http://127.0.0.1:11434/api/generate", json=payload)
+            await client.post(f"{config.OLLAMA_BASE_URL}/api/generate", json=payload)
             logging.info("Ollama model warmed up successfully.")
     except Exception as e:
         logging.warning(f"Ollama warmup failed (is the server running?): {e}")
@@ -132,7 +132,7 @@ def _get_ollama_status() -> dict:
     """Check if Ollama is reachable and return model + VRAM info."""
     try:
         import httpx as _httpx
-        r = _httpx.get("http://127.0.0.1:11434/", timeout=2.0)
+        r = _httpx.get(f"{config.OLLAMA_BASE_URL}/", timeout=2.0)
         ollama_ok = r.status_code < 400
     except Exception:
         ollama_ok = False

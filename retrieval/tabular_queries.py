@@ -10,6 +10,7 @@ from rapidfuzz import process, fuzz, utils
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from config import tenant_dir
+import config
 
 logger = logging.getLogger(__name__)
 
@@ -208,14 +209,14 @@ Query: "{raw_query}"
 Format: {{"name": "extracted name or null", "roll_no": "extracted roll number or null"}}"""
     
     payload = {
-        "model": "qwen3:4b-instruct-2507-q4_K_M",
+        "model": config.OLLAMA_MODEL,
         "prompt": prompt,
         "stream": False,
         "options": {"temperature": 0.0, "num_ctx": 2048}
     }
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            res = await client.post("http://127.0.0.1:11434/api/generate", json=payload)
+            res = await client.post(f"{config.OLLAMA_BASE_URL}/api/generate", json=payload)
             res.raise_for_status()
             text = res.json()["response"].strip()
             # Try to strip markdown code blocks if any
@@ -466,7 +467,7 @@ _SQL_GEN_RULES = (
 
 async def _ask_llm_for_sql(prompt: str) -> str | None:
     payload = {
-        "model": "qwen3:4b-instruct-2507-q4_K_M",
+        "model": config.OLLAMA_MODEL,
         "prompt": prompt,
         "stream": False,
         "keep_alive": "10m",
@@ -474,7 +475,7 @@ async def _ask_llm_for_sql(prompt: str) -> str | None:
     }
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            res = await client.post("http://127.0.0.1:11434/api/generate", json=payload)
+            res = await client.post(f"{config.OLLAMA_BASE_URL}/api/generate", json=payload)
             res.raise_for_status()
             return res.json()["response"].strip()
     except Exception as e:

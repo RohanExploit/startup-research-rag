@@ -4,6 +4,7 @@ for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.pa
     if str(_p) not in _sys.path:
         _sys.path.append(str(_p))
 from config import PROJECT_ROOT
+import config
 import json
 import logging
 from pathlib import Path
@@ -11,8 +12,8 @@ import requests
 
 logging.basicConfig(level=logging.INFO)
 
-OLLAMA_API_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "qwen3:4b-instruct-2507-q4_K_M"
+OLLAMA_API_URL = f"{config.OLLAMA_BASE_URL}/api/generate"
+MODEL_NAME = config.OLLAMA_MODEL
 
 def summarize_community(nodes):
     prompt = f"""

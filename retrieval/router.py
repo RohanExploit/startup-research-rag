@@ -1,15 +1,20 @@
 import asyncio
 import logging
 import re
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 from retrieval.vector_search import VectorSearch
 from retrieval.graph_traverse import GraphSearch
 from retrieval.community_search import CommunitySearch
 import httpx
 
+import config
+
 logging.basicConfig(level=logging.INFO)
 
-OLLAMA_API_URL = "http://127.0.0.1:11434/api/generate"
-MODEL_NAME = "qwen3:4b-instruct-2507-q4_K_M"
+OLLAMA_API_URL = f"{config.OLLAMA_BASE_URL}/api/generate"
+MODEL_NAME = config.OLLAMA_MODEL
 OLLAMA_KEEP_ALIVE = "10m"
 
 _http_client = httpx.AsyncClient(timeout=60.0)
