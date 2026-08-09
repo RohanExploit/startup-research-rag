@@ -42,6 +42,13 @@ TENANT_ID_PATTERN = re.compile(os.environ.get("TENANT_ID_PATTERN", r"^[A-Za-z0-9
 # Master switch for upload filename sanitizing.
 VALIDATE_FILENAMES = os.environ.get("VALIDATE_FILENAMES", "1") != "0"
 
+# Master switch for upload_id checks. Set env VALIDATE_UPLOAD_ID=0 to disable.
+VALIDATE_UPLOAD_ID = os.environ.get("VALIDATE_UPLOAD_ID", "1") != "0"
+
+# upload_id is always server-generated via uuid.uuid4() (see api/main.py
+# upload_file). What a legal upload_id looks like. Edit freely.
+UPLOAD_ID_PATTERN = re.compile(os.environ.get("UPLOAD_ID_PATTERN", r"^[0-9a-fA-F-]{36}$"))
+
 
 def validate_tenant_id(tenant_id: str) -> str:
     """
@@ -54,6 +61,21 @@ def validate_tenant_id(tenant_id: str) -> str:
     if not isinstance(tenant_id, str) or not TENANT_ID_PATTERN.match(tenant_id):
         raise ValueError(f"Invalid tenant_id: {tenant_id!r}")
     return tenant_id
+
+
+def validate_upload_id(upload_id: str) -> str:
+    """
+    Returns upload_id if it looks like a server-generated uuid4, else raises
+    ValueError. upload_id is used to build a filesystem path
+    (staging/<upload_id>/...), so a caller-supplied value like ".." must be
+    rejected before it reaches any mkdir/move/copy call. Disable via
+    VALIDATE_UPLOAD_ID=0 if you need to.
+    """
+    if not VALIDATE_UPLOAD_ID:
+        return upload_id
+    if not isinstance(upload_id, str) or not UPLOAD_ID_PATTERN.match(upload_id):
+        raise ValueError(f"Invalid upload_id: {upload_id!r}")
+    return upload_id
 
 
 def safe_filename(name: str) -> str:

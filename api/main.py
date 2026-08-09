@@ -16,7 +16,7 @@ from datetime import datetime
 from retrieval.router import QueryRouter
 from generation.answer import generate_answer
 from api.audit_router import router as audit_router
-from config import DATA_ROOT, validate_tenant_id, safe_filename, MAX_FILE_SIZE
+from config import DATA_ROOT, validate_tenant_id, validate_upload_id, safe_filename, MAX_FILE_SIZE
 
 logging.basicConfig(level=logging.INFO)
 OLLAMA_MODEL = "qwen3:4b-instruct-2507-q4_K_M"
@@ -27,6 +27,19 @@ def _require_tenant(tenant_id: str) -> str:
     """Validate a client-supplied tenant_id or raise HTTP 400 (blocks path traversal)."""
     try:
         return validate_tenant_id(tenant_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+def _require_upload_id(upload_id: str) -> str:
+    """Validate a client-supplied upload_id or raise HTTP 400 (blocks path traversal).
+
+    upload_id is always server-generated via uuid.uuid4() at /upload time, so
+    a value that doesn't match that shape (e.g. "..") is rejected before it
+    can be used to build staging_dir.
+    """
+    try:
+        return validate_upload_id(upload_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -202,7 +215,7 @@ async def query_documents(req: QueryRequest):
             "context_used": context_text,
             "metadata": metadata
         }
-        
+
     if not context_text:
         return {
             "query_type": qtype,
@@ -445,6 +458,7 @@ def _process_upload(upload_id: str, tenant_id: str, filename: str):
 
 @app.post("/upload/{upload_id}/process")
 def process_upload(upload_id: str, tenant_id: str, filename: str, background_tasks: BackgroundTasks):
+    upload_id = _require_upload_id(upload_id)
     tenant_id = _require_tenant(tenant_id)
     filename = safe_filename(filename)
     _check_upload_ownership(upload_id, tenant_id, filename)
@@ -454,6 +468,7 @@ def process_upload(upload_id: str, tenant_id: str, filename: str, background_tas
 
 @app.get("/upload/{upload_id}/status")
 def upload_status(upload_id: str, tenant_id: str, filename: str):
+    upload_id = _require_upload_id(upload_id)
     tenant_id = _require_tenant(tenant_id)
     filename = safe_filename(filename)
     _check_upload_ownership(upload_id, tenant_id, filename)
