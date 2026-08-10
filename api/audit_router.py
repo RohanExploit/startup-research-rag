@@ -30,8 +30,10 @@ def _require_admin(request: Request) -> None:
     admin-only. authenticate() (app-level) has already stashed the Principal;
     a tenant-scoped key must not read cross-tenant audit data. When the auth
     gate is off (dev), authenticate sets an admin principal, so this is a no-op."""
-    p = getattr(request.state, "principal", None) or Principal("admin")
-    if not p.is_admin:
+    p = getattr(request.state, "principal", None)
+    if p is None or not p.is_admin:
+        # Fail closed: unset principal (auth dependency didn't run) is treated
+        # as unauthorized, never as an implicit admin.
         raise HTTPException(status_code=403, detail="admin only")
 
 

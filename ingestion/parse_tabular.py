@@ -426,7 +426,24 @@ def store_in_duckdb(clean_records, needs_review, all_cancelled_seats, db_path):
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (r['roll_no'], sub['code'], sub['credit'], sub['grade'], sub['grade_point'], sub['raw']))
 
+        # needs_review.roll_no is a PRIMARY KEY, but a single ingest can legitimately
+        # surface the same roll twice (e.g. a regular + a supplementary record, or a
+        # mis-parsed duplicate). Collapse duplicates by roll_no — merging their flags —
+        # so a repeat can't raise a constraint violation that rolls back the ENTIRE
+        # ingest and leaves the tenant with zero updated rows.
+        deduped_review: dict = {}
         for r in needs_review:
+            existing = deduped_review.get(r['roll_no'])
+            if existing is None:
+                deduped_review[r['roll_no']] = dict(r)
+            else:
+                merged_flags = list(existing.get('flags') or [])
+                for f in (r.get('flags') or []):
+                    if f not in merged_flags:
+                        merged_flags.append(f)
+                existing['flags'] = merged_flags
+
+        for r in deduped_review.values():
             conn.execute("""
                 INSERT INTO needs_review (roll_no, name, flags, gap, derived_max, raw_block)
                 VALUES (?, ?, ?, ?, ?, ?)

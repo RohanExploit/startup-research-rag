@@ -13,8 +13,8 @@ from utils.logging_config import setup_logging
 
 setup_logging()
 
-OLLAMA_API_URL = f"{config.OLLAMA_BASE_URL}/api/generate"
-MODEL_NAME = config.OLLAMA_MODEL
+# Read Ollama model + base URL live from config at call time (not frozen into
+# module constants at import) so an env override or test monkeypatch applies.
 
 def summarize_community(nodes):
     prompt = f"""
@@ -23,14 +23,14 @@ Entities: {', '.join(nodes)}
     """
     
     payload = {
-        "model": MODEL_NAME,
+        "model": config.OLLAMA_MODEL,
         "prompt": prompt,
         "stream": False,
         "options": {"num_ctx": 2048}
     }
-    
+
     try:
-        response = requests.post(OLLAMA_API_URL, json=payload, timeout=120)
+        response = requests.post(f"{config.OLLAMA_BASE_URL}/api/generate", json=payload, timeout=120)
         response.raise_for_status()
         data = response.json()
         return data["response"].strip()

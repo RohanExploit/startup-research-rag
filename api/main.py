@@ -48,8 +48,11 @@ async def authenticate(request: Request, x_api_key: str | None = Header(default=
     # set custom request headers.
     presented = x_api_key or request.query_params.get("api_key")
 
-    if not config.get_api_key() and not api_keys_module._keys_path().exists():
-        # Gate demanded but no key configured anywhere — fail closed, never open.
+    if not config.get_api_key() and not api_keys_module._load_keys():
+        # Gate demanded but no USABLE key exists anywhere — fail closed, never
+        # open. Check _load_keys() (not just file existence): a present but
+        # empty/corrupt/all-invalid api_keys.json loads to [], which would
+        # otherwise 401 every request silently with no misconfig signal.
         raise HTTPException(
             status_code=500,
             detail="REQUIRE_API_KEY is set but no keys configured (server misconfig)",
@@ -141,11 +144,17 @@ app.add_middleware(
 
 
 def _principal(request: Request) -> Principal:
-    """Current caller's Principal. Defaults to admin when unset (gate-off/dev
-    path never populates request.state.principal via the authenticate 500/401
-    branches, but does set it in the dev-mode early return; this default keeps
-    any other unauthenticated code path open rather than crashing)."""
-    return getattr(request.state, "principal", Principal("admin"))
+    """Current caller's Principal. authenticate() (app-level dependency) always
+    populates request.state.principal before any endpoint runs — a real admin
+    in dev mode (gate off) or a resolved key otherwise; its 500/401 branches
+    raise before reaching here. If state is somehow unset (e.g. an endpoint not
+    covered by the dependency, or a middleware-ordering regression) we fail
+    CLOSED with a 401 rather than defaulting to admin (which would silently
+    grant full cross-tenant access)."""
+    p = getattr(request.state, "principal", None)
+    if p is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return p
 
 
 def _authorize_tenant(request: Request, tenant_id: str) -> None:
@@ -313,9 +322,17 @@ def health():
 def tenants_overview(request: Request):
     """Return all tenant directories with doc count, student count, manifest status.
     Non-admin (tenant-scoped) keys only see their own tenant."""
+    p = _principal(request)
     result = []
     if DATA_ROOT.exists():
-        for tenant_dir in sorted(DATA_ROOT.iterdir()):
+        # A tenant-scoped key only ever returns its own row, so scan just that one
+        # directory instead of opening every tenant's DBs and filtering afterward.
+        if p.is_admin:
+            scan_dirs = sorted(DATA_ROOT.iterdir())
+        else:
+            own = DATA_ROOT / p.tenant_id if p.tenant_id else None
+            scan_dirs = [own] if own and own.is_dir() else []
+        for tenant_dir in scan_dirs:
             if not tenant_dir.is_dir() or tenant_dir.name.startswith("{"):
                 continue
             raw_dir = tenant_dir / "raw"
@@ -352,7 +369,8 @@ def tenants_overview(request: Request):
                 "has_duckdb": has_duckdb,
                 "last_indexed": last_indexed,
             })
-    p = _principal(request)
+    # Defense-in-depth: scan is already scoped above, but re-filter in case an
+    # admin path ever widens it.
     if not p.is_admin:
         result = [t for t in result if t["id"] == p.tenant_id]
     return {"tenants": result}
@@ -362,9 +380,17 @@ def tenants_overview(request: Request):
 def review_queue(request: Request):
     """Return all records in the needs_review table across tenants.
     Non-admin (tenant-scoped) keys only see their own tenant's items."""
+    p = _principal(request)
     items = []
     if DATA_ROOT.exists():
-        for tenant_dir in sorted(DATA_ROOT.iterdir()):
+        # Scope the scan to the caller's own tenant DB when tenant-scoped, rather
+        # than opening every tenant's tabular.duckdb and discarding the rest.
+        if p.is_admin:
+            scan_dirs = sorted(DATA_ROOT.iterdir())
+        else:
+            own = DATA_ROOT / p.tenant_id if p.tenant_id else None
+            scan_dirs = [own] if own and own.is_dir() else []
+        for tenant_dir in scan_dirs:
             if not tenant_dir.is_dir() or tenant_dir.name.startswith("{"):
                 continue
             db_path = tenant_dir / "tabular.duckdb"
@@ -382,7 +408,7 @@ def review_queue(request: Request):
                     items.append(item)
             except Exception:
                 pass
-    p = _principal(request)
+    # Defense-in-depth: scan is already scoped above.
     if not p.is_admin:
         items = [i for i in items if i["tenant_id"] == p.tenant_id]
     return {"items": items, "total": len(items)}

@@ -13,17 +13,22 @@ from utils.logging_config import setup_logging
 
 setup_logging()
 
-# Roll numbers are 10-15 digits (see get_student_record). Masked out of the
-# prompt before it leaves the machine when config.LLM_PII_REDACTION is on.
-_ROLL_RE = re.compile(r"\b\d{10,15}\b")
+# Roll numbers are bare 10-15 digit tokens (see get_student_record). Masked out
+# of the prompt before it leaves the machine when config.LLM_PII_REDACTION is on.
+# The lookarounds reject runs that are part of a longer/decimal/grouped number
+# (e.g. "123456789012.50" or "1,234,567,890") so legitimate monetary or measured
+# values in the context aren't clipped to [ROLL] — real roll numbers, which are
+# always standalone digit tokens, are still masked.
+_ROLL_RE = re.compile(r"(?<![\d.,])\d{10,15}(?![\d.,])")
 
 
 def _redact_pii(text: str) -> str:
     return _ROLL_RE.sub("[ROLL]", text)
 
-# Ollama Configuration
-OLLAMA_API_URL = f"{config.OLLAMA_BASE_URL}/api/generate"
-MODEL_NAME = config.OLLAMA_MODEL
+# Ollama model + base URL are read live from config at call time (in
+# generate_answer) rather than snapshotted into module constants at import, so an
+# env override or a test monkeypatch of config.OLLAMA_* takes effect without
+# re-importing this module — matching how retrieval/tabular_queries.py reads them.
 OLLAMA_KEEP_ALIVE = "10m"
 
 # Lazily create the shared client on first use so it binds to the running event
@@ -82,7 +87,7 @@ Answer:
         """
     
     payload = {
-        "model": MODEL_NAME,
+        "model": config.OLLAMA_MODEL,
         "prompt": prompt,
         "stream": False,
         "keep_alive": OLLAMA_KEEP_ALIVE,
@@ -90,7 +95,7 @@ Answer:
     }
 
     try:
-        response = await _get_http_client().post(OLLAMA_API_URL, json=payload)
+        response = await _get_http_client().post(f"{config.OLLAMA_BASE_URL}/api/generate", json=payload)
         response.raise_for_status()
         return response.json()["response"].strip()
     except Exception as e:
