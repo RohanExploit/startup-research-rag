@@ -6,7 +6,6 @@ for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.pa
 from config import PROJECT_ROOT
 import json
 import time
-import requests
 import asyncio
 from openai import AsyncOpenAI
 import os
@@ -79,13 +78,13 @@ async def main():
         chunks2 = json.load(f)
     with open(f"{PROJECT_ROOT}/data/tenants/tenant_2/chunked/2026 Rohan_Gaikwad - Copy_chunks.json", "r") as f:
         chunks3 = json.load(f)
-        
+
     docs = [
         ("SESSION-STUDENT-DETAILS-2.xlsx (Chunk 1)", chunks1[1]["page_content"]),
         ("Indian_Students_Data (Chunk 1)", chunks2[1]["page_content"]),
         ("2026 Rohan_Gaikwad - Copy (Chunk 1)", chunks3[1]["page_content"])
     ]
-    
+
     print("### 3. For each document, report side by side:")
     for name, text in docs:
         print(f"Document: {name}")
@@ -95,14 +94,14 @@ async def main():
         n_entities = [n.get("id", "") for n in n_ans.get("nodes", [])] if isinstance(n_ans, dict) else str(n_ans)
         print(f"llama-3.1-70b - Latency: {n_lat:.2f}s | Entities extracted: {n_entities} | Correct? [Evaluate this]")
         print()
-        
+
     print("### 4. Also run 3 real user-style queries against both")
     queries = [
         ("search for gaikwad rohan vijay", chunks3[1]["page_content"]),
         ("lookup patil", chunks2[1]["page_content"]),
         ("what is the gender and caste of SAGEETA GROVER?", chunks1[1]["page_content"])
     ]
-    
+
     for query, context in queries:
         print(f"Query: {query}")
         print(f"qwen3:4b - Latency: N/A (Model purged) | Answer: N/A")

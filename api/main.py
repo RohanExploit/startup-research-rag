@@ -11,7 +11,6 @@ import logging
 import httpx
 import sqlite3
 import subprocess
-import os
 from datetime import datetime
 
 from retrieval.router import QueryRouter
@@ -98,7 +97,7 @@ def get_router(tenant_id: str) -> QueryRouter:
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     logging.info("FastAPI starting up: warming up models...")
-    
+
     # 1. Eagerly load/warmup SentenceTransformer and index for default tenant
     try:
         default_router = get_router("tenant_1")
@@ -107,7 +106,7 @@ async def lifespan(app: FastAPI):
             default_router.vs.load_index()
     except Exception as e:
         logging.error(f"Failed to eager load VectorSearch index: {e}")
-        
+
     # 2. Warmup Ollama model to avoid first-query latency penalty
     logging.info(f"Sending warmup query to Ollama ({config.OLLAMA_MODEL})...")
     payload = {
@@ -260,7 +259,7 @@ async def admin_status(request: Request):
 class QueryRequest(BaseModel):
     query: str
     tenant_id: str
-    
+
 class QueryResponse(BaseModel):
     query_type: str
     answer: str
@@ -279,7 +278,7 @@ async def query_documents(req: QueryRequest, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load tenant data: {e}")
-        
+
     qtype, context, metadata = await tenant_router.route_query(req.query)
     context_text = str(context).strip()
 
@@ -304,7 +303,7 @@ async def query_documents(req: QueryRequest, request: Request):
         )
 
     answer = await generate_answer(req.query, context, qtype)
-    
+
     return QueryResponse(
         query_type=qtype,
         answer=answer,
@@ -522,19 +521,19 @@ def _process_upload(upload_id: str, tenant_id: str, filename: str):
     parsed_dir = staging_dir / "parsed"
     raw_dir.mkdir(exist_ok=True)
     parsed_dir.mkdir(exist_ok=True)
-    
+
     file_path = staging_dir / filename
     raw_file_path = raw_dir / filename
     if file_path.exists():
         shutil.move(str(file_path), str(raw_file_path))
-    
+
     tenant_dir = DATA_ROOT / tenant_id
     manifest_conn = _get_manifest_conn(tenant_dir)
-    
+
     try:
         # Run parse.py main() which will process everything in raw_dir
         parse_main(input_dir=str(raw_dir), output_dir=str(parsed_dir))
-        
+
         md_file = parsed_dir / f"{raw_file_path.stem}.md"
         if md_file.exists():
             # Get actual hash and size from the temporary manifest created by parse.py
@@ -545,20 +544,20 @@ def _process_upload(upload_id: str, tenant_id: str, filename: str):
                 ).fetchone()
             finally:
                 staging_conn.close()
-            
+
             # Move to live tenant
             live_raw_dir = tenant_dir / "raw"
             live_parsed_dir = tenant_dir / "parsed"
             live_raw_dir.mkdir(exist_ok=True)
             live_parsed_dir.mkdir(exist_ok=True)
-            
+
             shutil.copy2(str(raw_file_path), str(live_raw_dir / filename))
             shutil.copy2(str(md_file), str(live_parsed_dir / f"{raw_file_path.stem}.md"))
-            
+
             if staging_row:
                 import json
                 flags = json.loads(staging_row[1]) if staging_row[1] else []
-                _manifest_update(manifest_conn, filename, staging_row[0], "SUCCESS", 
+                _manifest_update(manifest_conn, filename, staging_row[0], "SUCCESS",
                                  flags=flags, file_size_bytes=staging_row[2])
             else:
                 _manifest_update(manifest_conn, filename, "unknown", "SUCCESS")
@@ -595,7 +594,7 @@ def upload_status(upload_id: str, tenant_id: str, filename: str, request: Reques
             "SELECT parse_status, error_message FROM manifest WHERE doc_id = ?", (filename,)
         ).fetchone()
         manifest_conn.close()
-        
+
         if row:
             return {"status": row[0], "error": row[1]}
         return {"status": "UNKNOWN", "error": "Not found in manifest"}

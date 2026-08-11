@@ -3,8 +3,6 @@ PDF Factory — programmatically generate test PDFs for audit fixtures.
 Requires: reportlab, pypdf, Pillow
 """
 from pathlib import Path
-import struct
-import os
 
 
 def _check_reportlab():
@@ -110,10 +108,10 @@ def make_duplicate_pdf(src: Path, dst: Path) -> Path:
 
 def _minimal_pdf(path: Path, text: str):
     """Bare-minimum hand-crafted PDF (no reportlab dependency)."""
-    body = f"BT /F1 12 Tf 72 750 Td ({text[:200]}) Tj ET"
-    stream = body.encode()
     offsets = []
     buf = b"%PDF-1.4\n"
+    body = f"BT /F1 12 Tf 72 750 Td ({text[:200]}) Tj ET"
+    stream = body.encode()
     offsets.append(len(buf))
     buf += (
         b"1 0 obj\n<</Type /Catalog /Pages 2 0 R>>\nendobj\n"

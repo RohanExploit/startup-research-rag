@@ -5,7 +5,6 @@ Pass criterion: 0 silent failures. Every bad document must produce an explicit
                 error record in the manifest DB.
 """
 import hashlib
-import sqlite3
 import pytest
 from pathlib import Path
 
@@ -22,9 +21,9 @@ from audit.utils.pdf_factory import (
     make_duplicate_pdf,
 )
 from audit.utils.tenant_factory import (
+    seed_manifest,
     create_tenant,
     destroy_tenant,
-    seed_manifest,
     read_manifest,
 )
 

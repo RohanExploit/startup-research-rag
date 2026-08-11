@@ -9,7 +9,7 @@ async def run_live():   # renamed from test_live: manual script, needs API on :8
         "lookup patil",
         "23063181242002" # Follow up for patil
     ]
-    
+
     async with httpx.AsyncClient(timeout=30.0) as client:
         for q in queries:
             print(f"\nUser: {q}")

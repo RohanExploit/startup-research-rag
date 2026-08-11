@@ -1,8 +1,6 @@
-import os
 import sys
 import logging
 import faiss
-import numpy as np
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -26,11 +24,11 @@ class VectorSearch:
         self.embed_dir = tenant_dir(tenant_id) / "embeddings"
         self.faiss_path = self.embed_dir / "faiss.index"
         self.data_path = self.embed_dir / "embeddings.pkl"
-        
+
         self.index = None
         self.chunks = None
         self.model = None
-        
+
         self.load_index()
 
     def load_index(self):
@@ -73,9 +71,9 @@ class VectorSearch:
             query_vec = self.model.encode([query])
             faiss.normalize_L2(query_vec)
             self._query_cache[query] = query_vec
-        
+
         distances, indices = self.index.search(query_vec, top_k)
-        
+
         results = []
         for i, idx in enumerate(indices[0]):
             if idx == -1:
@@ -86,7 +84,7 @@ class VectorSearch:
                 "metadata": chunk["metadata"],
                 "score": float(distances[0][i])
             })
-            
+
         return results
 
 if __name__ == "__main__":

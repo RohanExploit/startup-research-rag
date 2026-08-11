@@ -16,18 +16,18 @@ def test_query(query_text):
     print(f"=======================================================")
     
     req = urllib.request.Request(
-        API_URL, 
-        data=json.dumps({"query": query_text, "tenant_id": "tenant_1"}).encode("utf-8"), 
+        API_URL,
+        data=json.dumps({"query": query_text, "tenant_id": "tenant_1"}).encode("utf-8"),
         headers={"Content-Type": "application/json"}
     )
-    
+
     start_time = time.time()
     try:
         # Increase timeout to 120s to allow Ollama generation to finish
         with urllib.request.urlopen(req, timeout=120) as r:
             res = json.loads(r.read().decode())
             elapsed = time.time() - start_time
-            
+
             print(f"CLASSIFICATION: {res.get('query_type')}")
             print(f"TIME TAKEN: {elapsed:.2f}s")
             print(f"-------------------------------------------------------")

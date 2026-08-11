@@ -42,7 +42,7 @@ for edge in data.get('edges', []):
     # Remap logic
     source_chunks = node_to_chunk.get(edge.get('source', ''), set())
     target_chunks = node_to_chunk.get(edge.get('target', ''), set())
-    
+
     # Intersection first, if they both appeared in the same chunk
     intersect = source_chunks.intersection(target_chunks)
     if intersect:
@@ -60,14 +60,14 @@ for edge in data.get('edges', []):
         file_data[fname]['edges'].append(edge)
 
 real_files = [
-    '1 RAG-MicroSim_ A Hybrid Retrieval-Augmented Generation and Market Micro-Simulation Framework for High-Frequency Trading Analysis_chunks.json', 
-    'Final  Resarch paper_chunks.json', 
+    '1 RAG-MicroSim_ A Hybrid Retrieval-Augmented Generation and Market Micro-Simulation Framework for High-Frequency Trading Analysis_chunks.json',
+    'Final  Resarch paper_chunks.json',
     'DOC-20260212-WA0018._chunks.json'
 ]
 synth_files = [
-    'HR_Policy_01_chunks.json', 
-    'Financial_Report_01_chunks.json', 
-    'Project_Proposal_01_chunks.json', 
+    'HR_Policy_01_chunks.json',
+    'Financial_Report_01_chunks.json',
+    'Project_Proposal_01_chunks.json',
     'Quarterly_Review_01_chunks.json'
 ]
 

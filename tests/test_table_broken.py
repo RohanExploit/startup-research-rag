@@ -10,7 +10,7 @@ from ingestion.parse import check_table_broken
 
 def main():
     print("=== Testing check_table_broken() ===")
-    
+
     clean_table = """# Some Markdown
 Here is a table:
 | Header 1 | Header 2 | Header 3 |
@@ -43,10 +43,10 @@ Wait, | what if there are multiple | ?
     print(f"Broken Table (Expect True): {check_table_broken(broken_table)}")
     print(f"No Table (Expect False): {check_table_broken(no_table)}")
     print(f"Docx False Positive (Expect True, because it lacks --|--): {check_table_broken(docx_false_positive)}")
-    
+
     # Wait, what if docx false positive has a pipe but is NOT a table?
     # Our function requires --|-- if | is present, otherwise it returns True (broken).
     # This means any doc with | but no table is flagged as broken table.
-    
+
 if __name__ == "__main__":
     main()

@@ -18,14 +18,14 @@ def main():
     # if raw_dir.exists():
     #     shutil.rmtree(raw_dir)
     raw_dir.mkdir(parents=True, exist_ok=True)
-    
+
     print("1. Copying real office documents from Dataset/...")
     dataset_dir = Path(f"{PROJECT_ROOT}/Dataset")
     extensions = ("*.docx", "*.xlsx", "*.pptx", "*.pdf")
     real_docs = []
     for ext in extensions:
         real_docs.extend(glob.glob(str(dataset_dir / ext)))
-    
+
     for doc in real_docs:
         shutil.copy(doc, raw_dir / os.path.basename(doc))
         print(f"Copied {os.path.basename(doc)}")
@@ -54,17 +54,17 @@ def main():
             extract_dir = raw_dir / "kaggle_temp"
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_dir)
-            
+
             # Get all pdfs
             all_pdfs = glob.glob(str(extract_dir / "**" / "*.pdf"), recursive=True)
             print(f"Found {len(all_pdfs)} Kaggle PDFs.")
-            
+
             # Sample 20
             sampled = random.sample(all_pdfs, min(20, len(all_pdfs)))
             for pdf in sampled:
                 shutil.copy(pdf, raw_dir / f"kaggle_{os.path.basename(pdf)}")
                 print(f"Sampled {os.path.basename(pdf)}")
-            
+
             # Clean up zip and temp
             os.remove(zip_path)
             shutil.rmtree(extract_dir)

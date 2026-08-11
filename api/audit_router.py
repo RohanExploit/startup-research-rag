@@ -9,7 +9,6 @@ Endpoints:
 import json
 import time
 import asyncio
-import hashlib
 import logging
 import sqlite3
 from pathlib import Path
@@ -18,9 +17,7 @@ from typing import AsyncGenerator
 
 from fastapi import APIRouter, Query, Request, HTTPException, Depends
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 
-from auth.api_keys import Principal
 
 logger = logging.getLogger("audit.api")
 
@@ -221,11 +218,11 @@ def _check_extraction_verification() -> list[dict]:
         import duckdb
         import sys
         from pathlib import Path
-        
+
         project_root = Path(__file__).resolve().parent.parent
         if str(project_root) not in sys.path:
             sys.path.insert(0, str(project_root))
-            
+
         from adapters.result_pdf_adapter import load_student_record
         db_candidates = list(DATA_ROOT.glob("*/tabular.duckdb"))
         if not db_candidates:
@@ -248,14 +245,14 @@ def _check_extraction_verification() -> list[dict]:
                 student = load_student_record(tenant_id, roll_no)
             except Exception:
                 continue
-                
+
             if not student.subjects:
                 continue
-                
+
             total_cr = sum(s.credit for s in student.subjects)
             if total_cr == 0:
                 continue
-                
+
             computed = round(sum(s.grade_point for s in student.subjects) / total_cr, 2)
             checked += 1
             if abs(computed - stored_sgpa) > 0.05:   # 0.05 tolerance for rounding

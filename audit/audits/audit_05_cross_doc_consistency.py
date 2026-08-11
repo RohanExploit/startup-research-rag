@@ -7,7 +7,6 @@ Pass criterion: All conflicts surfaced, none silently merged.
 import pytest
 import duckdb
 from pathlib import Path
-from datetime import date
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))

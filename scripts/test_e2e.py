@@ -1,20 +1,19 @@
 import httpx
 import asyncio
-import time
 
 async def run_app():
     print("Testing WhatsApp Bot Webhook...")
-    
+
     # Wait for servers to start if this is run right after
-    
+
     webhook_url = "http://127.0.0.1:8001/webhook"
-    
+
     payload = {
         "sender_number": "whatsapp_user_456",
         "text": "What is the capital of France?",
         "tenant_id": "tenant_1"
     }
-    
+
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(webhook_url, json=payload)

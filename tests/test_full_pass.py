@@ -40,19 +40,19 @@ def parse_header(rows):
             if m:
                 total_marks_str = m.group(1)
             break
-            
+
     if subject_row_idx == -1:
         return None, 0, 0
-        
+
     expected_total_max = int(total_marks_str) if total_marks_str else 0
-    
+
     subject_row = rows[subject_row_idx]
     for w in subject_row:
         if "Total" in w['text']:
             break
         if re.match(r'^[A-Z0-9]+$', w['text']):
             subjects.append({"code": w['text'], "x0": w['x0'], "x1": w['x1'], "credit": 0})
-            
+
     credit_row = rows[subject_row_idx + 1]
     credit_text = " ".join([w['text'] for w in credit_row])
     if "CREDIT" in credit_text:
@@ -61,7 +61,7 @@ def parse_header(rows):
             if re.match(r'^\d+$', w['text']):
                 closest = min(subjects, key=lambda s: abs(s['x0'] - w['x0']))
                 closest['credit'] = int(w['text'])
-                
+
     # Find sum of printed max marks in TOTAL row
     printed_max_sum = 0
     for r in rows:
@@ -75,7 +75,7 @@ def parse_header(rows):
                     if parts[0].isdigit():
                         printed_max_sum += int(parts[0])
             break
-            
+
     return subjects, expected_total_max, printed_max_sum
 
 def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
@@ -84,21 +84,21 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
     parts = r0_text.split()
     roll_no = parts[0]
     result_status = parts[-1]
-    
+
     name_parts = []
     for p in parts[1:-1]:
         if re.match(r'^\d{4,5}$', p):
             break
         name_parts.append(p)
     name = " ".join(name_parts)
-    
+
     is_supply = False
     last_row_text = " ".join([w['text'] for w in block[-1]])
     if "Winter -" in last_row_text or "Summer -" in last_row_text:
         is_supply = True
-        
+
     grade_row_idx = -2 if is_supply else -1
-    
+
     # R1 SGPA
     r1_text = " ".join([w['text'] for w in block[1]])
     r1_parts = r1_text.split()
@@ -109,24 +109,24 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
             sgpa = float(last_val)
     except:
         pass
-        
+
     total_marks = 0
     if len(block) >= 5:
         r4_text = " ".join([w['text'] for w in block[4]])
         r4_parts = r4_text.split()
         if r4_parts and r4_parts[0].isdigit():
             total_marks = int(r4_parts[0])
-            
+
     grades_row = block[grade_row_idx]
     grades_tokens = [w['text'] for w in grades_row if w['text'] != '|']
-    
+
     student_subjects = []
     for i, sub in enumerate(subjects):
         grade_str = grades_tokens[i] if i < len(grades_tokens) else "0/FF/0"
-        
+
         # Strip grace marks suffix e.g. (G-3) before processing
         grade_str = re.sub(r'\(G-\d+\)', '', grade_str)
-        
+
         pts = 0.0
         g = "FF"
         if "/" in grade_str:
@@ -139,18 +139,18 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
                     pass
         elif grade_str == "AU":
             g = "AU"
-            
+
         student_subjects.append({
             "code": sub['code'],
             "credit": sub['credit'],
             "grade": g,
             "grade_points": pts
         })
-        
+
     calc_points = sum([s['grade_points'] for s in student_subjects])
     registered_credits = sum([s['credit'] for s in student_subjects if s['grade'] != 'AU'])
     calc_sgpa = round(calc_points / registered_credits, 2) if registered_credits > 0 else 0.0
-    
+
     # SGPA validation
     sgpa_match = True
     if result_status == 'PASS':
@@ -162,7 +162,7 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
             # We don't fail validation if it IS printed, we just say it's valid if they match or it's absent
             if abs(calc_sgpa - sgpa) > 0.05:
                 sgpa_match = False
-                
+
     # Total marks validation
     # Subject TOTALs are 2 rows above grades row in 9/10-row blocks?
     # Actually it's block[7] in AI/DS supply (10 row) and block[7] in regular (9 row) ?
@@ -171,39 +171,39 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
     # In supply, block[9] is semester, block[8] is grades, block[7] is totals.
     # Actually block[grade_row_idx - 1] is the `|` separator.
     # block[grade_row_idx - 2] is the TOTALs!
-    # Let's check regular: block[8] is grades. block[7] is totals. So grade_row_idx - 1. 
+    # Let's check regular: block[8] is grades. block[7] is totals. So grade_row_idx - 1.
     # Wait, earlier regular: R6 is MID, R7 is `|`, R8 is TOTAL per subject, R9 is Grades!
     # Oh! My previous code said `block[7]` (which is row 8 if 0-indexed).
     # Let's use `grade_row_idx - 1` as it was `totals_row = block[7]` for both. Wait!
-    # HAJARE: 9 rows (block has 9 elements). grades is 8. totals is 7. grade_row_idx is -1. 
+    # HAJARE: 9 rows (block has 9 elements). grades is 8. totals is 7. grade_row_idx is -1.
     # AI/DS: 10 rows. grades is 8. totals is 7. grade_row_idx is -2.
-    totals_row = block[grade_row_idx - 1] 
+    totals_row = block[grade_row_idx - 1]
     if len([w for w in totals_row if w['text'] == '|']) > 0 and len(totals_row) < 3:
         # If it's just the `|` separator, then totals might be grade_row_idx - 2
         totals_row = block[grade_row_idx - 2]
-        
+
     totals_tokens = [w['text'] for w in totals_row if w['text'] != '|']
     calc_total_marks = 0
     for t in totals_tokens:
         t_clean = t.replace("(", "").replace(")", "").strip()
         if t_clean.isdigit():
             calc_total_marks += int(t_clean)
-            
+
     marks_match = (calc_total_marks == total_marks)
     token_count_match = (len(grades_tokens) == len(subjects))
-    
+
     gap = total_marks - calc_total_marks
     derived_max = expected_total_max - printed_max_sum
-    
+
     gap_exceeds = False
     unverifiable = False
-    
+
     if not marks_match:
         if gap > derived_max or gap < 0:
             gap_exceeds = True
         elif gap > 0 and derived_max > 0:
             unverifiable = True
-            
+
     # Compile flags
     flags = []
     if not sgpa_match: flags.append("sgpa_mismatch")
@@ -211,7 +211,7 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
     elif unverifiable: flags.append("unverifiable_unscored_subject_present")
     elif not marks_match: flags.append("marks_mismatch_other")
     if not token_count_match: flags.append("token_count_mismatch")
-    
+
     return {
         "roll_no": roll_no,
         "name": name,
@@ -228,7 +228,7 @@ def main():
         f"{PROJECT_ROOT}/Results Dataset/cse 5 reg.pdf",
         f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Artificial Intelligence (AI) and Data Science)_3(DECEMBER_2025) - CR Report (1).pdf"
     ]
-    
+
     stats = {
         "total_parsed": 0,
         "passed_all": 0,
@@ -244,9 +244,9 @@ def main():
         "pages_parsed": 0,
         "pdf_stats": {}
     }
-    
+
     roll_pattern = re.compile(r'^\d{10,15}$')
-    
+
     for path in pdfs:
         with pdfplumber.open(path) as pdf:
             stats["pdf_stats"][path] = len(pdf.pages)
@@ -257,28 +257,28 @@ def main():
                 subjects, exp_max, printed_sum = parse_header(rows)
                 if not subjects:
                     continue
-                    
+
                 blocks = []
                 cur_block = []
                 for r in rows:
                     if not r: continue
                     text = " ".join([w['text'] for w in r])
                     first_word = r[0]['text']
-                    
+
                     footer_markers = ["GRADE:", "Note :-", "AOO =", "Print By", "Cancel Seat No's"]
                     if any(text.startswith(m) for m in footer_markers):
                         if cur_block:
                             blocks.append(cur_block)
                             cur_block = []
                         continue
-                        
+
                     if roll_pattern.match(first_word) and ("PASS" in text or "FAIL" in text):
                         if cur_block: blocks.append(cur_block)
                         cur_block = [r]
                     elif cur_block:
                         cur_block.append(r)
                 if cur_block: blocks.append(cur_block)
-                
+
                 for b in blocks:
                     stats["total_parsed"] += 1
                     try:
@@ -288,7 +288,7 @@ def main():
                         else:
                             for f in res['flags']:
                                 stats["flags"][f] += 1
-                                
+
                             # If the failure is NOT just 'unverifiable_unscored_subject_present' (which we expect for AI/DS)
                             # or 'gap_exceeds_max_possible' (maybe?), we capture it as an anomaly to report.
                             if len(res['flags']) > 1 or ('unverifiable_unscored_subject_present' not in res['flags']):
@@ -310,7 +310,7 @@ def main():
     for k, v in stats['flags'].items():
         if v > 0:
             print(f"  - {k}: {v}")
-            
+
     print(f"\nTotal Anomalous Needs-Review Cases: {len(stats['anomalous_blocks'])}")
     # Print all anomalies
     for i, a in enumerate(stats['anomalous_blocks']):

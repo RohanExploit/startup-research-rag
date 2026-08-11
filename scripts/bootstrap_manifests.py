@@ -4,7 +4,6 @@ Run once: python scripts/bootstrap_manifests.py
 """
 import sqlite3
 import hashlib
-import os
 from pathlib import Path
 
 DATA_ROOT = Path(__file__).resolve().parent.parent / "data" / "tenants"
@@ -48,7 +47,7 @@ def bootstrap_tenant(tenant_dir: Path):
             ).fetchone()
             if not existing:
                 conn.execute(
-                    """INSERT INTO manifest 
+                    """INSERT INTO manifest
                        (doc_id, file_hash, parse_status, last_indexed_at, file_size_bytes)
                        VALUES (?, ?, 'SUCCESS', datetime('now'), ?)""",
                     (f.name, file_hash, size)

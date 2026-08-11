@@ -60,7 +60,7 @@ async def whatsapp_webhook(request: Request, msg: WhatsAppMessage):
         logging.info(f"Rate limiting WhatsApp user {msg.sender_number}")
         # Return 200 so the WA server doesn't retry, but we drop the message processing
         return {"status": "rate_limited", "message": "Please wait before sending another message."}
-    
+
     user_last_message_time[msg.sender_number] = now
 
     # 3. Forward to Main API
@@ -72,12 +72,12 @@ async def whatsapp_webhook(request: Request, msg: WhatsAppMessage):
             })
             response.raise_for_status()
             data = response.json()
-            
+
             answer = data.get("answer", "No answer generated.")
-            
+
             # Format message for WhatsApp (plain text, maybe some basic formatting)
             whatsapp_reply = f"*{data.get('query_type', 'UNKNOWN')}*\n\n{answer}"
-            
+
             # TODO: Here we would call the Open-WA /sendText API to send `whatsapp_reply`
             # For now we simulate success
             logging.info(f"Replied to {msg.sender_number}: {whatsapp_reply[:50]}...")

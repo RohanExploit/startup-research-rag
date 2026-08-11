@@ -11,12 +11,11 @@ pytest.skip(
 )
 import pdfplumber
 import build_parser
-import json
 
 def investigate():
     cse_pdf = f"{PROJECT_ROOT}/Results Dataset/cse 5 reg.pdf"
     aids_pdf = f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Artificial Intelligence (AI) and Data Science)_3(DECEMBER_2025) - CR Report (1).pdf"
-    
+
     # 1. Look for FAIL students
     print("--- FAIL STUDENTS ---")
     with pdfplumber.open(cse_pdf) as pdf:
@@ -39,7 +38,7 @@ def investigate():
             text = " ".join([w['text'] for w in r])
             if "BTES211P" in text or "TOTAL" in text or "CREDIT" in text or "MARKS" in text.upper():
                 print(f"Row {i:03d}: {text}")
-                
+
         # 3. Look at Supply sheet students for marks_match gap
         print("\n--- SUPPLY STUDENTS GAP ---")
         subjects = build_parser.parse_header(rows)

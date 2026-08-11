@@ -1,4 +1,3 @@
-import os
 import sys
 import logging
 from pathlib import Path
@@ -26,9 +25,9 @@ def encrypt_file(filepath: Path) -> bool:
     try:
         with open(filepath, "rb") as f:
             data = f.read()
-            
+
         encrypted_data = _CIPHER.encrypt(data)
-        
+
         with open(filepath, "wb") as f:
             f.write(encrypted_data)
         return True
@@ -37,14 +36,14 @@ def encrypt_file(filepath: Path) -> bool:
         return False
 
 def decrypt_file(filepath: Path, output_path: Path = None) -> bool:
-    """Decrypts a file. If output_path is provided, writes decrypted data there, 
+    """Decrypts a file. If output_path is provided, writes decrypted data there,
     otherwise decrypts in place."""
     try:
         with open(filepath, "rb") as f:
             encrypted_data = f.read()
-            
+
         decrypted_data = _CIPHER.decrypt(encrypted_data)
-        
+
         out_file = output_path if output_path else filepath
         with open(out_file, "wb") as f:
             f.write(decrypted_data)

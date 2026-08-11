@@ -4,7 +4,6 @@ Pass: Every API call logged. Log is append-only. Hash chain verifiable. No tampe
 """
 import json
 import hashlib
-import time
 import pytest
 from pathlib import Path
 import sys

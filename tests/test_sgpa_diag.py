@@ -9,7 +9,6 @@ for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.pa
 from config import PROJECT_ROOT
 import pdfplumber
 import re
-import json
 
 def extract_rows(page):
     words = page.extract_words()
@@ -48,8 +47,8 @@ def parse_header(rows):
         for w in credit_row:
             if w['text'] == "CREDIT": continue
             if re.match(r'^\d+$', w['text']):
-                closest = min(subjects, key=lambda s: abs(subjects.index(s) - len([x for x in credit_row if x['text'] == 'CREDIT'])))
                 # simpler: assign in order
+                closest = min(subjects, key=lambda s: abs(subjects.index(s) - len([x for x in credit_row if x['text'] == 'CREDIT'])))
                 unassigned = [s for s in subjects if s['credit'] == 0]
                 if unassigned: unassigned[0]['credit'] = int(w['text'])
     # Redo credit assignment properly by position order
@@ -79,11 +78,11 @@ def dump_block_detail(block, subjects, label=""):
     rows_dump = []
     for i, r in enumerate(block):
         rows_dump.append(f"  [{i:+d}/{i-len(block)}] {' '.join(w['text'] for w in r)}")
-    
+
     # R1 — find SGPA (current logic: last token if it's a float)
     r1_tokens = [w['text'] for w in block[1]]
-    printed_sgpa_raw = r1_tokens
     sgpa_parsed = None
+    printed_sgpa_raw = r1_tokens
     try:
         lv = r1_tokens[-1]
         if "." in lv and len(lv.split(".")) == 2: sgpa_parsed = float(lv)
@@ -91,7 +90,7 @@ def dump_block_detail(block, subjects, label=""):
 
     # Grades row
     grades_row_tokens = [w['text'] for w in block[grade_row_idx] if w['text'] != '|']
-    
+
     student_subjects = []
     for i, sub in enumerate(subjects):
         gs = grades_row_tokens[i] if i < len(grades_row_tokens) else "?"
@@ -109,7 +108,7 @@ def dump_block_detail(block, subjects, label=""):
     total_pts = sum(s['pts'] for s in student_subjects)
     reg_cr_excl_au = sum(s['credit'] for s in student_subjects if s['grade'] != 'AU')
     reg_cr_incl_au = sum(s['credit'] for s in student_subjects)
-    
+
     calc_sgpa_excl = round(total_pts / reg_cr_excl_au, 2) if reg_cr_excl_au else 0
     calc_sgpa_incl = round(total_pts / reg_cr_incl_au, 2) if reg_cr_incl_au else 0
 

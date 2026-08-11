@@ -21,7 +21,7 @@ def summarize_community(nodes):
 You are an AI assistant analyzing a knowledge graph. Summarize the following cluster of related entities into a concise paragraph.
 Entities: {', '.join(nodes)}
     """
-    
+
     payload = {
         "model": config.OLLAMA_MODEL,
         "prompt": prompt,
@@ -41,26 +41,26 @@ Entities: {', '.join(nodes)}
 def process_community_summaries(graph_dir):
     graph_dir = Path(graph_dir)
     in_path = graph_dir / "communities.json"
-    
+
     if not in_path.exists():
         logging.error("communities.json not found.")
         return
-        
+
     with open(in_path, "r", encoding="utf-8") as f:
         communities = json.load(f)
-        
+
     summaries = {}
-    
+
     for c_id, nodes in communities.items():
         logging.info(f"Summarizing {c_id} ({len(nodes)} nodes)...")
         # In a real environment, we'd also pull the context chunks for these nodes
         summary = summarize_community(nodes)
         summaries[c_id] = summary
-        
+
     out_path = graph_dir / "community_summaries.json"
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(summaries, f, indent=2)
-        
+
     logging.info(f"Generated {len(summaries)} community summaries. Saved to {out_path}")
 
 if __name__ == "__main__":

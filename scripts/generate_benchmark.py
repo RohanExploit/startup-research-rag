@@ -6,7 +6,6 @@ Produces: audit/fixtures/regression_benchmark.json
 import json
 import duckdb
 from pathlib import Path
-from datetime import datetime
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = PROJECT_ROOT / "data" / "tenants" / "tenant_1" / "tabular.duckdb"

@@ -106,9 +106,9 @@ Query: "{query}"
     async def route_query(self, query: str):
         qtype, fallback_reason = await self.classify_query(query)
         logging.info(f"Query classified as: {qtype}")
-        
+
         metadata = {"fallback_reason": fallback_reason} if fallback_reason else {}
-        
+
         context = ""
         if qtype == "FACT":
             results = self.vs.search(query, top_k=3)

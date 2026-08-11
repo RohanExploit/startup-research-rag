@@ -145,7 +145,7 @@ def list_students_below_sgpa(threshold: float, tenant_id: str = None):
 
     if not results:
         return f"No students found with SGPA below {threshold}."
-        
+
     lines = [f"Found {len(results)} students with SGPA below {threshold}:"]
     for row in results:
         lines.append(f"- {row[1]} (Roll: {row[0]}): SGPA {row[2]:.2f}")
@@ -175,25 +175,25 @@ def get_student_record(roll_no: str, tenant_id: str = None):
 
     lines = [f"🎓 **Student Record for {name}**"]
     lines.append(f"🆔 Roll No: `{roll_no}`")
-    
+
     res_emoji = "✅" if result == "PASS" else ("❌" if result == "FAIL" else "⚠️")
     lines.append(f"📊 Result: {res_emoji} {result}")
-    
+
     sgpa_str = f"{sgpa:.2f}" if sgpa is not None else 'N/A'
     lines.append(f"📈 SGPA: **{sgpa_str}**")
-    
+
     if is_supply:
         lines.append("🔖 Type: Supplementary Exam")
     if seat_cancelled:
         lines.append("🚫 Seat Cancelled")
-        
+
     if total_marks is not None:
         lines.append(f"💯 Total Marks: {total_marks}")
 
     lines.append("\n📚 **Subjects:**")
     for sub in subjects:
         lines.append(f"  • `{sub[0]}`: Grade **{sub[1]}** (Point: {sub[2]})")
-        
+
     return "\n".join(lines)
 
 async def extract_student_identifier(raw_query: str) -> dict:
@@ -201,13 +201,13 @@ async def extract_student_identifier(raw_query: str) -> dict:
     Uses the local LLM to extract student name or roll number from a natural language query.
     Returns: {"name": str|None, "roll_no": str|None}
     """
-    prompt = f"""Extract the student name or roll number being asked about in this query. 
+    prompt = f"""Extract the student name or roll number being asked about in this query.
 Respond with ONLY valid JSON, no other text.
 
 Query: "{raw_query}"
 
 Format: {{"name": "extracted name or null", "roll_no": "extracted roll number or null"}}"""
-    
+
     payload = {
         "model": config.OLLAMA_MODEL,
         "prompt": prompt,
@@ -242,7 +242,7 @@ def fuzzy_find_student(extracted_name: str, all_db_names: list[tuple[str, str]],
     """
     names_only = [x[1] for x in all_db_names]
     matches = process.extract(extracted_name, names_only, scorer=fuzz.WRatio, processor=utils.default_process, limit=3)
-    
+
     results = []
     for match_name, score, idx in matches:
         if score >= threshold:
@@ -309,10 +309,10 @@ async def get_student_by_name(name_query: str, tenant_id: str = None):
         )
 
     matches = fuzzy_find_student(name_ext, all_students, threshold=75)
-    
+
     if not matches:
         return f"Student matching '{name_ext}' not found (highest match score was below threshold). Extracted as: {extracted}"
-        
+
     # Check if we have a clear winner
     # A clear winner is either the only match above 75, or the top match is >90 and beats the runner-up by > 5 points
     is_clear_winner = False
@@ -320,10 +320,10 @@ async def get_student_by_name(name_query: str, tenant_id: str = None):
         is_clear_winner = True
     elif len(matches) > 1 and matches[0][2] >= 90 and (matches[0][2] - matches[1][2] > 5):
         is_clear_winner = True
-        
+
     if is_clear_winner:
         return get_student_record(matches[0][0], tenant_id)
-        
+
     # Disambiguation
     lines = [f"Did you mean one of these? (Extracted: '{name_ext}')"]
     for idx, match in enumerate(matches):

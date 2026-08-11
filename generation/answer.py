@@ -85,7 +85,7 @@ Context:
 Query: {query}
 Answer:
         """
-    
+
     payload = {
         "model": config.OLLAMA_MODEL,
         "prompt": prompt,

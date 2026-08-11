@@ -12,8 +12,6 @@ from config import PROJECT_ROOT
 
 import pdfplumber
 import re
-import sys
-import json
 import traceback
 
 KNOWN_FOOTER_MARKERS = ["GRADE:", "Note :-", "AOO =", "Print By", "Cancel Seat No's"]

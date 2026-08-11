@@ -3,15 +3,12 @@ Audit 06 — Multi-Tenant Isolation
 Goal: Ensure no retrieval, cache, embedding, or session leakage across tenants.
 Pass criterion: 0 cross-tenant leaks (production gate blocker).
 """
-import uuid
 import pytest
-import shutil
 from pathlib import Path
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from audit.utils.tenant_factory import create_tenant, destroy_tenant, seed_manifest
 
 pytestmark = [pytest.mark.security, pytest.mark.integrity]
 

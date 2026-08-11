@@ -37,10 +37,10 @@ def parse_header(rows):
         if "Total Marks" in text:
             subject_row_idx = i
             break
-            
+
     if subject_row_idx == -1:
         return None
-        
+
     subject_row = rows[subject_row_idx]
     # Extract subjects (any word before "Total")
     for w in subject_row:
@@ -49,7 +49,7 @@ def parse_header(rows):
         # Subject codes are usually alphanumeric
         if re.match(r'^[A-Z0-9]+$', w['text']):
             subjects.append({"code": w['text'], "x0": w['x0'], "x1": w['x1'], "credit": 0})
-            
+
     # Now find CREDIT row
     credit_row = rows[subject_row_idx + 1]
     credit_text = " ".join([w['text'] for w in credit_row])
@@ -60,20 +60,20 @@ def parse_header(rows):
                 # Find closest subject by x0
                 closest = min(subjects, key=lambda s: abs(s['x0'] - w['x0']))
                 closest['credit'] = int(w['text'])
-                
+
     return subjects
 
 def parse_student_blocks(rows, subjects):
     blocks = []
     cur_block = []
-    
+
     roll_pattern = re.compile(r'^\d{10,15}$')
-    
+
     for r in rows:
         text = " ".join([w['text'] for w in r])
         if not r: continue
         first_word = r[0]['text']
-        
+
         if roll_pattern.match(first_word) and "PASS" in text or "FAIL" in text:
             # Start of a new block
             if cur_block:
@@ -81,10 +81,10 @@ def parse_student_blocks(rows, subjects):
             cur_block = [r]
         elif cur_block:
             cur_block.append(r)
-            
+
     if cur_block:
         blocks.append(cur_block)
-        
+
     results = []
     for block in blocks:
         try:
@@ -92,7 +92,7 @@ def parse_student_blocks(rows, subjects):
             if res: results.append(res)
         except Exception as e:
             print(f"Error parsing block: {e}")
-            
+
     return results
 
 def parse_single_block(block, subjects):
@@ -108,7 +108,7 @@ def parse_single_block(block, subjects):
             break
         name_parts.append(p)
     name = " ".join(name_parts)
-    
+
     # Identify document type
     is_supply = False
     last_row_text = " ".join([w['text'] for w in block[-1]])
@@ -119,7 +119,7 @@ def parse_single_block(block, subjects):
     
     # We rely on the final grades row, which is the 2nd to last if supply, or last if regular
     grade_row_idx = -2 if is_supply else -1
-    
+
     # SGPA and Total Marks
     # R1: ESE + SGPA
     r1_text = " ".join([w['text'] for w in block[1]])
@@ -133,7 +133,7 @@ def parse_single_block(block, subjects):
             sgpa = float(last_val)
     except:
         pass
-        
+
     # Total Marks is in R4 (0-indexed)
     total_marks = 0
     if len(block) >= 5:
@@ -141,12 +141,12 @@ def parse_single_block(block, subjects):
         r4_parts = r4_text.split()
         if r4_parts and r4_parts[0].isdigit():
             total_marks = int(r4_parts[0])
-            
+
     # Grades are in grade_row_idx
     grades_row = block[grade_row_idx]
     # Filter out '|'
     grades_tokens = [w['text'] for w in grades_row if w['text'] != '|']
-    
+
     student_subjects = []
     for i, sub in enumerate(subjects):
         grade_str = grades_tokens[i] if i < len(grades_tokens) else "0/FF/0"
@@ -163,7 +163,7 @@ def parse_single_block(block, subjects):
                     pass
         elif grade_str == "AU":
             g = "AU"
-            
+
         student_subjects.append({
             "code": sub['code'],
             "credit": sub['credit'],
@@ -171,7 +171,7 @@ def parse_single_block(block, subjects):
             "grade_points": pts,
             "raw": grade_str
         })
-        
+
     # Validation
     calc_points = sum([s['grade_points'] for s in student_subjects])
     total_credits = sum([s['credit'] for s in student_subjects if s['grade'] not in ['AU', 'FF', 'AB', '']]) 
@@ -179,9 +179,9 @@ def parse_single_block(block, subjects):
     # total registered credits is sum of all credits except AU. Wait, FF counts in denominator for SGPA!
     registered_credits = sum([s['credit'] for s in student_subjects if s['grade'] != 'AU'])
     calc_sgpa = round(calc_points / registered_credits, 2) if registered_credits > 0 else 0.0
-    
+
     sgpa_match = (sgpa is not None) and (abs(calc_sgpa - sgpa) <= 0.05)
-    
+
     # We don't have per-subject total marks parsed yet, let's parse R7 (Subject TOTALS)
     # It is block[7]
     totals_row = block[7]
@@ -191,12 +191,12 @@ def parse_single_block(block, subjects):
         t_clean = t.replace("(", "").replace(")", "").strip()
         if t_clean.isdigit():
             calc_total_marks += int(t_clean)
-            
+
     marks_match = (calc_total_marks == total_marks)
     token_count_match = (len(grades_tokens) == len(subjects))
-    
+
     passed_validation = sgpa_match and marks_match and token_count_match
-    
+
     return {
         "roll_no": roll_no,
         "name": name,
@@ -224,11 +224,11 @@ def main():
         (f"{PROJECT_ROOT}/Results Dataset/cse 5 reg.pdf", 1), # page 2
         (f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Artificial Intelligence (AI) and Data Science)_3(DECEMBER_2025) - CR Report (1).pdf", 0)
     ]
-    
+
     targets = ["2267571242025", "2267571242133", "23067571263005"]
-    
+
     results = []
-    
+
     for path, page_idx in files:
         with pdfplumber.open(path) as pdf:
             page = pdf.pages[page_idx]
@@ -240,7 +240,7 @@ def main():
                     if b['roll_no'] in targets:
                         results.append(b)
                         targets.remove(b['roll_no'])
-                        
+
     print(json.dumps(results, indent=2))
 
 if __name__ == "__main__":

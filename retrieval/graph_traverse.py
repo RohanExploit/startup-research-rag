@@ -1,4 +1,3 @@
-import logging
 import sys
 from pathlib import Path
 import networkx as nx
@@ -24,14 +23,14 @@ class GraphSearch:
     def get_neighborhood(self, entity_id: str, hops: int = 1):
         if not self.G or entity_id not in self.G:
             return []
-            
+
         # Get egocentric network
         ego_graph = nx.ego_graph(self.G, entity_id, radius=hops)
-        
+
         edges = []
         for u, v, data in ego_graph.edges(data=True):
             edges.append(f"{u} -> {data.get('relation', 'RELATED')} -> {v}")
-            
+
         return edges
 
 if __name__ == "__main__":

@@ -40,11 +40,11 @@ md_content += summary_table + "\n---\n\n"
 for sf, content in file_map.items():
     md_content += f"## Document: `{sf}`\n\n"
     md_content += f"**Total Nodes:** {len(content['nodes'])} | **Total Edges:** {len(content['edges'])}\n\n"
-    
+
     md_content += "### Sample Nodes (First 5)\n```json\n"
     md_content += json.dumps(content['nodes'][:5], indent=2)
     md_content += "\n```\n\n"
-    
+
     md_content += "### Sample Edges (First 5)\n```json\n"
     md_content += json.dumps(content['edges'][:5], indent=2)
     md_content += "\n```\n\n---\n\n"

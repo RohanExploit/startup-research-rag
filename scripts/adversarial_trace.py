@@ -24,7 +24,7 @@ def trace_student(pdf_path, target_roll):
             subjects, exp_max, printed_sum = parse_header(rows)
             if not subjects:
                 continue
-                
+
             blocks, cur_block = [], []
             result_keywords = ["PASS", "FAIL", "COPYCASE", "WITHHELD"]
             for r in rows:
@@ -40,7 +40,7 @@ def trace_student(pdf_path, target_roll):
                 elif cur_block:
                     cur_block.append(r)
             if cur_block: blocks.append(cur_block)
-            
+
             for b in blocks:
                 r0_text = " ".join(w['text'] for w in b[0])
                 roll = r0_text.split()[0]
@@ -61,10 +61,10 @@ def trace_student(pdf_path, target_roll):
                         print(f"  Passed All: {res['passed_all']}")
                         print(f"  Flags: {res.get('flags', [])}")
                         print(f"  Subjects Count: {len(res['subjects'])}")
-                        
+
                         credit_sum = sum(s['credit'] for s in res['subjects'])
                         print(f"  Total Credits Extracted: {credit_sum}")
-                        
+
                         print("  Subject breakdown (first 3 + last 3):")
                         subs = res['subjects']
                         show = subs[:3] + subs[-3:] if len(subs) > 6 else subs
@@ -78,15 +78,15 @@ def trace_student(pdf_path, target_roll):
 def main():
     CSE1 = f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_1(APRIL_2024) - CR Report (2).pdf"
     CSE2 = f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_2(May_2025) - CR Report.pdf"
-    
+
     # 24067571242100 (PASS from CSE1)
     trace_student(CSE1, "24067571242100")
-    
+
     # 24067571242001 (FAIL from CSE1)
     trace_student(CSE1, "24067571242001")
-    
+
     # 24067571242132 (WITHHELD from CSE2)
     trace_student(CSE2, "24067571242132")
-    
+
 if __name__ == "__main__":
     main()

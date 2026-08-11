@@ -2,13 +2,11 @@
 Safe deserialization: embeddings load from .npy/.json (no pickle), and the
 additive pkl->safe migration never destroys the original pickle.
 """
-import json
 import pickle
 import sys
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from utils import safe_store

@@ -10,7 +10,6 @@ import json
 import logging
 import duckdb
 from pathlib import Path
-import traceback
 from utils.logging_config import setup_logging
 from ingestion.record_schema import validate_parsed_record
 
@@ -49,19 +48,19 @@ def parse_header(rows):
             if m:
                 total_marks_str = m.group(1)
             break
-            
+
     if subject_row_idx == -1:
         return None, 0, 0
-        
+
     expected_total_max = int(total_marks_str) if total_marks_str else 0
-    
+
     subject_row = rows[subject_row_idx]
     for w in subject_row:
         if "Total" in w['text']:
             break
         if re.match(r'^[A-Z0-9]+$', w['text']):
             subjects.append({"code": w['text'], "x0": w['x0'], "x1": w['x1'], "credit": 0})
-            
+
     # Fix 2: CSE_2 long subject codes wrap onto a suffix row before the CREDIT row.
     # If the row immediately after the subject-code row does NOT start with "CREDIT",
     # it is a code-suffix row (e.g. '1 2C 6A 8 07A...') — skip it.
@@ -79,7 +78,7 @@ def parse_header(rows):
             if re.match(r'^\d+$', w['text']):
                 closest = min(subjects, key=lambda s: abs(s['x0'] - w['x0']))
                 closest['credit'] = int(w['text'])
-                
+
     printed_max_sum = 0
     for r in rows:
         text = " ".join([w['text'] for w in r])
@@ -91,7 +90,7 @@ def parse_header(rows):
                     if parts[0].isdigit():
                         printed_max_sum += int(parts[0])
             break
-            
+
     return subjects, expected_total_max, printed_max_sum
 
 def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
@@ -108,21 +107,21 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
     parts = r0_text.split()
     roll_no = parts[0]
     result_status = parts[-1]
-    
+
     name_parts = []
     for p in parts[1:-1]:
         if re.match(r'^\d{4,5}$', p):
             break
         name_parts.append(p)
     name = " ".join(name_parts)
-    
+
     is_supply = False
     last_row_text = " ".join([w['text'] for w in block[-1]])
     if "Winter -" in last_row_text or "Summer -" in last_row_text:
         is_supply = True
-        
+
     grade_row_idx = -2 if is_supply else -1
-    
+
     # R1 SGPA
     r1_text = " ".join([w['text'] for w in block[1]])
     r1_parts = r1_text.split()
@@ -136,14 +135,14 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
             if 0.0 <= val <= 10.0:
                 sgpa = val
                 break
-        
+
     total_marks = 0
     if len(block) >= 5:
         r4_text = " ".join([w['text'] for w in block[4]])
         r4_parts = r4_text.split()
         if r4_parts and r4_parts[0].isdigit():
             total_marks = int(r4_parts[0])
-            
+
     grades_row = block[grade_row_idx]
     raw_grades_tokens = [w['text'] for w in grades_row if w['text'] != '|']
     grades_tokens = []
@@ -152,14 +151,14 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
             grades_tokens[-1] += t
         else:
             grades_tokens.append(t)
-            
+
     student_subjects = []
     for i, sub in enumerate(subjects):
         grade_str = grades_tokens[i] if i < len(grades_tokens) else "0/FF/0"
-        
+
         # Strip grace marks suffix (handling both (G-N) and malformed G-N) )
         grade_str = re.sub(r'\(?G-\d+\)?', '', grade_str)
-        
+
         pts = 0.0
         g = "FF"
         if "/" in grade_str:
@@ -172,7 +171,7 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
                     pass
         elif grade_str == "AU":
             g = "AU"
-            
+
         student_subjects.append({
             "code": sub['code'],
             "credit": sub['credit'],
@@ -180,11 +179,11 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
             "grade_point": pts,
             "raw": grades_tokens[i] if i < len(grades_tokens) else ""
         })
-        
+
     calc_points = sum([s['grade_point'] for s in student_subjects])
     registered_credits = sum([s['credit'] for s in student_subjects if s['grade'] != 'AU'])
     calc_sgpa = round(calc_points / registered_credits, 2) if registered_credits > 0 else 0.0
-    
+
     sgpa_match = True
     if result_status == 'PASS':
         if sgpa is None or abs(calc_sgpa - sgpa) > 0.05:
@@ -192,40 +191,40 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
     else:
         if sgpa is not None and abs(calc_sgpa - sgpa) > 0.05:
             sgpa_match = False
-                
-    totals_row = block[grade_row_idx - 1] 
+
+    totals_row = block[grade_row_idx - 1]
     if len([w for w in totals_row if w['text'] == '|']) > 0 and len(totals_row) < 3:
         totals_row = block[grade_row_idx - 2]
-        
+
     totals_tokens = [w['text'] for w in totals_row if w['text'] != '|']
     calc_total_marks = 0
     for t in totals_tokens:
         t_clean = t.replace("(", "").replace(")", "").strip()
         if t_clean.isdigit():
             calc_total_marks += int(t_clean)
-            
+
     marks_match = (calc_total_marks == total_marks)
     token_count_match = (len(grades_tokens) == len(subjects))
-    
+
     gap = total_marks - calc_total_marks
     derived_max = expected_total_max - printed_max_sum
-    
+
     gap_exceeds = False
     unverifiable = False
-    
+
     if not marks_match:
         if gap > derived_max or gap < 0:
             gap_exceeds = True
         elif gap > 0 and derived_max > 0:
             unverifiable = True
-            
+
     flags = []
     if not sgpa_match: flags.append("sgpa_mismatch")
     if gap_exceeds: flags.append("gap_exceeds_max_possible")
     elif unverifiable: flags.append("unverifiable_unscored_subject_present")
     elif not marks_match: flags.append("marks_mismatch_other")
     if not token_count_match: flags.append("token_count_mismatch")
-    
+
     return {
         "roll_no": roll_no,
         "name": name,
@@ -263,14 +262,14 @@ def parse_tabular_data(pdf_paths):
     clean_records = []
     needs_review = []
     all_cancelled_seats = set()
-    
+
     roll_pattern = re.compile(r'^\d{10,15}$')
     footer_markers = ["GRADE:", "Note :-", "AOO =", "Print By", "Cancel Seat No's"]
-    
+
     for path in pdf_paths:
         cancelled = extract_cancelled_seats(path)
         all_cancelled_seats.update(cancelled)
-        
+
         with pdfplumber.open(path) as pdf:
             # Fix 3: Schema detection — groupA/B PDFs have no 'Total Marks(' header.
             # Check full document text once before iterating pages.
@@ -290,20 +289,20 @@ def parse_tabular_data(pdf_paths):
                 subjects, exp_max, printed_sum = parse_header(rows)
                 if not subjects:
                     continue
-                    
+
                 blocks = []
                 cur_block = []
                 for r in rows:
                     if not r: continue
                     text = " ".join([w['text'] for w in r])
                     first_word = r[0]['text']
-                    
+
                     if any(text.startswith(m) for m in footer_markers):
                         if cur_block:
                             blocks.append(cur_block)
                             cur_block = []
                         continue
-                        
+
                     # Fix 3b: COPYCASE(RESERVE) and WITHHELD are valid result statuses
                     # that must trigger a block boundary, same as PASS/FAIL.
                     result_keywords = ["PASS", "FAIL", "COPYCASE", "WITHHELD"]
@@ -313,7 +312,7 @@ def parse_tabular_data(pdf_paths):
                     elif cur_block:
                         cur_block.append(r)
                 if cur_block: blocks.append(cur_block)
-                
+
                 for b in blocks:
                     try:
                         res = parse_single_block(b, subjects, exp_max, printed_sum)
@@ -334,12 +333,12 @@ def parse_tabular_data(pdf_paths):
                         # traceable in logs instead of a silent data loss.
                         roll = b[0][0]['text'] if b and b[0] else "?"
                         logger.error(f"Exception parsing block (roll {roll}): {e}")
-                        
+
     # Apply cancelled seat flag to all records
     for r in clean_records + needs_review:
         if r['roll_no'] in all_cancelled_seats:
             r['seat_cancelled'] = True
-            
+
     return clean_records, needs_review, list(all_cancelled_seats)
 
 def store_in_duckdb(clean_records, needs_review, all_cancelled_seats, db_path):
@@ -470,14 +469,14 @@ if __name__ == '__main__':
         f"{PROJECT_ROOT}/Results Dataset/Bachelor of Technology (Computer Science and Engineering)_5(DECEMBER_2025) - CR Report.pdf"
     ]
     db_path = f"{PROJECT_ROOT}/data/tenants/tenant_1/tabular.duckdb"
-    
+
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    
+
     clean, review, cancelled = parse_tabular_data(pdfs)
-    
+
     print(f"Parsed {len(clean)} clean records.")
     print(f"Parsed {len(review)} needs-review records.")
     print(f"Found {len(cancelled)} cancelled seats globally.")
-    
+
     store_in_duckdb(clean, review, cancelled, db_path)
     print(f"Stored records in {db_path}")

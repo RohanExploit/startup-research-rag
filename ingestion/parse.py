@@ -4,7 +4,6 @@ for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.pa
     if str(_p) not in _sys.path:
         _sys.path.append(str(_p))
 from config import PROJECT_ROOT
-import os
 import json
 import sqlite3
 import hashlib

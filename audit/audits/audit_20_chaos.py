@@ -55,7 +55,6 @@ class TestEnterpriseChaos:
 
     def test_disk_full_simulation(self, tmp_path):
         """When disk is nearly full, ingestion must reject cleanly, not corrupt data."""
-        import os
         with patch("os.statvfs") as mock_statvfs:
             mock_result = MagicMock()
             mock_result.f_bavail = 100        # 100 blocks free

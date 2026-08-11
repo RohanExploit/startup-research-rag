@@ -1,5 +1,4 @@
 import os
-import json
 import logging
 import httpx
 import time
@@ -35,9 +34,9 @@ def is_admin(user_id: int) -> bool:
     return str(user_id) == ADMIN_ID
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
     uid = update.effective_user.id
     admin_tag = " (Admin)" if is_admin(uid) else ""
-    await update.message.reply_text(
         "Hello! I am the Company Brain.\n"
         "Ask me anything about our internal documents."
     )

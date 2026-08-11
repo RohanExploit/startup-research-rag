@@ -2,13 +2,10 @@
 Shared pytest fixtures for the Enterprise Audit Suite.
 All tests import from here via conftest auto-discovery.
 """
-import os
 import sys
 import uuid
-import json
 import shutil
 import sqlite3
-import asyncio
 import logging
 import tempfile
 from pathlib import Path

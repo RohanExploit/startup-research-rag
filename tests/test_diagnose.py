@@ -12,14 +12,14 @@ async def main():
         "iska result batao gaikwad ka",
         "23067571242048"
     ]
-    
+
     for q in test_queries:
         print(f"\nQuery: '{q}'")
         t0 = time.time()
         ext = await extract_student_identifier(q)
         t1 = time.time()
         print(f"Extracted JSON: {ext} (Latency: {t1-t0:.2f}s)")
-        
+
         # Test full end-to-end to see fuzzy match and DB pull
         t0 = time.time()
         res = await get_student_by_name(q, "tenant_1")
@@ -39,7 +39,7 @@ async def main():
     print("Fuzzy matches for 'Gaikwad Rohan':")
     for m in matches:
         print(f" - {m}")
-        
+
     print("\nEnd-to-End simulation of disambiguation (by overriding the DB locally):")
     # Instead of overriding DB, let's just query a known vague name like "Patil" or "Deshmukh" which surely exists multiple times in this dataset.
     res = await get_student_by_name("lookup patil", "tenant_1")

@@ -5,7 +5,6 @@ Pass criterion: No invalid verified records (deviation > 0.01 in SGPA).
 """
 import pytest
 import duckdb
-from pathlib import Path
 
 pytestmark = pytest.mark.integrity
 

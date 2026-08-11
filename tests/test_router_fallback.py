@@ -6,8 +6,6 @@ for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.pa
 from config import PROJECT_ROOT
 import asyncio
 import sys
-import httpx
-import logging
 
 sys.path.insert(0, f"{PROJECT_ROOT}")
 from retrieval.router import QueryRouter
@@ -23,6 +21,6 @@ async def main():
     print("\n--- Fallback Results ---")
     print(f"QType: {qtype}")
     print(f"Metadata: {metadata}")
-    
+
 if __name__ == "__main__":
     asyncio.run(main())

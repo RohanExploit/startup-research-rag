@@ -68,7 +68,7 @@ def annotate_r1(block):
     roll = r0[0]
     result = r0[-1]
     tokens = [(w['text'], round(w['x0'],1), round(w['top'],1)) for w in r1]
-    
+
     annotations = []
     for i, (txt, x, y) in enumerate(tokens):
         ann = txt
@@ -103,10 +103,10 @@ def main():
     print("\n" + "="*70)
     print("DELIVERABLE 1: CSE_1 — Last 5 students, annotated R1 token dump")
     print("="*70)
-    
+
     all_blocks_cse1 = collect_all_blocks(CSE1)
     last5 = all_blocks_cse1[-5:]
-    
+
     for block, pidx in last5:
         roll, result, tokens, annotations = annotate_r1(block)
         print(f"\nRoll: {roll}  Result: {result}  Page: {pidx+1}  BlockLen: {len(block)}")
@@ -117,7 +117,7 @@ def main():
         floats_in_range = [(t, x) for t, x, _ in tokens
                            if re.match(r'^\d+\.\d+$', t) and 0.0 <= float(t) <= 10.0]
         print(f"  Float [0–10] candidates: {floats_in_range}")
-    
+
     # Also: confirm CSE_1 header row for SGPA column order
     print("\n--- CSE_1 Header SGPA descriptor row ---")
     rows_p0 = get_page_header_raw(CSE1, 0)
@@ -133,19 +133,19 @@ def main():
     print("\n" + "="*70)
     print("DELIVERABLE 2: CSE_2 — Header code-wrapping, y-coord clustering")
     print("="*70)
-    
+
     # Raw words dump for the header region — page 0
     print("\n--- CSE_2 Page 0: Raw pdfplumber.extract_words() around subject-code row ---")
     with pdfplumber.open(CSE2) as pdf:
         words = pdf.pages[0].extract_words()
-    
+
     # Find the cluster around the subject code rows (look for "Total Marks" region)
     total_marks_idx = None
     for i, w in enumerate(words):
         if "Total" in w['text'] and i+1 < len(words) and "Marks" in words[i+1]['text']:
             total_marks_idx = i
             break
-    
+
     if total_marks_idx is not None:
         # Print 60 words before and 30 after Total Marks
         start = max(0, total_marks_idx - 60)
@@ -157,7 +157,7 @@ def main():
             marker = " ←NEW ROW" if prev_y is not None and abs(y - prev_y) > 3.0 else ""
             print(f"    '{w['text']:20s}'  x0={round(w['x0'],1):7.1f}  y={y:7.1f}{marker}")
             prev_y = y
-    
+
     # Now show CREDIT row specifically
     print("\n--- CSE_2 Page 0: All rows where text contains 'CREDIT' or numeric-only near y=credit-row ---")
     rows_cse2_p0 = get_page_header_raw(CSE2, 0)
@@ -167,7 +167,7 @@ def main():
             y = round(r[0]['top'], 1)
             print(f"  Row {i:02d} (y={y}): {text}")
             print(f"    Words+x: {[(w['text'], round(w['x0'],1)) for w in r]}")
-    
+
     # Pseudocode design: rejoin strategy
     print("\n--- DESIGN: Header rejoin pseudocode ---")
     print("""
@@ -179,7 +179,7 @@ def main():
 
   PROPOSED (fixed):
     subject_row = first row containing "Total Marks(...)"
-    
+
     # Collect multi-row code fragments: subject_row AND the next row IF
     # it contains no 'CREDIT' keyword and its tokens look like code-suffixes
     # (short alphanumeric, no spaces, no 'CREDIT')
@@ -190,7 +190,7 @@ def main():
         credit_row_idx = subject_row_idx + 2
     else:
         credit_row_idx = subject_row_idx + 1
-    
+
     credit_row = rows[credit_row_idx]
     credit_vals = [int(w) for w in credit_row if w.isdigit()]
     # Assign to subjects in order (left-to-right by x0)

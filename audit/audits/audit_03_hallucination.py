@@ -6,7 +6,6 @@ Pass criterion: 0 fabricated answers.
 """
 import re
 import pytest
-import asyncio
 from pathlib import Path
 
 import sys
