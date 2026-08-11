@@ -37,3 +37,6 @@ benchmark_*.txt
 *.png
 .gstack/
 .playwright-mcp/
+
+# eval run artifacts (contain answer text w/ student names — PII)
+tests/eval/*_results.json
