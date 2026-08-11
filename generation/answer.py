@@ -91,7 +91,7 @@ Answer:
         "prompt": prompt,
         "stream": False,
         "keep_alive": OLLAMA_KEEP_ALIVE,
-        "options": {"num_ctx": 2048, "num_predict": 512}
+        "options": {"num_ctx": 2048, "num_predict": 512, "temperature": 0}
     }
 
     try:
@@ -126,7 +126,7 @@ Answer:
                 completion = await client.chat.completions.create(
                     model="meta/llama-3.1-70b-instruct",
                     messages=[{"role": "user", "content": outbound_prompt}],
-                    temperature=0.2,
+                    temperature=0,
                     max_tokens=1024,
                 )
             fallback_answer = completion.choices[0].message.content.strip()

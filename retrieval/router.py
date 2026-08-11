@@ -77,7 +77,7 @@ Query: "{query}"
             "prompt": prompt,
             "stream": False,
             "keep_alive": OLLAMA_KEEP_ALIVE,
-            "options": {"num_ctx": 2048, "num_predict": 10}
+            "options": {"num_ctx": 2048, "num_predict": 10, "temperature": 0}
         }
         try:
             response = await _http_client.post(OLLAMA_API_URL, json=payload)
