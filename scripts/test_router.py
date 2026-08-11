@@ -11,10 +11,10 @@ QUERIES = [
 ]
 
 def test_query(query_text):
-    print(f"\n=======================================================")
+    print("\n=======================================================")
     print(f"QUERY: {query_text}")
-    print(f"=======================================================")
-    
+    print("=======================================================")
+
     req = urllib.request.Request(
         API_URL,
         data=json.dumps({"query": query_text, "tenant_id": "tenant_1"}).encode("utf-8"),
@@ -30,12 +30,12 @@ def test_query(query_text):
 
             print(f"CLASSIFICATION: {res.get('query_type')}")
             print(f"TIME TAKEN: {elapsed:.2f}s")
-            print(f"-------------------------------------------------------")
+            print("-------------------------------------------------------")
             print(f"CONTEXT SNIPPET:\n{res.get('context_used')}")
-            print(f"-------------------------------------------------------")
+            print("-------------------------------------------------------")
             print(f"ANSWER:\n{res.get('answer')}")
-            print(f"=======================================================\n")
-            
+            print("=======================================================\n")
+
     except Exception as e:
         print(f"FAILED: {e}")
 

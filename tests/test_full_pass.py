@@ -107,7 +107,7 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
         last_val = r1_parts[-1]
         if "." in last_val and len(last_val.split(".")) == 2:
             sgpa = float(last_val)
-    except:
+    except Exception:
         pass
 
     total_marks = 0
@@ -135,7 +135,7 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
                 g = gparts[1]
                 try:
                     pts = float(gparts[2]) if gparts[2] else 0.0
-                except Exception as e:
+                except Exception:
                     pass
         elif grade_str == "AU":
             g = "AU"

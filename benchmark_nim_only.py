@@ -88,8 +88,8 @@ async def main():
     print("### 3. For each document, report side by side:")
     for name, text in docs:
         print(f"Document: {name}")
-        print(f"qwen3:4b - Latency: N/A (Model purged) | Entities extracted: N/A | Correct? N/A")
-        
+        print("qwen3:4b - Latency: N/A (Model purged) | Entities extracted: N/A | Correct? N/A")
+
         n_ans, n_lat = await nim_extract(text)
         n_entities = [n.get("id", "") for n in n_ans.get("nodes", [])] if isinstance(n_ans, dict) else str(n_ans)
         print(f"llama-3.1-70b - Latency: {n_lat:.2f}s | Entities extracted: {n_entities} | Correct? [Evaluate this]")
@@ -104,8 +104,8 @@ async def main():
 
     for query, context in queries:
         print(f"Query: {query}")
-        print(f"qwen3:4b - Latency: N/A (Model purged) | Answer: N/A")
-        
+        print("qwen3:4b - Latency: N/A (Model purged) | Answer: N/A")
+
         n_ans, n_lat = await nim_generate(query, context)
         print(f"llama-3.1-70b - Latency: {n_lat:.2f}s | Answer: {n_ans}")
         print()

@@ -114,9 +114,8 @@ def parse_single_block(block, subjects):
     last_row_text = " ".join([w['text'] for w in block[-1]])
     if "Winter -" in last_row_text or "Summer -" in last_row_text:
         is_supply = True
-        
-    expected_rows = 10 if is_supply else 9
-    
+
+
     # We rely on the final grades row, which is the 2nd to last if supply, or last if regular
     grade_row_idx = -2 if is_supply else -1
 
@@ -131,7 +130,7 @@ def parse_single_block(block, subjects):
         last_val = r1_parts[-1]
         if "." in last_val and len(last_val.split(".")) == 2:
             sgpa = float(last_val)
-    except:
+    except Exception:
         pass
 
     # Total Marks is in R4 (0-indexed)
@@ -159,7 +158,7 @@ def parse_single_block(block, subjects):
                 g = parts[1]
                 try:
                     pts = float(parts[2]) if parts[2] else 0.0
-                except:
+                except Exception:
                     pass
         elif grade_str == "AU":
             g = "AU"
@@ -174,7 +173,6 @@ def parse_single_block(block, subjects):
 
     # Validation
     calc_points = sum([s['grade_points'] for s in student_subjects])
-    total_credits = sum([s['credit'] for s in student_subjects if s['grade'] not in ['AU', 'FF', 'AB', '']]) 
     # Actually SGPA = total points / total credits (of registered subjects)
     # total registered credits is sum of all credits except AU. Wait, FF counts in denominator for SGPA!
     registered_credits = sum([s['credit'] for s in student_subjects if s['grade'] != 'AU'])

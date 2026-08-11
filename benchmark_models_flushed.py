@@ -142,21 +142,21 @@ async def main():
         ("Indian_Students_Data (Chunk 1)", chunks2[1]["page_content"]),
         ("2026 Rohan_Gaikwad - Copy (Chunk 1)", chunks3[1]["page_content"])
     ]
-    
-    print(flush=True, "### 3. For each document, report side by side:")
+
+    print("### 3. For each document, report side by side:", flush=True)
     for name, text in docs:
-        print(flush=True, f"Document: {name}")
-        
+        print(f"Document: {name}", flush=True)
+
         q_ans, q_lat = ollama_extract(text)
         q_entities = [n.get("id", "") for n in q_ans.get("nodes", [])] if isinstance(q_ans, dict) else str(q_ans)
-        print(flush=True, f"qwen3:4b — Latency: {q_lat:.2f}s | Entities extracted: {q_entities} | Correct? [fill_me]")
-        
+        print(f"qwen3:4b — Latency: {q_lat:.2f}s | Entities extracted: {q_entities} | Correct? [fill_me]", flush=True)
+
         n_ans, n_lat = await nim_extract(text)
         n_entities = [n.get("id", "") for n in n_ans.get("nodes", [])] if isinstance(n_ans, dict) else str(n_ans)
-        print(flush=True, f"llama-3.1-70b — Latency: {n_lat:.2f}s | Entities extracted: {n_entities} | Correct? [fill_me]")
+        print(f"llama-3.1-70b — Latency: {n_lat:.2f}s | Entities extracted: {n_entities} | Correct? [fill_me]", flush=True)
         print(flush=True, )
-        
-    print(flush=True, "### 4. Also run 3 real user-style queries against both")
+
+    print("### 4. Also run 3 real user-style queries against both", flush=True)
     queries = [
         ("search for gaikwad rohan vijay", chunks3[1]["page_content"]),
         ("lookup patil", chunks2[1]["page_content"]),
@@ -164,13 +164,13 @@ async def main():
     ]
 
     for query, context in queries:
-        print(flush=True, f"Query: {query}")
-        
+        print(f"Query: {query}", flush=True)
+
         q_ans, q_lat = ollama_generate(query, context)
-        print(flush=True, f"qwen3:4b — Latency: {q_lat:.2f}s | Answer: {q_ans}")
-        
+        print(f"qwen3:4b — Latency: {q_lat:.2f}s | Answer: {q_ans}", flush=True)
+
         n_ans, n_lat = await nim_generate(query, context)
-        print(flush=True, f"llama-3.1-70b — Latency: {n_lat:.2f}s | Answer: {n_ans}")
+        print(f"llama-3.1-70b — Latency: {n_lat:.2f}s | Answer: {n_ans}", flush=True)
         print(flush=True, )
 
 if __name__ == "__main__":

@@ -4,8 +4,7 @@ Pass: Parser explicitly fails (FAILED status) on unreadable inputs, never silent
 """
 import pytest
 from pathlib import Path
-from PIL import Image, ImageFilter, ImageDraw, ImageFont
-import io
+from PIL import Image, ImageFilter, ImageDraw
 
 pytestmark = pytest.mark.integrity
 

@@ -100,7 +100,7 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
     try:
         lv = r1_parts[-1]
         if "." in lv and len(lv.split(".")) == 2: sgpa = float(lv)
-    except: pass
+    except Exception: pass
 
     # Total marks
     total_marks = 0
@@ -120,7 +120,7 @@ def parse_single_block(block, subjects, expected_total_max, printed_max_sum):
             if len(gp) == 3:
                 g = gp[1]
                 try: pts = float(gp[2]) if gp[2] else 0.0
-                except: pass
+                except Exception: pass
         elif gs == "AU": g = "AU"
         student_subjects.append({"code": sub['code'], "credit": sub['credit'], "grade": g, "grade_point": pts})
 

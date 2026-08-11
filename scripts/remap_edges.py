@@ -1,4 +1,5 @@
-import json, pathlib
+import json
+import pathlib
 
 chunked_dir = pathlib.Path('data/tenants/tenant_1/chunked')
 graph_dir = pathlib.Path('data/tenants/tenant_1/graph')

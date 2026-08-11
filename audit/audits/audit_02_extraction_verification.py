@@ -18,7 +18,7 @@ def compute_sgpa(subjects: list[dict]) -> float:
     """
     GRADE_POINTS = {
         "AA": 10, "AB": 9, "BB": 8, "BC": 7,
-        "CC": 6, "CD": 5, "DD": 4, "FF": 0, "AB": 9,
+        "CC": 6, "CD": 5, "DD": 4, "FF": 0,
     }
     total_credits = 0
     weighted_sum = 0.0

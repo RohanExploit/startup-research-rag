@@ -63,7 +63,6 @@ class TestSQLInjection:
         """The LLM prompt for NL2SQL explicitly forbids DDL/DML."""
         from generation.answer import generate_answer
         # The system prompt bans non-SELECT statements
-        forbidden_statements = ["DROP", "DELETE", "INSERT", "UPDATE", "TRUNCATE", "ALTER"]
         # Verify prompt design by checking the function exists and has safety constraints
         import inspect
         src = inspect.getsource(generate_answer)

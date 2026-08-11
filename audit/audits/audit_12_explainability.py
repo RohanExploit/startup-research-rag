@@ -55,7 +55,6 @@ class TestExplainability:
 
     def test_verification_status_enum_defined(self):
         """Extraction must use VERIFIED/UNVERIFIED/CONFLICT/INSUFFICIENT_EVIDENCE."""
-        valid_statuses = {"VERIFIED", "UNVERIFIED", "CONFLICT", "INSUFFICIENT_EVIDENCE"}
         # Check that at least the string is referenced somewhere in the codebase
         project_root = Path(__file__).resolve().parent.parent.parent
         found = False

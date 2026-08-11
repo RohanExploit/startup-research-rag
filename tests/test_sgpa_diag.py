@@ -48,7 +48,6 @@ def parse_header(rows):
             if w['text'] == "CREDIT": continue
             if re.match(r'^\d+$', w['text']):
                 # simpler: assign in order
-                closest = min(subjects, key=lambda s: abs(subjects.index(s) - len([x for x in credit_row if x['text'] == 'CREDIT'])))
                 unassigned = [s for s in subjects if s['credit'] == 0]
                 if unassigned: unassigned[0]['credit'] = int(w['text'])
     # Redo credit assignment properly by position order
@@ -82,11 +81,10 @@ def dump_block_detail(block, subjects, label=""):
     # R1 — find SGPA (current logic: last token if it's a float)
     r1_tokens = [w['text'] for w in block[1]]
     sgpa_parsed = None
-    printed_sgpa_raw = r1_tokens
     try:
         lv = r1_tokens[-1]
         if "." in lv and len(lv.split(".")) == 2: sgpa_parsed = float(lv)
-    except: pass
+    except Exception: pass
 
     # Grades row
     grades_row_tokens = [w['text'] for w in block[grade_row_idx] if w['text'] != '|']
@@ -101,7 +99,7 @@ def dump_block_detail(block, subjects, label=""):
             if len(gp) == 3:
                 g = gp[1]
                 try: pts = float(gp[2]) if gp[2] else 0.0
-                except: pass
+                except Exception: pass
         elif gs_clean == "AU": g = "AU"
         student_subjects.append({"code": sub['code'], "credit": cr, "grade": g, "pts": pts})
 

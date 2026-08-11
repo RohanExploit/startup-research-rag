@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import sys
 sys.path.insert(0, f"{PROJECT_ROOT}")
 
-from bots.telegram_bot import handle_message, start, is_admin, ADMIN_ID, user_last_message_time
+from bots.telegram_bot import handle_message, ADMIN_ID, user_last_message_time
 import bots.telegram_bot
 
 # Bypass the allowlist for this smoke test so it still exercises the
@@ -42,8 +42,7 @@ async def run_tests():
         return update
 
     # Inject mock client logic
-    original_client = bots.telegram_bot.httpx.AsyncClient
-    
+
     class MockClient:
         def __init__(self, *args, **kwargs): pass
         async def __aenter__(self): return self

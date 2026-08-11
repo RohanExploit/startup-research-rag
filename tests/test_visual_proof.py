@@ -208,7 +208,6 @@ def main():
         roll = block[0][0]['text']
         result = block[0][-1]['text']
         if result != 'PASS': continue
-        r0 = " ".join(w['text'] for w in block[0])
         print(f"\n  Block (page {pidx+1}), Roll={roll}, result={result}, block_len={len(block)}")
         print(f"  R2 (Whole/Part row): {' '.join(w['text'] for w in block[2]) if len(block)>2 else ''}")
         # R2 col 3 = printed SGPA credit count
@@ -234,7 +233,7 @@ def main():
         rows = extract_rows_with_y(page)
         print(f"  Total words on page 0: {len(words)}")
         print(f"  Total y-clustered rows: {len(rows)}")
-        print(f"\n  First 5 rows (full word dump):")
+        print("\n  First 5 rows (full word dump):")
         for i, r in enumerate(rows[:5]):
             print(f"    Row {i}: {[(w['text'], round(w['x0'],1)) for w in r]}")
         # Check for tables via pdfplumber's table extractor

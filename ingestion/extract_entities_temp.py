@@ -79,7 +79,7 @@ Output:"""
 
         try:
             return json.loads(data["response"])
-        except Exception as e:
+        except Exception:
             logging.error(f"Failed to parse JSON from Ollama. Raw output: {data.get('response', '')}")
             return {"nodes": [], "edges": []}
     except Exception as e:

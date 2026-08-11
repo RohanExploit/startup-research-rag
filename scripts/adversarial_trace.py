@@ -47,7 +47,7 @@ def trace_student(pdf_path, target_roll):
                 if roll == target_roll:
                     print(f"\n{'='*80}")
                     print(f"FOUND TARGET ROLL: {target_roll}")
-                    print(f"RAW BLOCK TEXT:")
+                    print("RAW BLOCK TEXT:")
                     raw_text = "\n".join(" ".join(w['text'] for w in r) for r in b)
                     print(raw_text)
                     print("-" * 40)

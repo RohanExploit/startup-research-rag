@@ -138,7 +138,6 @@ def main():
         print(f"\n  --- {label} cases ---")
         for s in group:
             cands = s['sgpa_candidates']
-            sgpa_by_pattern = cands[0][1] if cands else "NONE"
             last3 = s['r1_raw'].split()[-3:] if len(s['r1_raw'].split()) >= 3 else s['r1_raw'].split()
             print(f"  Roll: {s['roll']:18s}  Result: {s['result']:12s}  R1_len: {s['r1_len']:3d}  "
                   f"Last3: {last3}  SGPA_candidates(0-10 float): {cands}  "
@@ -146,7 +145,6 @@ def main():
 
     # Pattern reliability check
     print("\n  Pattern reliability (0-10 float): does it uniquely identify SGPA?")
-    ambiguous = [s for s in samples if len(s['sgpa_candidates']) != 1 and s['result'] == 'PASS']
     zero_cands = [s for s in samples if len(s['sgpa_candidates']) == 0 and s['result'] == 'PASS']
     print(f"  PASS students with exactly 1 candidate: {len([s for s in pass_samples if len(s['sgpa_candidates'])==1])}")
     print(f"  PASS students with 0 candidates (no float in range): {len(zero_cands)}")

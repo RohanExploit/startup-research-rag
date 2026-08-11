@@ -7,8 +7,8 @@ from pathlib import Path
 
 def _check_reportlab():
     try:
-        from reportlab.lib.pagesizes import letter
-        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import letter  # noqa: F401 — import is the availability probe
+        from reportlab.pdfgen import canvas  # noqa: F401
         return True
     except ImportError:
         return False
@@ -110,8 +110,6 @@ def _minimal_pdf(path: Path, text: str):
     """Bare-minimum hand-crafted PDF (no reportlab dependency)."""
     offsets = []
     buf = b"%PDF-1.4\n"
-    body = f"BT /F1 12 Tf 72 750 Td ({text[:200]}) Tj ET"
-    stream = body.encode()
     offsets.append(len(buf))
     buf += (
         b"1 0 obj\n<</Type /Catalog /Pages 2 0 R>>\nendobj\n"

@@ -71,7 +71,7 @@ def main():
                             with open(output_dir / "schema.json", "w", encoding="utf-8") as f:
                                 json.dump(schema_dict, f, indent=2)
                             schema_written = True
-                        except Exception as e:
+                        except Exception:
                             with open(output_dir / "schema.json", "w", encoding="utf-8") as f:
                                 json.dump(list(doc_dict.keys()), f, indent=2)
                             schema_written = True

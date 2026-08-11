@@ -48,7 +48,7 @@ class TestEnterpriseChaos:
         # Simulate the load logic
         try:
             import faiss
-            index = faiss.read_index(str(faiss_path))
+            faiss.read_index(str(faiss_path))
             pytest.fail("Should have raised an exception for missing FAISS file")
         except Exception as e:
             assert e is not None  # Exception caught — graceful handling

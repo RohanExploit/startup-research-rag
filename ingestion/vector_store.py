@@ -24,7 +24,6 @@ def build_faiss_index(embed_dir):
     embeddings = data["embeddings"]
 
     if embeddings is None or len(embeddings) == 0:
-    chunks = data["chunks"]
         logging.error("Empty embeddings array.")
         return
 

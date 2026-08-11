@@ -35,8 +35,6 @@ def is_admin(user_id: int) -> bool:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-    uid = update.effective_user.id
-    admin_tag = " (Admin)" if is_admin(uid) else ""
         "Hello! I am the Company Brain.\n"
         "Ask me anything about our internal documents."
     )

@@ -22,8 +22,6 @@ from audit.utils.pdf_factory import (
 )
 from audit.utils.tenant_factory import (
     seed_manifest,
-    create_tenant,
-    destroy_tenant,
     read_manifest,
 )
 
@@ -133,7 +131,7 @@ class TestDocumentIntegrity:
     def test_password_protected_pdf_explicit_failure(self):
         """A password-protected PDF must fail explicitly, not silently."""
         pdf = make_password_pdf(self.tmp / "password.pdf")
-        record = _simulate_ingest(self.tenant, pdf)
+        _simulate_ingest(self.tenant, pdf)
         # Password-protected PDFs appear as valid PDFs but fail content extraction
         # At minimum they must be tracked in manifest
         manifests = read_manifest(self.tenant)

@@ -141,7 +141,7 @@ async def main():
         if query == "__GUARDRAIL_TEST__":
             sql, reason = _sanitize_sql("DELETE FROM students")
             ok = reason is not None
-            print(f"  Input:  'DELETE FROM students'")
+            print("  Input:  'DELETE FROM students'")
             print(f"  Result: {'REJECTED' if ok else 'ACCEPTED (WRONG!)'} — {reason}")
             print(f"  {'✅ PASS' if ok else '❌ FAIL'}")
             passed += ok; failed += (not ok)
@@ -150,7 +150,7 @@ async def main():
         if query == "__GUARDRAIL_MULTI__":
             sql, reason = _sanitize_sql("SELECT * FROM students; DROP TABLE students")
             ok = reason is not None
-            print(f"  Input:  'SELECT * FROM students; DROP TABLE students'")
+            print("  Input:  'SELECT * FROM students; DROP TABLE students'")
             print(f"  Result: {'REJECTED' if ok else 'ACCEPTED (WRONG!)'} — {reason}")
             print(f"  {'✅ PASS' if ok else '❌ FAIL'}")
             passed += ok; failed += (not ok)
@@ -159,7 +159,7 @@ async def main():
         if query == "__GUARDRAIL_NOLIMIT__":
             sql, reason = _sanitize_sql("SELECT * FROM students")
             ok = reason is None and "LIMIT 200" in sql
-            print(f"  Input:  'SELECT * FROM students'")
+            print("  Input:  'SELECT * FROM students'")
             print(f"  Output: {sql}")
             print(f"  {'✅ PASS — LIMIT 200 added' if ok else '❌ FAIL — LIMIT not enforced'}")
             passed += ok; failed += (not ok)

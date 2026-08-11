@@ -15,7 +15,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, Query, Request, HTTPException, Depends
+from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 
 
