@@ -156,6 +156,62 @@ def subject_failure_counts(limit: int = 50, tenant_id: str = None) -> dict:
     return {"answer": "\n".join(lines), "debug_sql": sql, "template": "subject_failure_counts"}
 
 
+def student_count(tenant_id: str = None) -> dict:
+    sql = "SELECT COUNT(DISTINCT roll_no) FROM exam_results"
+    rows, _ = _rows(tenant_id, sql)
+    n = rows[0][0]
+    return {"answer": f"There are {n} students in the database.",
+            "debug_sql": sql, "template": "student_count"}
+
+
+def result_count(status: str = "PASS", tenant_id: str = None) -> dict:
+    # DISTINCT (roll_no, result) so each student counts once regardless of how
+    # many subject rows they have. status is code-controlled (PASS/FAIL).
+    status = "FAIL" if str(status).upper().startswith("FAIL") else "PASS"
+    sql = ("SELECT COUNT(*) FROM (SELECT DISTINCT roll_no, result FROM exam_results) "
+           "WHERE result = ?")
+    rows, _ = _rows(tenant_id, sql, (status,))
+    n = rows[0][0]
+    verb = "failed" if status == "FAIL" else "passed"
+    return {"answer": f"{n} students {verb} their semester examination.",
+            "debug_sql": sql, "template": "result_count"}
+
+
+def bottom_by_sgpa(limit: int = 10, tenant_id: str = None) -> dict:
+    sql = ("SELECT DISTINCT roll_no, name, sgpa FROM exam_results "
+           "WHERE sgpa IS NOT NULL ORDER BY sgpa ASC, roll_no LIMIT ?")
+    rows, _ = _rows(tenant_id, sql, (limit,))
+    if not rows:
+        return {"answer": "No SGPA data available.", "debug_sql": sql, "template": "bottom_by_sgpa"}
+    lines = [f"Lowest {len(rows)} students by SGPA:"]
+    for i, (roll, name, sgpa) in enumerate(rows, 1):
+        lines.append(f"{i}. {name or 'Unknown'} (Roll: {roll}): SGPA {sgpa:.2f}")
+    return {"answer": "\n".join(lines), "debug_sql": sql, "template": "bottom_by_sgpa"}
+
+
+def count_sgpa_at_least(threshold: float, tenant_id: str = None) -> dict:
+    sql = ("SELECT COUNT(*) FROM (SELECT DISTINCT roll_no, sgpa FROM exam_results "
+           "WHERE sgpa IS NOT NULL) WHERE sgpa >= ?")
+    rows, _ = _rows(tenant_id, sql, (threshold,))
+    n = rows[0][0]
+    if n == 0:
+        return {"answer": f"No students have an SGPA of {threshold:g} or above.",
+                "debug_sql": sql, "template": "count_sgpa_at_least"}
+    return {"answer": f"{n} students have an SGPA of {threshold:g} or above.",
+            "debug_sql": sql, "template": "count_sgpa_at_least"}
+
+
+def supplementary_count(tenant_id: str = None) -> dict:
+    sql = "SELECT COUNT(DISTINCT roll_no) FROM exam_results WHERE is_supply"
+    rows, _ = _rows(tenant_id, sql)
+    n = rows[0][0]
+    if n == 0:
+        return {"answer": "No students appeared for a supplementary examination.",
+                "debug_sql": sql, "template": "supplementary_count"}
+    return {"answer": f"{n} students appeared for a supplementary examination.",
+            "debug_sql": sql, "template": "supplementary_count"}
+
+
 # --------------------------------------------------------------------------
 # Matcher
 # --------------------------------------------------------------------------
@@ -204,5 +260,33 @@ def match_template(query: str):
     if (not named_subjects and "subject" in q and "fail" in q
             and ("per" in q or "each" in q or "which" in q or "wise" in q or "count" in q)):
         return subject_failure_counts, {}
+
+    # lowest / bottom students by SGPA (highest/top handled by toppers above)
+    if ("lowest" in q or "bottom" in q or "worst" in q) and "sgpa" in q:
+        m = _TOP_N.search(q)
+        return bottom_by_sgpa, ({"limit": int(m.group(1))} if m else {})
+
+    # count of students at/above an SGPA threshold (mirrors below_sgpa)
+    if ("sgpa" in q and "subject" not in q and "fail" not in q
+            and ("above" in q or "greater" in q or "or more" in q or "at least" in q or ">=" in q)
+            and ("how many" in q or "number of" in q or "count" in q)):
+        m = re.search(r"(\d+(?:\.\d+)?)", q)
+        return count_sgpa_at_least, {"threshold": float(m.group(1)) if m else 9.0}
+
+    # supplementary-exam student count
+    if "supplement" in q and ("how many" in q or "number of" in q or "count" in q):
+        return supplementary_count, {}
+
+    # passed-student count (not the percentage/rate template above)
+    if ("pass" in q and ("how many" in q or "number of" in q or "count of" in q)
+            and "percent" not in q and "rate" not in q and "%" not in q):
+        return result_count, {"status": "PASS"}
+
+    # total student count
+    if (("how many" in q or "number of" in q or "total" in q) and "student" in q
+            and not any(w in q for w in ("fail", "subject", "sgpa", "pass", "below",
+                                         "above", "supplement", "review", "backlog",
+                                         "topper", "most", "least"))):
+        return student_count, {}
 
     return None
