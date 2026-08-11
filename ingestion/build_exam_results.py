@@ -21,12 +21,14 @@ from pathlib import Path
 import duckdb
 
 from config import tenant_dir, DEFAULT_TENANT_ID
+from models.grades import FAIL_GRADES
 from utils.logging_config import setup_logging
 
 setup_logging()
 
-# Grades treated as a fail/absent (matches the documented schema + count_failures).
-FAIL_GRADES = ("FF", "XX", "AB")
+# Failing grades come from the single source of truth (models.grades). Per the
+# printed DBATU legend the only academic fail is 'FF'; 'AB' (8.5) is a pass and
+# 'AU' is an audit subject — neither is a failure.
 
 
 def source_db(tenant_id: str) -> Path:

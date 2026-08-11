@@ -41,7 +41,7 @@ SELECT COUNT(*) FROM (
   SELECT roll_no
   FROM student_subjects
   WHERE subject_code LIKE 'BT%5%'
-    AND grade IN ('FF', 'XX', 'AB')
+    AND grade = 'FF'
   GROUP BY roll_no
   HAVING COUNT(*) >= 2
 ) t

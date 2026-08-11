@@ -81,7 +81,7 @@ def annotate_r1(block):
         elif re.match(r'^\d+$', txt) and int(txt) > 100:
             ann = f"{txt}[=EXTTOTAL]"
         elif txt == 'AB':
-            ann = f"{txt}[=ABSENT]"
+            ann = f"{txt}[=PASS 8.5]"
         annotations.append((ann, x, y))
     return roll, result, tokens, annotations
 

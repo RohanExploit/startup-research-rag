@@ -22,9 +22,12 @@ pytestmark = pytest.mark.skipif(not _SRC.exists(), reason="tenant_1 tabular.duck
 
 # ---- template-level (direct) ----
 
+# NOTE: counts reflect the corrected grade classification — only 'FF' is a
+# failure. 'AB' (8.5) is a pass. Before that fix these read 10 and 77, inflated
+# by ~243 AB rows wrongly counted as fails.
 def test_template_failed_at_least_4():
     out = sql_templates.students_failed_at_least(4, tenant_id="tenant_1")
-    assert "Found 10 students" in out["answer"]
+    assert "Found 7 students" in out["answer"]
     assert "JAGTAP ANANT TANAJI" in out["answer"]
     assert "SHELKE MANISH SURESH" in out["answer"]
     assert out["template"] == "students_failed_at_least"
@@ -32,7 +35,7 @@ def test_template_failed_at_least_4():
 
 def test_template_failed_at_least_2():
     out = sql_templates.students_failed_at_least(2, tenant_id="tenant_1")
-    assert "Found 77 students" in out["answer"]
+    assert "Found 16 students" in out["answer"]
 
 
 def test_template_failed_most():
@@ -64,7 +67,7 @@ async def test_router_failed_at_least_4_end_to_end(router):
     )
     assert qtype == "TABULAR"
     assert metadata.get("template") == "students_failed_at_least"
-    assert "Found 10 students" in context
+    assert "Found 7 students" in context
     assert "JAGTAP ANANT TANAJI" in context and "SHELKE MANISH SURESH" in context
 
 
@@ -72,7 +75,7 @@ async def test_router_failed_at_least_4_end_to_end(router):
 async def test_router_failed_at_least_2_end_to_end(router):
     qtype, context, metadata = await router.route_query("students who failed at least 2 subjects")
     assert qtype == "TABULAR"
-    assert "Found 77 students" in context
+    assert "Found 16 students" in context
 
 
 @pytest.mark.asyncio

@@ -6,6 +6,8 @@ Pass criterion: No invalid verified records (deviation > 0.01 in SGPA).
 import pytest
 import duckdb
 
+from models.grades import GRADE_POINTS, is_audit
+
 pytestmark = pytest.mark.integrity
 
 
@@ -13,17 +15,18 @@ pytestmark = pytest.mark.integrity
 
 def compute_sgpa(subjects: list[dict]) -> float:
     """
-    SGPA = sum(credits * grade_points) / sum(credits)
-    grade_points mapping matches university standard.
+    SGPA = sum(credits * grade_points) / sum(registered_credits)
+
+    Grade points come from the single source of truth (models.grades), which
+    matches the printed DBATU legend. Audit subjects (AU) score 0 and are
+    excluded from the credit denominator.
     """
-    GRADE_POINTS = {
-        "AA": 10, "AB": 9, "BB": 8, "BC": 7,
-        "CC": 6, "CD": 5, "DD": 4, "FF": 0,
-    }
     total_credits = 0
     weighted_sum = 0.0
     for s in subjects:
         grade = s.get("grade", "FF")
+        if is_audit(grade):            # AU: not counted toward SGPA credits
+            continue
         credits = s.get("credits", 0)
         gp = GRADE_POINTS.get(grade, 0)
         weighted_sum += credits * gp
@@ -142,8 +145,10 @@ class TestExtractionVerification:
 
     def test_sgpa_formula_correctness(self):
         """Unit test the recomputation formula itself against known values."""
-        # AA=10, credits=4 → SGPA = (4*10)/(4) = 10.0
-        assert compute_sgpa([{"credits": 4, "grade": "AA", "marks": 90}]) == 10.0
+        # AA=9, credits=4 → SGPA = (4*9)/(4) = 9.0
+        assert compute_sgpa([{"credits": 4, "grade": "AA", "marks": 90}]) == 9.0
+        # AB=8.5 is a pass, credits=3 → (3*8.5)/3 = 8.5
+        assert compute_sgpa([{"credits": 3, "grade": "AB", "marks": 82}]) == 8.5
         # BB=8 (4cr) + FF=0 (3cr) → (32+0)/7 ≈ 4.57
         mixed = [
             {"credits": 4, "grade": "BB", "marks": 70},

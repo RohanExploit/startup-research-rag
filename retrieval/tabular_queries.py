@@ -108,9 +108,11 @@ def count_failures(subject_code=None, tenant_id: str = None):
     Counts the number of failed students overall or in a specific subject.
     """
     if subject_code:
+        # Only 'FF' is an academic failure (see models.grades.FAIL_GRADES).
+        # 'AB' (8.5) is a pass and 'AU' is an audit subject — neither is a fail.
         query = """
             SELECT COUNT(*) FROM student_subjects
-            WHERE subject_code = ? AND grade IN ('FF', 'XX', 'AB')
+            WHERE subject_code = ? AND grade = 'FF'
         """
         try:
             rows = _cached_fetch(query, (subject_code,), tenant_id)
@@ -449,8 +451,9 @@ Table: student_subjects
   To match all sem-N subjects use: regexp_matches(subject_code, '^BT[A-Z]+N') (DuckDB regex), e.g. sem 5: regexp_matches(subject_code, '^BT[A-Z]+5')
 - credit (INTEGER)
 - grade (VARCHAR): 'AA','AB','BB','BC','CC','CD','DD','EE','DE','FF','XX','EX','AU'.
-  'EX' = exempted/full credit (grade_point 20). 'AU' = audit (grade_point 0, not counted as fail).
-  Failed grades: 'FF', 'XX', 'AB' (absent).
+  Grade points: EX=10, AA=9, AB=8.5, BB=8, BC=7.5, CC=7, CD=6.5, DD=6, DE=5.5, EE=5, FF=0.
+  'EX' = excellent. 'AU' = audit subject (0 points, excluded from SGPA credits, NOT a fail).
+  Failing grade: 'FF' only (marks 0.00-39.99). 'AB' is a PASS (8.5), never a failure.
 - grade_point (DOUBLE)
 - raw_grade_string (VARCHAR)
 '''
