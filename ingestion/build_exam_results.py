@@ -49,8 +49,8 @@ def build_exam_results(tenant_id: str = None) -> dict:
     fail_list = ", ".join(f"'{g}'" for g in FAIL_GRADES)   # for the IN (...) clause
     provenance_text = (
         "derived: students JOIN student_subjects; semester from subject_code; "
-        f"is_fail = grade in ({', '.join(FAIL_GRADES)})"
-    )  # quote-free, safe to embed as a literal
+        f"is_fail = grade IN ({fail_list})"
+    )  # mirrors the executed predicate exactly (quoted grades)
     con = duckdb.connect(str(dst))  # writes ONLY analytics.duckdb
     try:
         con.execute(f"ATTACH '{src.as_posix()}' AS src (READ_ONLY)")

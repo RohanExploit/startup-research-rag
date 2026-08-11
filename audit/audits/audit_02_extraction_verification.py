@@ -66,6 +66,11 @@ class TestExtractionVerification:
             ]
             if not subject_dicts:
                 continue
+            # A student with only audit (AU) subjects has no gradeable credits;
+            # compute_sgpa returns 0.0 there, which need not equal a stored sgpa
+            # carried from prior credits — skip rather than flag a false violation.
+            if all(is_audit(s.get("grade")) for s in subject_dicts):
+                continue
             computed = compute_sgpa(subject_dicts)
             if stored_sgpa is not None and abs(computed - stored_sgpa) > 0.01:
                 violations.append({

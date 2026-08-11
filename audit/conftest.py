@@ -169,21 +169,24 @@ def duckdb_tenant(test_tenant):
         )
     """)
     # Seed realistic test data
+    # sgpa (5th field) equals compute_sgpa() over each student's subjects on the
+    # correct DBATU scale (AA=9, AB=8.5, BB=8, BC=7.5, FF=0; AU excluded), so the
+    # extraction-verification audit checks stored == recomputed for real.
     students = [
-        ("2021001001", "Rahul Sharma",  "CS", "2002-05-10", 8.5, 8.2, 92.0, False, True),
-        ("2021001002", "Priya Patel",   "CS", "2002-08-22", 7.2, 7.0, 78.5, True,  True),
-        ("2021001003", "Amit Verma",    "IT", "2001-11-30", 5.8, 5.5, 61.0, True,  False),
-        ("2021001004", "Sneha Nair",    "CS", "2002-03-15", 9.1, 8.9, 95.0, False, True),
-        ("2021001005", "विक्रम सिंह",  "ME", "2002-07-04", 6.5, 6.3, 74.0, False, True),
+        ("2021001001", "Rahul Sharma",  "CS", "2002-05-10", 8.79, 8.2, 92.0, False, True),   # (4*9+3*8.5)/7
+        ("2021001002", "Priya Patel",   "CS", "2002-08-22", 7.79, 7.0, 78.5, True,  True),    # (4*8+3*7.5)/7
+        ("2021001003", "Amit Verma",    "IT", "2001-11-30", 0.0,  5.5, 61.0, True,  False),   # only FF -> 0
+        ("2021001004", "Sneha Nair",    "CS", "2002-03-15", 9.0,  8.9, 95.0, False, True),    # (4*9+3*9)/7
+        ("2021001005", "विक्रम सिंह",  "ME", "2002-07-04", 8.0,  6.3, 74.0, False, True),     # 4*8/4
     ]
     con.executemany("INSERT INTO students VALUES (?,?,?,?,?,?,?,?,?)", students)
 
     subjects = [
         ("2021001001", "BT301", 4, 85.0, "AA"),
-        ("2021001001", "BT302", 3, 78.0, "AB"),
+        ("2021001001", "BT302", 3, 82.0, "AB"),
         ("2021001002", "BT301", 4, 62.0, "BB"),
         ("2021001002", "BT302", 3, 55.0, "BC"),
-        ("2021001003", "BT301", 4, 40.0, "FF"),
+        ("2021001003", "BT301", 4, 39.0, "FF"),
         ("2021001004", "BT301", 4, 92.0, "AA"),
         ("2021001004", "BT302", 3, 88.0, "AA"),
         ("2021001005", "BT301", 4, 65.0, "BB"),
