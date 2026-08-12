@@ -32,9 +32,14 @@ from retrieval.router import QueryRouter          # noqa: E402
 from generation.answer import generate_answer     # noqa: E402
 
 GOLDEN = Path(__file__).resolve().parent / "golden_set.json"
+# Heuristic markers of an "I can't answer that" refusal. Substring match, so it
+# can over-fire on a long answer that merely quotes one of these phrases — an
+# accepted limitation of a keyword scorer; keep the phrases refusal-specific.
 _INSUFFICIENT_MARKERS = (
     "don't have enough", "do not have enough", "insufficient",
     "not enough information", "no information", "cannot find", "not found",
+    "no student", "no matching", "no record", "no such", "does not exist",
+    "not exist", "could not extract", "no results",
 )
 
 
@@ -119,11 +124,17 @@ def main():
     args = ap.parse_args()
     summary, rows = asyncio.run(run(Path(args.golden), args.limit))
     if args.out:
-        Path(args.out).write_text(
+        # --out gets the PII-safe summary only. The full rows (answer text can
+        # contain student names) always go to a sibling *_results.json, which is
+        # gitignored — so a documented `--out baseline.json` can never leak PII.
+        out = Path(args.out)
+        out.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+        rows_path = out.with_name(out.stem + "_results.json")
+        rows_path.write_text(
             json.dumps({"summary": summary, "rows": rows}, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
-        print(f"\nwrote {args.out}")
+        print(f"\nwrote {out} (summary) and {rows_path.name} (rows — gitignored)")
 
 
 if __name__ == "__main__":

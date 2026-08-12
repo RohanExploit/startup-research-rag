@@ -157,6 +157,9 @@ def subject_failure_counts(limit: int = 50, tenant_id: str = None) -> dict:
 
 
 def student_count(tenant_id: str = None) -> dict:
+    # Counts students present in exam_results (student_subjects LEFT JOIN
+    # students). Assumes every student has >=1 subject row — true for the
+    # current corpus; a student with zero subjects would be undercounted.
     sql = "SELECT COUNT(DISTINCT roll_no) FROM exam_results"
     rows, _ = _rows(tenant_id, sql)
     n = rows[0][0]
@@ -219,6 +222,11 @@ def supplementary_count(tenant_id: str = None) -> dict:
 _AT_LEAST_N = re.compile(r"(?:at\s*least|atleast|>=|minimum(?:\s+of)?|min)\s*(\d+)", re.I)
 _N_OR_MORE = re.compile(r"(\d+)\s*(?:or\s+more|\+)\s*subject", re.I)
 _TOP_N = re.compile(r"top\s+(\d+)", re.I)
+_BOTTOM_N = re.compile(r"(?:bottom|lowest|worst)\s+(\d+)", re.I)
+# Anchor an SGPA threshold to its keyword so a semester/year number elsewhere in
+# the query isn't mistaken for it (mirrors intent.py's below_sgpa handling).
+_SGPA_THRESHOLD = re.compile(
+    r"(?:above|greater\s+than|greater|at\s*least|or\s+more|>=|sgpa)\D{0,12}(\d+(?:\.\d+)?)", re.I)
 _SUBJECT_CODE = re.compile(r"\bBT[A-Z]{2,5}\d{3}[A-Z]?\b", re.I)
 
 
@@ -263,22 +271,31 @@ def match_template(query: str):
 
     # lowest / bottom students by SGPA (highest/top handled by toppers above)
     if ("lowest" in q or "bottom" in q or "worst" in q) and "sgpa" in q:
-        m = _TOP_N.search(q)
+        m = _BOTTOM_N.search(q)
         return bottom_by_sgpa, ({"limit": int(m.group(1))} if m else {})
 
     # count of students at/above an SGPA threshold (mirrors below_sgpa)
-    if ("sgpa" in q and "subject" not in q and "fail" not in q
+    if ("sgpa" in q and not named_subjects and "subject" not in q and "fail" not in q
             and ("above" in q or "greater" in q or "or more" in q or "at least" in q or ">=" in q)
             and ("how many" in q or "number of" in q or "count" in q)):
-        m = re.search(r"(\d+(?:\.\d+)?)", q)
+        m = _SGPA_THRESHOLD.search(q)
         return count_sgpa_at_least, {"threshold": float(m.group(1)) if m else 9.0}
 
     # supplementary-exam student count
     if "supplement" in q and ("how many" in q or "number of" in q or "count" in q):
         return supplementary_count, {}
 
-    # passed-student count (not the percentage/rate template above)
+    # overall failed-student count (student-level result=FAIL), distinct from
+    # per-subject failure counts and "failed at least N subjects" above.
+    if (("how many" in q or "number of" in q or "count of" in q) and "fail" in q
+            and not named_subjects and "subject" not in q
+            and "at least" not in q and "atleast" not in q
+            and "most" not in q and "backlog" not in q):
+        return result_count, {"status": "FAIL"}
+
+    # passed-student count — subject-scoped questions fall through to dynamic SQL
     if ("pass" in q and ("how many" in q or "number of" in q or "count of" in q)
+            and not named_subjects and "subject" not in q
             and "percent" not in q and "rate" not in q and "%" not in q):
         return result_count, {"status": "PASS"}
 

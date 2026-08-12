@@ -56,6 +56,32 @@ def test_supplementary_matches():
     assert _fn("how many students appeared for a supplementary examination") is T.supplementary_count
 
 
+def test_bottom_by_sgpa_parses_limit():
+    """Regression: the limit must be parsed from 'bottom/lowest/worst N', not _TOP_N."""
+    fn, kw = T.match_template("bottom 5 students by sgpa")
+    assert fn is T.bottom_by_sgpa and kw == {"limit": 5}
+    fn, kw = T.match_template("which student has the lowest sgpa")
+    assert fn is T.bottom_by_sgpa and kw == {}
+
+
+def test_sgpa_threshold_anchored_not_first_number():
+    """Regression: a semester/year number must not be taken as the SGPA threshold."""
+    fn, kw = T.match_template("how many students in semester 3 have an sgpa above 7")
+    assert fn is T.count_sgpa_at_least and kw == {"threshold": 7.0}
+
+
+def test_pass_count_ignores_subject_scoped():
+    """Subject-scoped pass questions must NOT hit the global pass count."""
+    assert T.match_template("how many students passed subject BTCOC501") is None
+
+
+def test_failed_overall_count_routes_to_result_count():
+    fn, kw = T.match_template("how many students failed their semester result overall")
+    assert fn is T.result_count and kw == {"status": "FAIL"}
+    # but "failed at least N subjects" stays with the subject-level template
+    assert _fn("how many students failed at least 2 subjects") is T.students_failed_at_least
+
+
 def test_existing_templates_not_shadowed():
     """Regression: the new branches must not swallow the older templates."""
     assert _fn("list students who failed at least 4 subjects") is T.students_failed_at_least
@@ -84,6 +110,11 @@ def test_student_count_value():
 @_real
 def test_passed_count_value():
     assert "334" in T.result_count(status="PASS", tenant_id="tenant_1")["answer"]
+
+
+@_real
+def test_failed_count_value():
+    assert "35" in T.result_count(status="FAIL", tenant_id="tenant_1")["answer"]
 
 
 @_real
