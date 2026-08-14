@@ -8,6 +8,8 @@ __pycache__/
 
 # --- Secrets / keys ---
 .env
+.env.*
+!.env.example
 .encryption_key
 auth/api_keys.json
 
@@ -27,6 +29,10 @@ faiss.index
 manifest.db
 *.graphml
 *.parquet
+# raw student spreadsheets (names, DOB, Aadhaar, caste, contact) — never in git
+*.xlsx
+*.csv
+SESSION-STUDENT-DETAILS-2.xlsx
 
 # --- Misc build/output ---
 *.log
