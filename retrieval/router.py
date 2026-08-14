@@ -116,11 +116,32 @@ Query: "{query}"
         elif qtype == "GLOBAL":
             context = self.cs.get_all_summaries()
         elif qtype == "LOCAL":
-            results = self.vs.search(query, top_k=1)
-            if results:
-                entity = results[0]["metadata"].get("source", "Unknown")
-                edges = self.gs.get_neighborhood(entity, hops=1)
+            # Link entities named in the QUESTION to graph nodes (the graph is
+            # keyed by entity names, not source filenames), then return their
+            # neighborhood. Deterministic; logs what matched so failures are
+            # diagnosable. Falls back to vector content when nothing links.
+            from retrieval.entity_link import link_entities
+
+            nodes = list(self.gs.G.nodes()) if self.gs.G is not None else []
+            matched, scores = link_entities(query, nodes)
+            edges: list[str] = []
+            for node in matched:
+                for e in self.gs.get_neighborhood(node, hops=2):
+                    if e not in edges:
+                        edges.append(e)
+                    if len(edges) >= 40:
+                        break
+                if len(edges) >= 40:
+                    break
+            metadata["linked_entities"] = matched
+            logging.info("LOCAL entity-link: matched=%s edges=%d", matched, len(edges))
+            if edges:
                 context = "\n".join(edges)
+            else:
+                # entity absent from graph (coverage gap) -> degrade to FACT-like
+                # vector context rather than returning empty.
+                results = self.vs.search(query, top_k=3)
+                context = "\n".join(r["content"] for r in results)
         elif qtype == "TABULAR":
             from retrieval.tabular_queries import get_average_sgpa, count_failures, list_students_below_sgpa, get_student_record, get_student_by_name, generate_and_run_sql
             from retrieval.sql_templates import match_template
