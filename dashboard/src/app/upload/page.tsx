@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, ChangeEvent } from "react";
 import { apiFetch } from "@/lib/api";
+import { UploadIcon, CheckIcon, AlertIcon } from "@/components/icons";
 
 type UploadStatus = "IDLE" | "STAGING" | "PROCESSING" | "SUCCESS" | "FAILED";
 
@@ -105,54 +106,53 @@ export default function UploadPage() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label style={{ fontSize: "var(--text-sm)", color: "var(--color-muted)", fontWeight: 500 }}>Document File</label>
-              <div 
-                style={{ 
-                  border: "2px dashed var(--color-border)", 
-                  padding: "30px", 
-                  borderRadius: 8, 
+              <div
+                style={{
+                  border: "1.5px dashed var(--color-border-strong)",
+                  padding: "32px 24px",
+                  borderRadius: "var(--radius)",
                   textAlign: "center",
                   background: "var(--color-shell)",
-                  cursor: (status === "STAGING" || status === "PROCESSING") ? "not-allowed" : "pointer"
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
+                  cursor: (status === "STAGING" || status === "PROCESSING") ? "not-allowed" : "pointer",
+                  transition: "border-color 140ms var(--ease)"
                 }}
                 onClick={() => { if (status !== "STAGING" && status !== "PROCESSING") fileInputRef.current?.click(); }}
               >
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  style={{ display: "none" }} 
-                  onChange={handleFileChange} 
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  onChange={handleFileChange}
                 />
-                
+
+                <div className="empty-state-icon" style={{ marginBottom: 0, color: file ? "var(--color-accent)" : "var(--color-faint)", borderColor: file ? "var(--color-accent)" : "var(--color-border)" }}>
+                  <UploadIcon size={22} />
+                </div>
+
                 {file ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <span style={{ color: "var(--color-text)", fontWeight: 500 }}>{file.name}</span>
-                    <span style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)" }}>{(file.size / 1024).toFixed(1)} KB</span>
+                    <span style={{ color: "var(--color-text)", fontWeight: 600 }}>{file.name}</span>
+                    <span className="font-data" style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)" }}>{(file.size / 1024).toFixed(1)} KB</span>
                   </div>
                 ) : (
-                  <div style={{ color: "var(--color-muted)" }}>
+                  <div style={{ color: "var(--color-muted)", fontSize: "var(--text-sm)" }}>
                     Click to browse or drag a file here<br/>
-                    <span style={{ fontSize: "var(--text-xs)" }}>PDF, CSV, or Text format</span>
+                    <span style={{ fontSize: "var(--text-xs)", color: "var(--color-faint)" }}>PDF, CSV, or Text format</span>
                   </div>
                 )}
               </div>
             </div>
             
-            <button 
-              onClick={handleUpload} 
+            <button
+              onClick={handleUpload}
               disabled={!file || status === "STAGING" || status === "PROCESSING"}
-              style={{
-                padding: "12px",
-                background: (!file || status === "STAGING" || status === "PROCESSING") ? "var(--color-border)" : "var(--color-accent)",
-                color: (!file || status === "STAGING" || status === "PROCESSING") ? "var(--color-muted)" : "white",
-                border: "none",
-                borderRadius: 6,
-                fontWeight: 600,
-                cursor: (!file || status === "STAGING" || status === "PROCESSING") ? "not-allowed" : "pointer",
-                marginTop: 10
-              }}
+              className="btn btn-primary"
+              style={{ padding: "12px", marginTop: 4 }}
             >
-              {status === "STAGING" ? "Uploading to Staging..." : 
-               status === "PROCESSING" ? "Parsing & Ingesting..." : 
+              {(status === "STAGING" || status === "PROCESSING") && <span className="spinner" style={{ width: 14, height: 14, borderTopColor: "#fff" }} />}
+              {status === "STAGING" ? "Uploading to staging…" :
+               status === "PROCESSING" ? "Parsing & ingesting…" :
                "Upload & Ingest Document"}
             </button>
 
@@ -167,7 +167,9 @@ export default function UploadPage() {
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   {status === "PROCESSING" && <span className="spinner" />}
-                  <span style={{ 
+                  {status === "SUCCESS" && <CheckIcon size={16} />}
+                  {status === "FAILED" && <AlertIcon size={16} />}
+                  <span style={{
                     fontWeight: 600, 
                     color: status === "FAILED" ? "var(--color-fail)" : status === "SUCCESS" ? "var(--color-pass)" : "var(--color-text)" 
                   }}>

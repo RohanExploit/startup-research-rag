@@ -1,17 +1,18 @@
 "use client";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { RefreshIcon } from "@/components/icons";
 
 interface OllamaStatus { reachable: boolean; model: string; vram_used_gb: number | null; vram_total_gb: number | null; }
 interface SystemStatus { ollama: OllamaStatus; registered_tenant_count: number; total_docs: number; timestamp: string; }
 
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
-    <div className="card" style={{ flex: 1 }}>
-      <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <div style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</div>
-        <div className="font-data" style={{ fontSize: "1.6rem", fontWeight: 700, color: color ?? "var(--color-text)" }}>{value}</div>
-        {sub && <div style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)" }}>{sub}</div>}
+    <div className="card card-hover stat-card">
+      <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+        <div className="stat-label">{label}</div>
+        <div className="stat-value" style={{ color: color ?? "var(--color-text)" }}>{value}</div>
+        {sub && <div className="stat-sub">{sub}</div>}
       </div>
     </div>
   );
@@ -51,9 +52,9 @@ export default function HealthPage() {
             <span className="font-data" style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)" }}>
               {lastRefresh ? lastRefresh.toLocaleTimeString() : "—"}
             </span>
-            <button onClick={refresh} disabled={loading}
-              style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid var(--color-border)", background: "none", color: "var(--color-muted)", fontSize: "var(--text-xs)", cursor: "pointer" }}>
-              {loading ? "…" : "↻ Refresh"}
+            <button onClick={refresh} disabled={loading} className="btn btn-ghost" style={{ padding: "6px 12px" }}>
+              {loading ? <span className="spinner" style={{ width: 13, height: 13 }} /> : <RefreshIcon size={14} />}
+              Refresh
             </button>
           </div>
         </div>

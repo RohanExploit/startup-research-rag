@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { LibraryIcon, AlertIcon } from "@/components/icons";
 
 interface Document {
   doc_id: string;
@@ -86,21 +87,15 @@ export default function DocumentsPage() {
             { label: "Pending", count: counts.PENDING, badge: "badge-warn", key: "PENDING" },
           ].map(s => (
             <button key={s.key} onClick={() => setFilter(s.key)}
-              style={{
-                padding: "8px 16px", borderRadius: 6, cursor: "pointer", fontFamily: "var(--font-mono)",
-                fontSize: "var(--text-sm)", border: `1px solid ${filter === s.key ? "var(--color-accent)" : "var(--color-border)"}`,
-                background: filter === s.key ? "rgba(59,110,245,0.12)" : "var(--color-shell)",
-                color: filter === s.key ? "var(--color-accent)" : "var(--color-muted)",
-                display: "flex", gap: 8, alignItems: "center",
-              }}>
+              className={`filter-btn ${filter === s.key ? "active" : ""}`}>
               {s.label} <span className={`badge ${s.badge}`}>{s.count}</span>
             </button>
           ))}
         </div>
 
         {error && (
-          <div style={{ padding: "10px 14px", borderRadius: 6, background: "var(--color-fail-bg)", border: "1px solid rgba(229,72,77,0.3)", color: "var(--color-fail)", fontSize: "var(--text-sm)" }}>
-            {error}
+          <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 14px", borderRadius: "var(--radius-sm)", background: "var(--color-fail-bg)", border: "1px solid rgba(240,85,90,0.28)", color: "var(--color-fail)", fontSize: "var(--text-sm)" }}>
+            <AlertIcon size={16} /> {error}
           </div>
         )}
 
@@ -108,7 +103,7 @@ export default function DocumentsPage() {
           <div className="empty-state"><span className="spinner" /><div className="empty-state-title">Loading documents…</div></div>
         ) : visible.length === 0 ? (
           <div className="empty-state">
-            <div style={{ fontSize: 24, opacity: 0.3 }}>⊞</div>
+            <div className="empty-state-icon"><LibraryIcon size={24} /></div>
             <div className="empty-state-title">No documents</div>
             <div className="empty-state-sub">Upload files via the ingestion pipeline</div>
           </div>
@@ -116,14 +111,14 @@ export default function DocumentsPage() {
           <div className="card">
             <div className="card-header">
               <span className="card-title">Documents — {tenant}</span>
-              <span className="font-data" style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)" }}>{visible.length} shown</span>
+              <span className="font-data" style={{ fontSize: "var(--text-xs)", color: "var(--color-faint)" }}>{visible.length} shown</span>
             </div>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table className="data-table">
                 <thead>
                   <tr>
                     {["Document", "Status", "Hash", "Pages", "Size", "Flags", "Last Indexed"].map(h => (
-                      <th key={h} style={{ textAlign: "left", padding: "8px 14px", fontSize: "var(--text-xs)", color: "var(--color-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1px solid var(--color-border)", whiteSpace: "nowrap" }}>{h}</th>
+                      <th key={h}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -132,31 +127,31 @@ export default function DocumentsPage() {
                     let parsedFlags: string[] = [];
                     try { parsedFlags = doc.flags ? JSON.parse(doc.flags) : []; } catch {}
                     return (
-                      <tr key={i} style={{ borderBottom: "1px solid rgba(46,58,80,0.35)" }}>
-                        <td style={{ padding: "9px 14px", maxWidth: 280 }}>
-                          <div style={{ fontSize: "var(--text-sm)", color: "var(--color-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.doc_id}>{doc.doc_id}</div>
+                      <tr key={i}>
+                        <td style={{ maxWidth: 280 }}>
+                          <div style={{ color: "var(--color-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.doc_id}>{doc.doc_id}</div>
                           {doc.error_message && <div style={{ fontSize: "var(--text-xs)", color: "var(--color-fail)", marginTop: 2 }}>{doc.error_message.slice(0, 60)}…</div>}
                         </td>
-                        <td style={{ padding: "9px 14px" }}>
+                        <td>
                           <span className={`badge ${STATUS_BADGE[doc.parse_status] ?? "badge-info"}`}>{doc.parse_status}</span>
                         </td>
-                        <td style={{ padding: "9px 14px" }}>
+                        <td>
                           <span className="font-data" style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)" }}>{doc.file_hash ?? "—"}</span>
                         </td>
-                        <td style={{ padding: "9px 14px" }}>
-                          <span className="font-data" style={{ fontSize: "var(--text-sm)", color: "var(--color-text)" }}>{doc.page_count ?? "—"}</span>
+                        <td>
+                          <span className="font-data" style={{ color: "var(--color-text)" }}>{doc.page_count ?? "—"}</span>
                         </td>
-                        <td style={{ padding: "9px 14px" }}>
+                        <td>
                           <span className="font-data" style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)" }}>{fmt_bytes(doc.file_size_bytes)}</span>
                         </td>
-                        <td style={{ padding: "9px 14px" }}>
+                        <td>
                           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                             {parsedFlags.map((f, fi) => (
                               <span key={fi} className={`badge ${f === "PARSE_FAILURE" ? "badge-fail" : f === "TABLE_BROKEN" ? "badge-warn" : "badge-info"}`}>{f}</span>
                             ))}
                           </div>
                         </td>
-                        <td style={{ padding: "9px 14px" }}>
+                        <td>
                           <span className="font-data" style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)" }}>
                             {doc.last_indexed_at ? new Date(doc.last_indexed_at).toLocaleString() : "—"}
                           </span>

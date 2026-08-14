@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { apiFetch, API_BASE } from "@/lib/api";
+import { LayersIcon } from "@/components/icons";
 
 interface Tenant {
   id: string;
@@ -33,14 +34,14 @@ export default function TenantsPage() {
           <div className="empty-state"><span className="spinner" /><div className="empty-state-title">Loading tenants…</div></div>
         ) : tenants.length === 0 ? (
           <div className="empty-state">
-            <div style={{ fontSize: 24, opacity: 0.3 }}>⬡</div>
+            <div className="empty-state-icon"><LayersIcon size={24} /></div>
             <div className="empty-state-title">No tenant data returned from API</div>
             <div className="empty-state-sub">Ensure backend is running at {API_BASE}</div>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {tenants.map(t => (
-              <div key={t.id} className="card">
+              <div key={t.id} className="card card-hover">
                 <div className="card-header">
                   <span className="card-title font-data">{t.id}</span>
                   <div style={{ display: "flex", gap: 8 }}>

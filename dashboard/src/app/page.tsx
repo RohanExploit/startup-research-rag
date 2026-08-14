@@ -9,6 +9,7 @@ import {
   type QueryType,
   type AnswerKind,
 } from "@/lib/api";
+import { SearchIcon, SendIcon, AlertIcon } from "@/components/icons";
 
 // ─── Types ─────────────────────────────────────────────────────
 
@@ -34,12 +35,29 @@ function TypeBadge({ type }: { type: QueryType }) {
   return <span className={`badge ${map[type]}`}>{type}</span>;
 }
 
+// ─── Route legend + example queries (empty-state onboarding) ────
+
+const ROUTES: { type: QueryType; blurb: string }[] = [
+  { type: "FACT", blurb: "Definitions & specific details from documents" },
+  { type: "LOCAL", blurb: "Relationships & multi-hop entity connections" },
+  { type: "GLOBAL", blurb: "Themes & summaries across the whole corpus" },
+  { type: "TABULAR", blurb: "Aggregates & student records via live SQL" },
+];
+
+const EXAMPLES = [
+  "How many students failed at least 2 subjects?",
+  "search for gaikwad rohan vijay",
+  "What is RAG-MicroSim?",
+  "Which trust runs DACOE Karad?",
+  "average SGPA",
+];
+
 // ─── Fallback warning banner ────────────────────────────────────
 
 function FallbackBanner({ reason }: { reason: string }) {
   return (
     <div className="fallback-banner">
-      <span>⚠</span>
+      <AlertIcon size={16} />
       <span>
         Router fell back to FACT —{" "}
         <span className="fallback-code">{reason}</span>. Classification may be wrong.
@@ -56,7 +74,7 @@ function StudentCard({ raw }: { raw: string }) {
   return (
     <div className="student-card">
       <div className="student-card-header">
-        <div>
+        <div style={{ marginRight: "auto" }}>
           <div className="student-name">{rec.name || "Student"}</div>
           <div className="student-roll font-data">Roll: {rec.rollNo}</div>
         </div>
@@ -80,12 +98,16 @@ function StudentCard({ raw }: { raw: string }) {
             </thead>
             <tbody>
               {rec.subjects.map(s => {
-                const failGrade = s.grade === "FF" || s.grade.startsWith("F") || s.grade === "AB";
+                // Single source of truth: models/grades.py. FF is the ONLY
+                // academic fail; AU is an audit subject (0 pts, not a fail);
+                // AB is a PASS (8.5), not an absence. Do NOT colour AB/AU red.
+                const g = s.grade.toUpperCase();
+                const gradeClass = g === "FF" ? "badge-fail" : g === "AU" ? "badge-warn" : "badge-pass";
                 return (
                   <tr key={s.code}>
                     <td className="font-data">{s.code}</td>
                     <td>
-                      <span className={`badge ${failGrade ? "badge-fail" : "badge-pass"}`}>
+                      <span className={`badge ${gradeClass}`}>
                         {s.grade}
                       </span>
                     </td>
@@ -99,7 +121,7 @@ function StudentCard({ raw }: { raw: string }) {
       )}
 
       {rec.totalMarks && (
-        <div style={{ padding: "10px 12px", borderTop: "1px solid var(--color-border)", fontSize: "var(--text-xs)", color: "var(--color-muted)", fontFamily: "var(--font-mono)" }}>
+        <div style={{ padding: "11px 14px", borderTop: "1px solid var(--color-border)", fontSize: "var(--text-xs)", color: "var(--color-muted)", fontFamily: "var(--font-mono)" }}>
           Total Marks: {rec.totalMarks}
         </div>
       )}
@@ -149,7 +171,7 @@ function ContextPanel({ context }: { context: string }) {
     <div className="card">
       <div className="card-header">
         <span className="card-title">Context Used</span>
-        <span style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)", fontFamily: "var(--font-mono)" }}>
+        <span className="font-data" style={{ fontSize: "var(--text-xs)", color: "var(--color-faint)" }}>
           {context.length} chars
         </span>
       </div>
@@ -161,8 +183,8 @@ function ContextPanel({ context }: { context: string }) {
           fontFamily: "var(--font-mono)",
           whiteSpace: "pre-wrap",
           wordBreak: "break-word",
-          lineHeight: 1.5,
-          maxHeight: 380,
+          lineHeight: 1.6,
+          maxHeight: 420,
           overflowY: "auto",
         }}>
           {context}
@@ -183,12 +205,15 @@ function HistoryList({
 }) {
   if (!history.length)
     return (
-      <div className="empty-state" style={{ padding: "24px 12px" }}>
+      <div className="empty-state" style={{ padding: "36px 16px" }}>
         <div className="empty-state-sub">No queries yet</div>
+        <div style={{ fontSize: "var(--text-xs)", color: "var(--color-faint)" }}>
+          Your recent queries appear here
+        </div>
       </div>
     );
   return (
-    <div>
+    <div style={{ padding: "6px 8px" }}>
       {history.map(e => (
         <div key={e.id} className="history-item" onClick={() => onSelect(e)}>
           <TypeBadge type={e.type} />
@@ -198,6 +223,23 @@ function HistoryList({
           </span>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Loading skeleton ────────────────────────────────────────────
+
+function ResultSkeleton() {
+  return (
+    <div className="result-wrap">
+      <div>
+        <div className="skeleton" style={{ height: 22, width: 90, marginBottom: 16 }} />
+        <div className="skeleton" style={{ height: 13, width: "94%", marginBottom: 9 }} />
+        <div className="skeleton" style={{ height: 13, width: "88%", marginBottom: 9 }} />
+        <div className="skeleton" style={{ height: 13, width: "72%", marginBottom: 9 }} />
+        <div className="skeleton" style={{ height: 13, width: "80%" }} />
+      </div>
+      <div className="skeleton" style={{ height: 180 }} />
     </div>
   );
 }
@@ -246,7 +288,8 @@ export default function QueryConsolePage() {
     }
   };
 
-  // When user clicks a disambiguation option, re-query with just the roll number
+  const runExample = (q: string) => { setQuery(q); submit(q); };
+
   const handleDisambiguationSelect = (roll: string) => {
     setQuery(roll);
     submit(roll);
@@ -259,20 +302,21 @@ export default function QueryConsolePage() {
   const classified = response ? classifyAnswer(response.answer) : null;
 
   return (
-    <div style={{ display: "flex", height: "calc(100vh - var(--strip-h))", overflow: "hidden" }}>
+    <div className="console-layout" style={{ display: "flex", height: "calc(100vh - var(--strip-h))", overflow: "hidden" }}>
       {/* ─ Left: Query history ─────────────────────────────────── */}
-      <div style={{
-        width: 280, flexShrink: 0,
+      <div className="console-history" style={{
+        width: 288, flexShrink: 0,
         borderRight: "1px solid var(--color-border)",
         background: "var(--color-shell)",
         display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
-        <div className="card-header">
+        <div className="card-header" style={{ background: "var(--color-shell)" }}>
           <span className="card-title">Query History</span>
           {history.length > 0 && (
             <button
               onClick={() => setHistory([])}
-              style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)", background: "none", border: "none", cursor: "pointer" }}
+              className="btn btn-ghost"
+              style={{ padding: "4px 10px", fontSize: "var(--text-xs)" }}
             >
               Clear
             </button>
@@ -290,27 +334,29 @@ export default function QueryConsolePage() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div className="page-header">
           <h1 className="page-title">Query Console</h1>
-          <p className="page-subtitle">Query the Company Brain retrieval engine — fact lookup, multi-hop, tabular, or decision-assisting</p>
+          <p className="page-subtitle">Ask the Company Brain — every query auto-routes to fact lookup, multi-hop, tabular, or decision-assisting retrieval.</p>
         </div>
 
-        <div className="page-body" style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="page-body" style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Input row */}
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <select
               className="tenant-select"
               value={tenant}
               onChange={e => setTenant(e.target.value)}
+              aria-label="Tenant"
             >
               {TENANTS.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
 
             <div className="query-input-wrap" style={{ flex: 1 }}>
+              <SearchIcon size={16} />
               <input
                 className="query-input"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder='e.g. "search for gaikwad rohan vijay" or "average SGPA" or "what is RAG-MicroSim?"'
+                placeholder='Ask anything — e.g. "average SGPA" or "what is RAG-MicroSim?"'
                 autoFocus
               />
               <button
@@ -318,10 +364,11 @@ export default function QueryConsolePage() {
                 onClick={() => submit()}
                 disabled={loading || !query.trim()}
                 title="Submit (Enter)"
+                aria-label="Submit query"
               >
                 {loading
-                  ? <span className="spinner" style={{ width: 14, height: 14 }} />
-                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  ? <span className="spinner" style={{ width: 15, height: 15 }} />
+                  : <SendIcon size={16} />
                 }
               </button>
             </div>
@@ -330,34 +377,35 @@ export default function QueryConsolePage() {
           {/* Error */}
           {error && (
             <div style={{
-              background: "var(--color-fail-bg)", border: "1px solid rgba(229,72,77,0.25)",
-              borderRadius: 6, padding: "10px 14px",
+              display: "flex", alignItems: "center", gap: 9,
+              background: "var(--color-fail-bg)", border: "1px solid rgba(240,85,90,0.28)",
+              borderRadius: "var(--radius-sm)", padding: "11px 14px",
               fontSize: "var(--text-sm)", color: "var(--color-fail)",
               fontFamily: "var(--font-mono)",
             }}>
-              {error}
+              <AlertIcon size={16} /> {error}
             </div>
           )}
 
+          {/* Loading */}
+          {loading && <ResultSkeleton />}
+
           {/* Result */}
-          {response && classified && (
+          {!loading && response && classified && (
             <div className="result-wrap">
               {/* Main answer */}
               <div className="result-main">
-                {/* Fallback warning */}
                 {response.metadata.fallback_reason && (
                   <FallbackBanner reason={response.metadata.fallback_reason} />
                 )}
 
-                {/* Type + metadata row */}
                 <div className="result-header">
                   <TypeBadge type={response.query_type} />
-                  <span style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)", fontFamily: "var(--font-mono)" }}>
+                  <span className="font-data" style={{ fontSize: "var(--text-xs)", color: "var(--color-faint)" }}>
                     tenant: {tenant}
                   </span>
                 </div>
 
-                {/* Render by answer kind */}
                 {classified.kind === "student_record" && (
                   <StudentCard raw={classified.raw} />
                 )}
@@ -371,11 +419,12 @@ export default function QueryConsolePage() {
 
                 {classified.kind === "error" && (
                   <div style={{
-                    background: "var(--color-warn-bg)", border: "1px solid rgba(229,165,0,0.25)",
-                    borderRadius: 6, padding: "12px 16px",
+                    display: "flex", alignItems: "flex-start", gap: 9,
+                    background: "var(--color-warn-bg)", border: "1px solid rgba(240,180,41,0.28)",
+                    borderRadius: "var(--radius-sm)", padding: "12px 16px",
                     fontSize: "var(--text-sm)", color: "var(--color-warn)",
                   }}>
-                    {classified.raw}
+                    <AlertIcon size={16} /> {classified.raw}
                   </div>
                 )}
 
@@ -391,16 +440,36 @@ export default function QueryConsolePage() {
             </div>
           )}
 
-          {/* Empty state */}
+          {/* Empty state — onboarding: examples + route legend */}
           {!response && !loading && !error && (
-            <div className="empty-state" style={{ marginTop: 40 }}>
-              <div style={{ fontSize: 28, opacity: 0.3 }}>⌕</div>
-              <div className="empty-state-title">Ready to query</div>
-              <div className="empty-state-sub">
-                Queries route to FACT / LOCAL / GLOBAL / TABULAR automatically.
+            <div style={{ display: "flex", flexDirection: "column", gap: 26, marginTop: 4 }}>
+              <div>
+                <div style={{ fontSize: "var(--text-xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: "var(--color-faint)", marginBottom: 11 }}>
+                  Try a query
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 9 }}>
+                  {EXAMPLES.map(ex => (
+                    <button key={ex} className="chip" onClick={() => runExample(ex)}>
+                      <SearchIcon size={13} /> {ex}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="empty-state-sub" style={{ marginTop: 8, fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)" }}>
-                Try: &quot;search for gaikwad rohan vijay&quot; · &quot;average SGPA&quot; · &quot;what is RAG-MicroSim?&quot;
+
+              <div>
+                <div style={{ fontSize: "var(--text-xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: "var(--color-faint)", marginBottom: 11 }}>
+                  How routing works
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 12 }}>
+                  {ROUTES.map(r => (
+                    <div key={r.type} className="card card-hover" style={{ padding: "14px 16px" }}>
+                      <TypeBadge type={r.type} />
+                      <div style={{ fontSize: "var(--text-sm)", color: "var(--color-muted)", marginTop: 9, lineHeight: 1.5 }}>
+                        {r.blurb}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}

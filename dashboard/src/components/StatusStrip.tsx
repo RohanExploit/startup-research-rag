@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import type { AdminStatus } from "@/lib/api";
 import { getAdminStatus } from "@/lib/api";
+import { ChipIcon, DatabaseIcon, LayersIcon, ClockIcon } from "./icons";
 
 function Sep() {
-  return <span className="strip-sep">▪</span>;
+  return <span className="strip-sep" aria-hidden />;
 }
 
 export default function StatusStrip() {
@@ -51,34 +52,37 @@ export default function StatusStrip() {
 
   return (
     <div className="status-strip">
-      {/* Live dot */}
-      <span
-        className={`strip-dot ${ollamaOk ? "strip-dot-pass" : "strip-dot-fail"}`}
-        title={ollamaOk ? "Ollama reachable" : "Ollama unreachable"}
-      />
-      <span className={ollamaOk ? "strip-label-ok" : "strip-label-fail"}>
-        Ollama: {modelShort}
+      <span className="strip-item">
+        <span
+          className={`strip-dot ${ollamaOk ? "strip-dot-pass" : "strip-dot-fail"}`}
+          title={ollamaOk ? "Ollama reachable" : "Ollama unreachable"}
+        />
+        <span className={ollamaOk ? "strip-label-ok" : "strip-label-fail"}>
+          Ollama {modelShort}
+        </span>
       </span>
 
       {vramLine && (
         <>
           <Sep />
-          <span>{vramLine}</span>
+          <span className="strip-item"><ChipIcon size={12} /> {vramLine}</span>
         </>
       )}
 
       <Sep />
-      <span>
+      <span className="strip-item">
+        <LayersIcon size={12} />
         {status ? `${status.registered_tenant_count} tenant${status.registered_tenant_count !== 1 ? "s" : ""}` : "—"}
       </span>
 
       <Sep />
-      <span>
+      <span className="strip-item">
+        <DatabaseIcon size={12} />
         {status ? `${status.total_docs} docs` : "—"}
       </span>
 
       <Sep />
-      <span>Last sync: {lastSync}</span>
+      <span className="strip-item"><ClockIcon size={12} /> {lastSync}</span>
 
       {error && (
         <>
