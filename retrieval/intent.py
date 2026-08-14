@@ -13,6 +13,15 @@ class TabularIntent:
     params: dict = field(default_factory=dict)
 
 
+# Words that signal a single-student record lookup (a marksheet/result/grades
+# for one named person), and aggregate markers that veto that interpretation
+# (a query counting/listing/averaging over many students is NOT a name lookup).
+_LOOKUP_KW = ("result", "results", "record", "marksheet", "marks", "grade",
+              "grades", "score", "scores", "details")
+_AGG_KW = ("how many", "count", "number of", "list", "which", "average",
+           "percentage", "rate", "top ", "most", " all ", "every", "each")
+
+
 def classify_tabular_intent(query: str) -> TabularIntent:
     q_lower = query.lower()
 
@@ -23,6 +32,19 @@ def classify_tabular_intent(query: str) -> TabularIntent:
             return TabularIntent("name_search")
         else:
             return TabularIntent("dynamic_sql")
+    # Single-student lookup: a personal-name query asking for a result / record /
+    # marksheet / marks / grades / score — in ANY word order ("result of Rohan
+    # Vijay gaikwad", "rohan gaikwad result", "gaikwad rohan marksheet"). These
+    # MUST use the fuzzy name_search path, never the text-to-SQL generator: that
+    # generator emits an exact, case-sensitive `name = '...'` match and misses
+    # reordered/differently-cased names (the DB stores "SURNAME NAME MIDDLE" in
+    # upper case). name_search LIKE-matches each name token independently, so
+    # order and case don't matter. Guarded against aggregate phrasings that
+    # merely mention "result/marks" ("how many students ... result").
+    elif (any(k in q_lower for k in _LOOKUP_KW)
+          and not any(k in q_lower for k in _AGG_KW)):
+        roll = re.search(r'(\d{10,15})', query)
+        return TabularIntent("record_by_roll", {"roll": roll.group(1)}) if roll else TabularIntent("name_search")
     elif "average sgpa" in q_lower:
         match = re.search(r'subject\s+(BT\w+)', query, re.IGNORECASE)
         return TabularIntent("average_sgpa", {"subject": match.group(1) if match else None})

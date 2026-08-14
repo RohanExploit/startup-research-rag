@@ -201,6 +201,37 @@ def get_student_record(roll_no: str, tenant_id: str = None):
 
     return "\n".join(lines)
 
+# Words that are never part of a student NAME — lookup verbs, record nouns,
+# filler and question words. Whatever survives stripping these from a query is
+# treated as the name. This deterministic pass is the backstop that stops name
+# resolution from depending on the LLM parsing every phrasing correctly.
+_NAME_STOPWORDS = frozenset({
+    "result", "results", "record", "records", "marksheet", "marksheets",
+    "marks", "mark", "grade", "grades", "grading", "score", "scores",
+    "sgpa", "cgpa", "gpa", "detail", "details", "report", "card",
+    "of", "for", "the", "a", "an", "and", "to", "in", "on", "with",
+    "show", "get", "give", "gimme", "me", "my", "tell", "about",
+    "what", "whats", "is", "are", "was", "were", "did", "do", "does",
+    "has", "have", "please", "student", "students", "roll", "rollno",
+    "number", "no", "find", "search", "fetch", "display", "view", "print",
+    "see", "want", "need", "pass", "passed", "fail", "failed", "how", "did",
+})
+
+
+def _roll_from_query(raw: str):
+    """A standalone 10-15 digit run is a roll number. Deterministic; no LLM."""
+    m = re.search(r'\b(\d{10,15})\b', raw or "")
+    return m.group(1) if m else None
+
+
+def _name_tokens_from_query(raw: str) -> list[str]:
+    """Name tokens = alphabetic words (len>=2) left after removing lookup/filler
+    words. Order-independent, so "gaikwad rohan result" and "result of rohan
+    gaikwad" yield the same token set {gaikwad, rohan}."""
+    words = re.findall(r"[A-Za-z]+", (raw or "").lower())
+    return [w for w in words if len(w) >= 2 and w not in _NAME_STOPWORDS]
+
+
 async def extract_student_identifier(raw_query: str) -> dict:
     """
     Uses the local LLM to extract student name or roll number from a natural language query.
@@ -259,14 +290,23 @@ async def get_student_by_name(name_query: str, tenant_id: str = None):
     Searches for a student by name using LLM extraction and rapidfuzz.
     """
     extracted = await extract_student_identifier(name_query)
-    roll_no_ext = extracted.get("roll_no")
-    name_ext = extracted.get("name")
 
+    # Roll number: trust a deterministic 10-15 digit match over the LLM.
+    roll_no_ext = _roll_from_query(name_query) or extracted.get("roll_no")
     if roll_no_ext:
         return get_student_record(str(roll_no_ext), tenant_id)
 
-    if not name_ext:
+    # Name: deterministic token strip is PRIMARY (it keeps every name word
+    # regardless of phrasing/order); the LLM's name is a fallback only when the
+    # strip yields nothing. This fixes cases where the LLM dropped a token
+    # (e.g. returned only "rohan" for "gaikwad rohan result").
+    name_ext = extracted.get("name")
+    det_tokens = _name_tokens_from_query(name_query)
+    search_tokens = det_tokens or [t for t in (name_ext or "").lower().split() if len(t) >= 2]
+    if not search_tokens:
         return "Could not extract a valid student name or roll number from the query."
+    # Name used for display and the fuzzy fallback below.
+    name_ext = name_ext or " ".join(search_tokens)
 
     try:
         conn = get_connection(tenant_id)
@@ -276,8 +316,8 @@ async def get_student_by_name(name_query: str, tenant_id: str = None):
     # All DB access is wrapped so the connection is always closed, even if a
     # conn.execute() raises mid-query (otherwise the handle leaks on error).
     try:
-        # 1. Try robust tokenized search
-        tokens = [t.strip() for t in name_ext.lower().split() if len(t.strip()) > 2]
+        # 1. Try robust tokenized search over the deterministic name tokens
+        tokens = [t for t in search_tokens if len(t) > 2]
         if tokens:
             query_parts = []
             params = []

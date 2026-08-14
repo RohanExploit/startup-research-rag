@@ -76,6 +76,39 @@ def test_student_named_without_roll_digits_routes_name_search():
     assert intent.kind == "name_search"
 
 
+def test_result_of_name_routes_name_search_not_exact_sql():
+    # Regression: "result of <name>" used to fall through to dynamic_sql, whose
+    # exact case-sensitive `name = '...'` match missed reordered/differently-
+    # cased names ("Rohan Vijay gaikwad" != stored "GAIKWAD ROHAN VIJAY").
+    # It must route to the order-independent fuzzy name_search path.
+    for q in [
+        "result of Rohan Vijay gaikwad",
+        "result for rohan gaikwad",
+        "marks of gaikwad rohan vijay",
+        "marksheet of Jane Doe",
+        "grades for John Smith",
+        # name-first / suffix order, no "of|for" — the second reported break
+        "rohan gaikwad result",
+        "gaikwad rohan result",
+        "rohan gaikwad marksheet",
+        "show rohan gaikwad result",
+    ]:
+        assert classify_tabular_intent(q).kind == "name_search", q
+
+
+def test_result_of_roll_number_routes_record_by_roll():
+    intent = classify_tabular_intent("result of 23067571242048")
+    assert intent.kind == "record_by_roll"
+    assert intent.params["roll"] == "23067571242048"
+
+
+def test_aggregate_result_query_not_captured_by_name_lookup():
+    # "failed their semester result" has no "of/for" after result -> stays on the
+    # fail/count path, not name_search.
+    intent = classify_tabular_intent("how many students failed their semester result")
+    assert intent.kind == "count_failures"
+
+
 def test_unmatched_query_routes_dynamic_sql():
     intent = classify_tabular_intent("who is the topper")
     assert intent.kind == "dynamic_sql"
