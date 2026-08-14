@@ -40,9 +40,19 @@ class QueryRouter:
         # context (a roll number, or a record/marks/score/result/grade keyword).
         student_phrase_kw = ["score of", "result for", "search for"]
         roll_number_re = re.compile(r'\broll\s*(no\.?|number)?\s*[:#]?\s*\d{4,}\b', re.IGNORECASE)
+        # A standalone 10+ digit run is a student roll number even without the
+        # word "roll" (e.g. "Did student 23067571263053 pass?"). Roll numbers in
+        # this corpus are 10-14 digits; nothing else in the domain is that long
+        # (years are 4, amounts far shorter), so this is a safe deterministic
+        # TABULAR signal. Closes the T20 route-flicker: without it, such queries
+        # fell through to the non-deterministic LLM classifier.
+        bare_roll_re = re.compile(r'\b\d{10,}\b')
+        # "pass"/"passed" is added here (requires co-occurring "student") rather
+        # than to agg_kw as a bare word: "pass" is too common to route on alone,
+        # but "did STUDENT X pass" is unambiguously a record lookup.
         student_record_re = re.compile(
-            r'\bstudent\b.*\b(record|marks|score|result|grade|sgpa|cgpa|roll)\b'
-            r'|\b(record|marks|score|result|grade|sgpa|cgpa)\b.*\bstudent\b',
+            r'\bstudent\b.*\b(record|marks|score|result|grade|sgpa|cgpa|roll|pass(?:ed)?)\b'
+            r'|\b(record|marks|score|result|grade|sgpa|cgpa|pass(?:ed)?)\b.*\bstudent\b',
             re.IGNORECASE,
         )
         # Aggregation/analytical shaped queries — rule-based route to TABULAR BEFORE
@@ -57,6 +67,7 @@ class QueryRouter:
         is_tabular_kw = (
             any(k in lower_q for k in student_phrase_kw)
             or bool(roll_number_re.search(lower_q))
+            or bool(bare_roll_re.search(lower_q))
             or bool(student_record_re.search(lower_q))
         )
         if is_tabular_kw or any(k in lower_q for k in agg_kw):

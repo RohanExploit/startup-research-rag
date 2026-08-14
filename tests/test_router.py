@@ -74,6 +74,50 @@ async def test_bare_student_word_in_council_notes_does_not_force_tabular(router,
 
 
 @pytest.mark.asyncio
+async def test_bare_roll_number_routes_tabular_without_llm(router, monkeypatch):
+    # T20 regression: a bare 10+ digit roll number (no "roll" keyword) must
+    # hit the deterministic TABULAR rule, never the non-deterministic LLM.
+    monkeypatch.setattr(
+        router_mod._http_client, "post",
+        AsyncMock(side_effect=AssertionError("bare roll number must not call Ollama")),
+    )
+    qtype, _ = await router.classify_query(
+        "Did student 23067571263053 pass their semester examination?"
+    )
+    assert qtype == "TABULAR"
+
+
+@pytest.mark.asyncio
+async def test_student_pass_without_roll_routes_tabular(router, monkeypatch):
+    # "did student X pass" is a record lookup even without a roll number.
+    monkeypatch.setattr(
+        router_mod._http_client, "post",
+        AsyncMock(side_effect=AssertionError("student-pass query must not call Ollama")),
+    )
+    qtype, _ = await router.classify_query("Did the student pass the exam?")
+    assert qtype == "TABULAR"
+
+
+@pytest.mark.asyncio
+async def test_short_number_does_not_force_tabular(router, monkeypatch):
+    # A 4-digit year must NOT trip the bare-roll rule — it should reach the LLM.
+    _mock_ollama(monkeypatch, "FACT")
+    qtype, _ = await router.classify_query(
+        "In which year was Dr. Daulatrao Aher College of Engineering established?"
+    )
+    assert qtype == "FACT"
+
+
+@pytest.mark.asyncio
+async def test_bare_pass_word_does_not_force_tabular(router, monkeypatch):
+    # "pass" without "student" context must not force TABULAR (guards against
+    # putting bare "pass" in agg_kw).
+    _mock_ollama(monkeypatch, "FACT")
+    qtype, _ = await router.classify_query("What is a mountain pass?")
+    assert qtype == "FACT"
+
+
+@pytest.mark.asyncio
 async def test_classify_ollama_down_falls_back_to_fact(router, monkeypatch):
     import httpx
     monkeypatch.setattr(
