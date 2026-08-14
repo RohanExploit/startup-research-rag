@@ -21,6 +21,7 @@ Matching rules (high precision):
 
 link_entities(question, node_names) -> (ranked_node_ids, {node: score}).
 """
+import logging
 import re
 
 from rapidfuzz import fuzz, process
@@ -62,7 +63,8 @@ def _multiword_candidates(question: str, max_n: int = 4):
     return out
 
 
-def link_entities(question: str, node_names, threshold: int = 90, limit: int = 3):
+def link_entities(question: str, node_names, threshold: int = 90, limit: int = 3,
+                  min_confidence: int = 92):
     node_names = list(node_names)
     qn = " " + _norm(question) + " "
     _, caps = _tokens(question)
@@ -95,6 +97,21 @@ def link_entities(question: str, node_names, threshold: int = 90, limit: int = 3
                 if len(_norm(node).split()) >= 2 and score > scored.get(node, 0):
                     scored[node] = score
                     ntoks[node] = len(_norm(node).split())
+
+    # Confidence gate: a confident WRONG match is worse than no match (a bad
+    # link fetches a wrong neighborhood, silently). Drop every candidate below
+    # min_confidence; if that empties the set, return EMPTY and log the
+    # rejection rather than handing back the nearest node.
+    if scored:
+        best = max(scored.values())
+        if best < min_confidence:
+            best_node = max(scored, key=scored.get)
+            logging.info(
+                "entity_link: best match %r score %.0f < min_confidence=%d for %r; returning empty",
+                best_node, best, min_confidence, question,
+            )
+            return [], {}
+        scored = {k: v for k, v in scored.items() if v >= min_confidence}
 
     # rank by (score, specificity=token count, length) then prefer-longer dedup
     ranked_all = sorted(scored, key=lambda k: (scored[k], ntoks[k], len(k)), reverse=True)

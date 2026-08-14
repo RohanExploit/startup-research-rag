@@ -53,6 +53,22 @@ def test_known_multiword_entity_matches():
     assert "Rohan Gaikwad" in matched
 
 
+def test_below_confidence_returns_empty_not_nearest_node():
+    # No node in this list genuinely matches the question. The linker must
+    # return EMPTY rather than the nearest (wrong) node — a confident wrong
+    # match fetches a wrong neighborhood silently.
+    nodes = ["Flash Crash", "Market Microstructure", "Anomaly Detection"]
+    matched, scores = link_entities("Who are the authors of the paper?", nodes)
+    assert matched == []
+    assert scores == {}
+
+
+def test_confident_match_still_links_above_threshold():
+    # A genuine exact match must survive the confidence gate.
+    matched, _ = link_entities("What institution is Rohan Gaikwad affiliated with?", NODES)
+    assert "Rohan Gaikwad" in matched
+
+
 # ── Real graph (skip if absent) ───────────────────────────────────────────────
 
 _GRAPH = config.tenant_dir("tenant_1") / "graph" / "company_brain.graphml"

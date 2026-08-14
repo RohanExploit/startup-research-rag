@@ -117,6 +117,33 @@ async def test_bare_pass_word_does_not_force_tabular(router, monkeypatch):
     assert qtype == "FACT"
 
 
+@pytest.mark.parametrize("query", [
+    "Who are the authors of the RAG-MicroSim paper?",
+    "This paper was authored by whom?",
+    "Which report was written by the finance team?",
+    "Which university is DACOE affiliated with?",
+    "What is the affiliation of the author?",
+    "In which year was the college established in?",
+    "Who was the institute founded by?",
+    "The trust was founded in which year?",
+    "In which city is the campus located in?",
+    "Where is the company based in?",
+    "Which programs offered by the college?",
+    "What courses offered here?",
+    "Which engineering programs does DACOE offer?",
+])
+@pytest.mark.asyncio
+async def test_attribute_phrasings_route_fact_without_llm(router, monkeypatch, query):
+    # Document-attribute lookups must hit the deterministic FACT rule BEFORE the
+    # LLM classifier — assert Ollama is never called.
+    monkeypatch.setattr(
+        router_mod._http_client, "post",
+        AsyncMock(side_effect=AssertionError("attribute query must not call Ollama")),
+    )
+    qtype, _ = await router.classify_query(query)
+    assert qtype == "FACT"
+
+
 @pytest.mark.asyncio
 async def test_classify_ollama_down_falls_back_to_fact(router, monkeypatch):
     import httpx

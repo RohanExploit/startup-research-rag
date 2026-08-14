@@ -73,6 +73,26 @@ class QueryRouter:
         if is_tabular_kw or any(k in lower_q for k in agg_kw):
             return "TABULAR", None
 
+        # Document-attribute phrasings — "authors of X", "affiliated with",
+        # "established in", etc. These are attribute LOOKUPS (a property of one
+        # named thing), not relational/aggregate queries, so they belong on the
+        # FACT vector path. Route them deterministically BEFORE the LLM
+        # classifier ever runs — the classifier was misrouting several of them
+        # to LOCAL/TABULAR. Kept general (regex on the attribute phrase itself),
+        # not tied to any specific golden question.
+        fact_attr_re = re.compile(
+            r"\bauthors?\s+of\b|\bauthored\s+by\b|\bwritten\s+by\b"
+            r"|\baffiliated\s+with\b|\baffiliation\b"
+            r"|\bestablished\s+in\b|\bfounded\s+(?:by|in)\b"
+            r"|\blocated\s+in\b|\bbased\s+in\b"
+            r"|\b(?:programs?|courses?)\s+offered\b"
+            r"|\b(?:programs?|courses?)\b.{0,20}\boffers?\b"
+            r"|\boffers?\b.{0,20}\b(?:programs?|courses?)\b",
+            re.IGNORECASE,
+        )
+        if fact_attr_re.search(lower_q):
+            return "FACT", None
+
         prompt = f"""
 Classify the following query into one of four categories:
 1. FACT: The user is asking for a specific fact, definition, or detail (e.g., "What is X?").
@@ -122,8 +142,20 @@ Query: "{query}"
 
         context = ""
         if qtype == "FACT":
-            results = self.vs.search(query, top_k=3)
-            context = "\n".join([r["content"] for r in results])
+            # Retrieve deeper (k=10) to reduce recall misses, then keep the top
+            # chunks that fit the 2048 num_ctx budget rather than dropping k back
+            # to 3. ~5000 chars of context leaves room for the prompt template
+            # and the 512-token answer within 2048 ctx. The first (best) chunk
+            # is always included even if long.
+            results = self.vs.search(query, top_k=10)
+            parts, budget = [], 5000
+            for r in results:
+                c = r["content"]
+                if parts and len(c) > budget:
+                    break
+                parts.append(c)
+                budget -= len(c)
+            context = "\n".join(parts)
         elif qtype == "GLOBAL":
             context = self.cs.get_all_summaries()
         elif qtype == "LOCAL":
