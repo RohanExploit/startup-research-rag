@@ -28,8 +28,23 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from retrieval.router import QueryRouter          # noqa: E402
-from generation.answer import generate_answer     # noqa: E402
+import config                                      # noqa: E402
+# NOTE: retrieval.router / generation.answer (faiss + sentence-transformers) are
+# imported lazily inside run()/answer_for() so this module can be imported cheaply
+# — e.g. by tests/test_eval_no_egress.py — without loading the heavy ML stack.
+
+
+def enforce_no_egress() -> None:
+    """Phase -1.2: the eval MUST measure the local model only. generation/answer.py
+    silently falls back to a cloud 70B on any Ollama hiccup — that would swap the
+    model under measurement AND ship document context (student PII) off-machine.
+    Force egress off and fail loudly if anything (an env override) re-enabled it."""
+    config.ALLOW_EXTERNAL_LLM = False
+    if config.ALLOW_EXTERNAL_LLM:  # defensive: catch a re-enable after this point
+        raise SystemExit(
+            "FATAL: external LLM egress is ON during eval — refusing to run "
+            "(a cloud model would invalidate the measurement and leak PII)."
+        )
 
 GOLDEN = Path(__file__).resolve().parent / "golden_set.json"
 # Heuristic markers of an "I can't answer that" refusal. Substring match, so it
@@ -56,8 +71,9 @@ def score(answer: str, gold: dict) -> bool:
     raise ValueError(f"unknown gold.mode: {mode}")
 
 
-async def answer_for(router: QueryRouter, query: str) -> tuple[str, str]:
+async def answer_for(router, query: str) -> tuple[str, str]:
     """Mirror api/main.py: route -> (TABULAR short-circuit | LLM synthesis)."""
+    from generation.answer import generate_answer  # lazy: heavy ML import
     qtype, context, _meta = await router.route_query(query)
     context_text = str(context).strip()
     if not context_text:
@@ -68,6 +84,8 @@ async def answer_for(router: QueryRouter, query: str) -> tuple[str, str]:
 
 
 async def run(golden_path: Path, limit: int | None):
+    enforce_no_egress()  # Phase -1.2: never let a cloud model answer during eval
+    from retrieval.router import QueryRouter  # lazy: heavy ML import
     spec = json.loads(golden_path.read_text(encoding="utf-8"))
     questions = spec["questions"][: limit or None]
     tenant_id = spec.get("tenant_id", "tenant_1")

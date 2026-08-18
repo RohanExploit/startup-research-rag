@@ -149,9 +149,13 @@ def get_api_key() -> str:
 # or scrub obvious PII (roll numbers) out of the prompt before it leaves the
 # machine. Both default to preserving today's behavior unchanged.
 # --------------------------------------------------------------------------
-# Default ON preserves the current NVIDIA fallback; set 0 to forbid ALL
-# external cloud LLM egress (PII-sensitive deployments).
-ALLOW_EXTERNAL_LLM = _truthy(os.environ.get("ALLOW_EXTERNAL_LLM", "1"))
+# Default OFF (security, Phase -1.2). Forbid ALL external cloud LLM egress unless
+# explicitly enabled. The NVIDIA fallback in generation/answer.py would otherwise
+# ship document context — which can contain student PII (names/emails) — off the
+# machine on ANY local-Ollama hiccup, silently. It also invalidates any local-4B
+# measurement by swapping in a 70B cloud model. Set ALLOW_EXTERNAL_LLM=1 to opt
+# back into the fallback for a deployment that has accepted that trade-off.
+ALLOW_EXTERNAL_LLM = _truthy(os.environ.get("ALLOW_EXTERNAL_LLM", "0"))
 # When ON, mask roll-number-like digit runs in the prompt before it leaves
 # the machine.
 LLM_PII_REDACTION = _truthy(os.environ.get("LLM_PII_REDACTION", "0"))
@@ -165,4 +169,17 @@ SQL_ALLOWED_TABLES = set(
     t for t in os.environ.get(
         "SQL_ALLOWED_TABLES", "students,student_subjects,needs_review"
     ).split(",") if t.strip()
+)
+
+
+# --- Vector-index PII guard (ingestion/embed.py) — Phase -1.3 ---
+# Bulk third-party PII (e.g. a payment/enrolment CSV rendered to markdown) must
+# never enter the FACT vector index: it is retrieval poison AND, combined with any
+# cloud egress, an exfiltration path. The guard treats any single source whose
+# email-bearing chunk count EXCEEDS this threshold as bulk PII and excludes all of
+# that source's chunks from embedding. A low count — e.g. a research paper's own
+# author-contact line — is preserved (so a legitimate "author email" FACT answer
+# survives). Set 0 to disable the guard entirely.
+VECTOR_PII_EMAIL_BULK_THRESHOLD = int(
+    os.environ.get("VECTOR_PII_EMAIL_BULK_THRESHOLD", "5")
 )

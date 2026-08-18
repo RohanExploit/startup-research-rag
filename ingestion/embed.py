@@ -4,14 +4,37 @@ for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.pa
     if str(_p) not in _sys.path:
         _sys.path.append(str(_p))
 from config import PROJECT_ROOT
+import config
 from utils.safe_store import save_embeddings
 import json
 import logging
+import re
+from collections import Counter
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from utils.logging_config import setup_logging
 
 setup_logging()
+
+# Phase -1.3: bulk-PII guard for the vector index. An email address is the cheap,
+# high-precision signal for "this source is third-party personal data" (a payment
+# or enrolment CSV rendered to markdown), as opposed to institutional documents.
+_EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+
+
+def bulk_pii_sources(chunks, threshold):
+    """Return the set of `source`s whose email-bearing chunk count EXCEEDS
+    `threshold`. Such a source is bulk third-party PII and must not enter the FACT
+    vector index (retrieval poison + exfiltration risk). A source with only a few
+    email-bearing chunks (e.g. a paper's own author-contact line — the ground
+    truth for an "author email" FACT question) is kept. threshold<=0 disables."""
+    if threshold <= 0:
+        return set()
+    email_counts = Counter()
+    for c in chunks:
+        if _EMAIL_RE.search(c.get("page_content", "")):
+            email_counts[c.get("metadata", {}).get("source", "?")] += 1
+    return {s for s, n in email_counts.items() if n > threshold}
 
 def process_chunk_embeddings(chunked_dir, embed_dir):
     chunked_dir = Path(chunked_dir)
@@ -34,6 +57,22 @@ def process_chunk_embeddings(chunked_dir, embed_dir):
     if not all_chunks:
         logging.warning("No chunks found!")
         return
+
+    # Phase -1.3 PII guard: keep bulk third-party PII out of the FACT vector index.
+    # Log source names + counts only — never chunk contents.
+    drop = bulk_pii_sources(all_chunks, config.VECTOR_PII_EMAIL_BULK_THRESHOLD)
+    if drop:
+        before = len(all_chunks)
+        all_chunks = [
+            c for c in all_chunks
+            if c.get("metadata", {}).get("source", "?") not in drop
+        ]
+        logging.warning(
+            "PII guard excluded %d chunk(s) from %d bulk-PII source(s) %s "
+            "(email-bearing count > threshold=%d); %d chunks remain for indexing.",
+            before - len(all_chunks), len(drop), sorted(drop),
+            config.VECTOR_PII_EMAIL_BULK_THRESHOLD, len(all_chunks),
+        )
 
     logging.info(f"Generating embeddings for {len(all_chunks)} total chunks...")
     texts = [c["page_content"] for c in all_chunks]
