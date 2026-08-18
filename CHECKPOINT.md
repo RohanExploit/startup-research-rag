@@ -1,60 +1,83 @@
 # CHECKPOINT — Start up V2
 
-Snapshot to resume work. Full timestamped trail: `OVERNIGHT_LOG.md`.
+Snapshot to resume work. Last updated: **2026-08-15**. Prior overnight trail: `OVERNIGHT_LOG.md`; measured status: `PROJECT_STATE.md`.
 
-## State
-- **Branch:** `overnight-hardening` (10 commits off `main` baseline). Not merged, not pushed, not deployed.
-- **Tests:** 127 passed, 1 skipped, 0 failed (~12s). Hermetic, no live services required.
-- **Ollama:** UP on :11434 (v0.19.0, model `qwen3:4b-instruct-2507-q4_K_M`). Left running.
-- **PII:** untouched. `tabular.duckdb` + `embeddings.pkl` sha256 identical before/after. Retention rule honored.
-- **Git:** repo init'd this session; `.gitignore` excludes venv + all PII/data (history is code-only).
+---
 
-## Commit trail (`git log main..overnight-hardening`)
+## Current state (end of session 2026-08-15)
+- **Branch:** `phase-1-routing` (active; carries all of today's close-out work).
+- **Remote:** `origin` = **https://github.com/RohanExploit/startup-research-rag** (PRIVATE). First push done this session — all 4 branches pushed (`main`, `phase-1-routing`, `phase-1-retrieval-eval`, `upgrade-phase-0`).
+- **Tests:** **227 passed, 1 skipped, 0 failed** (full `pytest -q`, ~34s warm). Hermetic, no live services required. (The 1 skip is a manual PDF-parsing diagnostic.)
+- **Eval baseline (`tests/eval/baseline.json`, 46-Q golden set):** overall answer **60.87%**, route classification **84.78%**. Per-route: TABULAR 95.5% (21/22), GLOBAL 42.9% (3/7), FACT 27.3% (3/11), LOCAL 16.7% (1/6).
+- **Data (tenant_1):** 369 students; 334 pass / 35 fail; pass rate 90.5%; min SGPA 5.18; failed ≥4 subjects = 7.
+- **Model rules (unchanged):** `qwen3:4b-instruct-2507-q4_K_M`, `num_ctx 2048`, `temperature 0`. Backend `api.main:app` on :8000; dashboard = Next.js.
+- **PII:** student-PII spreadsheet fully removed from git (tracking + history); file kept on disk under retention hold. Details below.
+
+---
+
+## THIS SESSION — what we did
+
+### Task A — Swarm close-out & first push to remote
+
+**Phase 1 (4 parallel read-only verification agents):**
+1. **Demo path** — ran the 5 headline queries against the live backend. **All 5 PASS**, all route TABULAR via deterministic SQL templates, cross-checked against DuckDB:
+   - "gaikwad rohan result" → GAIKWAD ROHAN VIJAY, roll 23067571242048, FAIL, 8 subjects.
+   - "students who failed at least 4 subjects" → 7 students.
+   - "overall pass percentage" → 90.5% (334/369).
+   - "which subject has the most failures" → BTCOC502 (16 failures).
+   - "top 5 students by SGPA" → DHUMAL ANUSHKA 8.82, NADAF YASHARA 8.80, TIRTH VAISHNAVI 8.68, BHAIRAMADAGI 8.66, BHANGE 8.64.
+   - Note: OVERNIGHT_LOG's old "failed≥4 = 10 / ≥2 = 77" figures were stale (pre re-ingest); current DB truth is 7 / 16. Data change, not a bug.
+2. **Test gate** — 227 passed / 1 skipped / 0 failed. Produced ordered commit plan.
+3. **Secret scan (BLOCKING)** — found `SESSION-STUDENT-DETAILS-2.xlsx` tracked, containing raw student PII (names, DOB, parents, gender, **caste**, **12-digit Aadhaar**, mobile, email) — DPDP-sensitive. No other secrets tracked. `.gitignore` otherwise good. Noted user's own phone in `auth/allowlist.json` and email in `tests/eval/*.json` (own data, left as-is).
+4. **PROJECT_STATE draft** — measured status snapshot.
+
+**Phase 2 (sequential committer):**
+- Untracked the PII xlsx (`git rm --cached`, file kept on disk), hardened `.gitignore` (`*.xlsx`/`*.csv`, `.env.*` + `!.env.example`).
+- Landed 5 commits (see trail below), re-verified gate green.
+- Added `PROJECT_STATE.md`.
+- **PII history scrub:** made a safety backup bundle, then `git filter-branch --index-filter` rewrote **all 67 commits** to purge the xlsx blob from every commit. Verified gone from every object + off the remote tree. All commit hashes after `a14d255` changed.
+- Created the private remote and pushed all branches; confirmed remote is PII-clean.
+
+**Commit trail (post-scrub hashes, `phase-1-routing`):**
 ```
-ec6c5eb docs(perf): record live LLM-path latency (Ollama up)
-87f43bd docs: overnight log morning summary
-221d249 perf: cache model load, query embeddings, and SQL template results
-19a2cb9 feat(router): deterministic aggregation route + parameterized SQL templates
-ddc72e6 feat(sql): build consolidated exam_results analytics table (read-only from PII store)
-4c1bd09 test: make suite real and hermetic (67 passed, 1 skipped, 0 failed)
-4a7a5f9 security(upload): sanitize filename to basename + enforce MAX_FILE_SIZE
-81cb294 security(deser): replace pickle.load on embeddings read path with .npy/.json
-e6fb741 security(tenant): validate tenant_id on all path-building endpoints + traversal test
-7e1bbdf refactor(paths): route all absolute path literals through config.PROJECT_ROOT
+a7c15d1 docs: add PROJECT_STATE.md close-out snapshot
+ac8fa4b refactor(dashboard): restyle UI with drawn icon set and shared table styling; fix grade badge colours
+bdd3192 chore(eval): add Gate-1 ingestion validation log
+89435a7 fix(retrieval): resolve student lookups by name/roll regardless of word order
+ebb2139 security: stop tracking raw student PII spreadsheet
+1cca0d6 feat(retrieval): FACT depth k=10, entity-link confidence gate, attribute routing  (prior HEAD)
 ```
 
-## Done
-- **P1 security:** paths→`config.PROJECT_ROOT` (42 files); tenant_id validation on all path-building endpoints; `pickle.load`→safe `.npy/.json` (`utils/safe_store.py`), existing pkl migrated additively; upload filename sanitize + 413 size guard.
-- **P2 tests:** real/hermetic; killed a collection hang + 2 import-time PII overwrites; rewrote fake/broken tests.
-- **P3 SQL route:** `exam_results` in separate `analytics.duckdb` (built READ-ONLY from PII store); parameterized templates before LLM; guardrails (schema-in-prompt, read-only, LIMIT, timeout, allowlist, 1-shot self-correct) present.
-- **P4 perf:** model load 6.5s→0 shared; SQL templates 78–173× warm; live LLM latency logged. `num_ctx`=2048 everywhere.
+### Task B — Elaborate real-world test plan (IN PROGRESS, planning done)
+- Ran `/plan` in plan mode; 2 Explore agents mapped the existing test infra + full product surface.
+- Scope decided with user: cover **(1) adversarial & messy input, (2) dashboard UI e2e, (3) weak-route + load stress**; deliverable = **automated tests + demo runbook**; structure = **two-tier** (hermetic CI + live manual gate).
+- Plan approved and saved: `C:\Users\ACER\.claude\plans\purrfect-petting-lighthouse.md`.
+- Build order: (1) hermetic tier `tests/scenarios/` + config, (2) demo runbook `docs/DEMO_RUNBOOK.md`, (3) adversarial eval set `tests/eval/adversarial_set.json`, (4) Playwright e2e `dashboard/e2e/`, (5) live gate `tests/live/`.
+- **Status: nothing written yet** — was reading source files (`conftest.py`, `retrieval/intent.py`, `entity_link.py`, `run_eval.py`) to bind tests to real signatures when this checkpoint was requested. Locked `golden_set.json` will NOT be mutated (contamination guard); weak routes treated as diagnostic, not gating.
 
-## THE TARGET QUERY — WORKING
-"students who failed at least 4 subjects" → **10 students** (JAGTAP & SHELKE at 5; 8 more at 4). Deterministic, Ollama-free. "at least 2"→77. "failed most"→max 5. Fail def = grade in (FF,XX,AB). Ground-truthed vs DuckDB. Tests: `tests/test_sql_route.py` (6).
+---
 
-## Key files added
-- `config.py` (extended: paths + validation + runtime knobs)
-- `utils/safe_store.py` — safe embeddings I/O
-- `ingestion/build_exam_results.py` — consolidated analytics table
-- `retrieval/sql_templates.py` — parameterized analytical templates + matcher
-- `tests/`: `test_tenant_isolation.py`, `test_upload_filename.py`, `test_safe_store.py`, `test_sql_route.py`, `conftest.py`
-- `docs/PERFORMANCE.md`, `OVERNIGHT_LOG.md`
+## Results this session (headline numbers)
+- Tests: **227 / 1 skip / 0 fail** (green before and after all commits).
+- Eval: **60.87%** answer, **84.78%** route (unchanged baseline; no eval work done this session).
+- Demo: **5/5** headline queries pass, live, DB-verified.
+- Security: **1 PII file** scrubbed from all history; **0** secrets/tokens on remote; remote verified clean.
+- Git: repo pushed to its **first remote** (private).
 
-## PENDING — needs user decision (NOT auto-changed)
-1. ~~`/review` + `/tenants`: no auth, cross-tenant read.~~ **DONE (`cb8ddef`).** Optional `REQUIRE_API_KEY` X-API-Key gate now covers every endpoint (audit router incl.) except `/health`; OFF by default for localhost, fail-closed when on, `?api_key=` accepted for the SSE audit stream. Frontend routes through one `apiFetch`/`apiUrl` client (`NEXT_PUBLIC_API_KEY`). `.env.example` documents it. Admin console shows all tenants by design, so per-tenant scoping was NOT added — the gate is the trust boundary.
-2. **`exam_results.department` / `source_file` = NULL** — not derivable without fabricating; `semester` IS derived. Provide source rule to populate.
-3. **Merge** `overnight-hardening` → `main` after review.
-4. **Ollama server flags** (`OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=q8_0`) — set before `ollama serve` for VRAM/throughput (see `docs/PERFORMANCE.md`). Current running server may lack them.
+---
 
-## Known, left as-is
-- Manual diagnostic scripts in `tests/` (no assertions) — listed in `OVERNIGHT_LOG.md` P2 TODO.
-- `benchmark_models_flushed.py` — pre-existing invalid `print(flush=True, ...)` (dead `_flushed` dup).
-- ~~Harmless `Event loop is closed` teardown noise from module-level httpx client on Windows.~~ Fixed in `a3efa9f` (lazy per-loop httpx client closed via lifespan shutdown).
+## Pending / next
+1. **Execute the test plan** (Task B) — start with the hermetic `tests/scenarios/` tier + `pyproject.toml` marker registration, then the runbook. Plan file has the full breakdown.
+2. **Optional history hygiene** — user's own phone (`auth/allowlist.json`) and email (`tests/eval/*.json`) are on the private remote; move to untracked config if the repo ever goes public.
+3. **Weak routes** (from PROJECT_STATE): FACT 27.3%, LOCAL 1/6, GLOBAL churn — the "next 3 levers" if resumed.
+4. The on-disk `SESSION-STUDENT-DETAILS-2.xlsx` remains under retention hold, gitignored — do not delete.
 
 ## Resume commands
 ```bash
 cd "R:/Startup research/Start up V2"
-git log --oneline main..overnight-hardening        # review commits
-./venv/Scripts/python.exe -m pytest tests/ -q -o addopts="" --continue-on-collection-errors
-./venv/Scripts/python.exe ingestion/build_exam_results.py tenant_1   # rebuild analytics (read-only from PII)
+git log --oneline -8                                   # review this session's commits
+.venv312/Scripts/python.exe -m pytest -q               # full gate (expect 227 passed, 1 skipped)
+.venv312/Scripts/python.exe -m pytest tests/scenarios -q   # (once Task B hermetic tier exists)
+python tests/eval/run_eval.py --limit 5                # eval smoke (needs Ollama + tenant_1)
+git remote -v                                          # origin = RohanExploit/startup-research-rag (private)
 ```
