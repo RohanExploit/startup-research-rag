@@ -54,5 +54,37 @@ Phase-0 baseline. Suite 230p/1s. duckdb checksums unchanged. ruff clean. New her
 FACT questions (e.g. "OBC tuition" → Rs 71,000) still miss on *retrieval* (wrong chunk pulled),
 not routing — that residue is the ceiling A.2/embedder work would chase, not this lever.
 
-## A.2 — ICETIS re-ingest + source-coverage assert
+## A.2 — ICETIS re-ingest + source-coverage assert ✅ ACCEPTED (commit below)
+
+**Root cause of the ICETIS drop:** the served index was **stale**, not mis-filtered. Phase-1
+rebuilt tenant_1 by *filtering the old 5769-vec index* (evicting bulk PII) rather than
+re-embedding from `chunked/`. ICETIS (28 chunks) + "Rutuja fees" were chunked *after* the
+original index build, so they were never in the old index and the filter-rebuild couldn't
+add them. Diagnosis: 75 chunked sources vs 71 indexed; the 4 missing = 2 bulk-PII (correctly
+evicted) + ICETIS + Rutuja-fees (wrongly absent). PII guard was NOT the cause (ICETIS has 2
+email chunks, threshold is 5).
+
+**Fix:** re-embed tenant_1 from `chunked/` (PII guard still active) + rebuild faiss. Added a
+durable **coverage assert** in `ingestion/embed.py`: every chunked source must be either
+embedded or explicitly PII-dropped, else raise — so a silent drop can never recur.
+
+- Index **745 → 774 vectors** (+29 = ICETIS 28 + Rutuja 1). Coverage assert: 73 embedded + 2
+  PII-dropped = 75 chunked ✓.
+- **PII re-verified:** bulk sources `Indian_Students_Data.md`/`students.md` absent; only 4
+  legit author-contact email chunks remain (≤2/source) — same policy as Phase-1, F05-safe.
+
+**Measured delta — tenant_1 (n=46):**
+
+| Route | before A.2 | after A.2 |
+|---|---|---|
+| FACT | 36.4% (4/11) | **63.6% (7/11)** (+3: F08/F09/F10 now answerable) |
+| TABULAR | 95.5% (21/22) | **95.5% (21/22)** (invariant held) |
+| GLOBAL / LOCAL | 3/7 · 3/6 | 3/7 · 3/6 (unchanged) |
+| overall | 67.4% | **73.9%** |
+
+**Gates:** suite 233p/1s · tabular/analytics.duckdb checksums unchanged (embed doesn't touch
+duckdb) · ruff clean. Index backed up at `embeddings_backup_pre_icetis_20260819/` (gitignored).
+**Invariant update: tenant_1 index is now 774 vectors, not 745.**
+
+## B — GLOBAL synthesis + abstention
 _in progress_

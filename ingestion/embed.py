@@ -58,6 +58,9 @@ def process_chunk_embeddings(chunked_dir, embed_dir):
         logging.warning("No chunks found!")
         return
 
+    # Snapshot every chunked source BEFORE the PII filter, for the coverage assert.
+    all_chunk_sources = {c.get("metadata", {}).get("source", "?") for c in all_chunks}
+
     # Phase -1.3 PII guard: keep bulk third-party PII out of the FACT vector index.
     # Log source names + counts only — never chunk contents.
     drop = bulk_pii_sources(all_chunks, config.VECTOR_PII_EMAIL_BULK_THRESHOLD)
@@ -73,6 +76,22 @@ def process_chunk_embeddings(chunked_dir, embed_dir):
             before - len(all_chunks), len(drop), sorted(drop),
             config.VECTOR_PII_EMAIL_BULK_THRESHOLD, len(all_chunks),
         )
+
+    # Coverage assert (Phase-A A.2): every chunked source must either be embedded
+    # or intentionally dropped by the PII guard. Catches the stale-index bug where a
+    # source was chunked but never entered the served index (ICETIS-2026 brochure).
+    def _src(c):
+        return c.get("metadata", {}).get("source", "?")
+    embedded_sources = {_src(c) for c in all_chunks}
+    unexpected = (all_chunk_sources - embedded_sources) - drop
+    if unexpected:
+        raise AssertionError(
+            f"Ingestion coverage gap: {len(unexpected)} chunked source(s) absent from "
+            f"the index and NOT dropped by the PII guard: {sorted(unexpected)}. "
+            "Every chunked/* source must be embedded or explicitly PII-evicted."
+        )
+    logging.info("Coverage assert OK: %d sources embedded, %d PII-dropped.",
+                 len(embedded_sources), len(drop))
 
     logging.info(f"Generating embeddings for {len(all_chunks)} total chunks...")
     texts = [c["page_content"] for c in all_chunks]
