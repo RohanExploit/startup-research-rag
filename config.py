@@ -161,6 +161,17 @@ ALLOW_EXTERNAL_LLM = _truthy(os.environ.get("ALLOW_EXTERNAL_LLM", "0"))
 LLM_PII_REDACTION = _truthy(os.environ.get("LLM_PII_REDACTION", "0"))
 
 
+# --- Router robustness (retrieval/router.py) ---
+# When a query is classified TABULAR but the tabular path can't answer it — the
+# tenant has no tabular.duckdb (document-only tenant), or the intent cascade yields
+# empty context, or a lookup raises — fall back to the FACT vector path instead of
+# erroring/abstaining. Phase-0 measured 31/66 FACT stresskit questions misrouted to
+# TABULAR and hard-failing; FACT-conditional accuracy is 96.6%, so recovering them
+# is the highest-yield lever. Never overrides a *valid* tabular answer (incl. a
+# legitimate "no rows") — only empty/raised outcomes trigger it. Default ON.
+TABULAR_FACT_FALLBACK = _truthy(os.environ.get("TABULAR_FACT_FALLBACK", "1"))
+
+
 # --- Text-to-SQL guardrails (retrieval/tabular_queries.py) ---
 # Row cap injected when the generated SQL has no LIMIT.
 SQL_ROW_LIMIT = int(os.environ.get("SQL_ROW_LIMIT", "200"))

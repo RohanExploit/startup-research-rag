@@ -134,6 +134,22 @@ Query: "{query}"
             logging.error(f"Router fallback triggered — Unexpected error: {e}. Defaulting to FACT. Query: {query}", exc_info=True)
             return "FACT", fallback
 
+    def _fact_context(self, query: str) -> str:
+        # Retrieve deeper (k=10) to reduce recall misses, then keep the top
+        # chunks that fit the 2048 num_ctx budget rather than dropping k back
+        # to 3. ~5000 chars of context leaves room for the prompt template
+        # and the 512-token answer within 2048 ctx. The first (best) chunk
+        # is always included even if long.
+        results = self.vs.search(query, top_k=10)
+        parts, budget = [], 5000
+        for r in results:
+            c = r["content"]
+            if parts and len(c) > budget:
+                break
+            parts.append(c)
+            budget -= len(c)
+        return "\n".join(parts)
+
     async def route_query(self, query: str):
         qtype, fallback_reason = await self.classify_query(query)
         logging.info(f"Query classified as: {qtype}")
@@ -142,20 +158,7 @@ Query: "{query}"
 
         context = ""
         if qtype == "FACT":
-            # Retrieve deeper (k=10) to reduce recall misses, then keep the top
-            # chunks that fit the 2048 num_ctx budget rather than dropping k back
-            # to 3. ~5000 chars of context leaves room for the prompt template
-            # and the 512-token answer within 2048 ctx. The first (best) chunk
-            # is always included even if long.
-            results = self.vs.search(query, top_k=10)
-            parts, budget = [], 5000
-            for r in results:
-                c = r["content"]
-                if parts and len(c) > budget:
-                    break
-                parts.append(c)
-                budget -= len(c)
-            context = "\n".join(parts)
+            context = self._fact_context(query)
         elif qtype == "GLOBAL":
             context = self.cs.get_all_summaries()
         elif qtype == "LOCAL":
@@ -185,37 +188,68 @@ Query: "{query}"
                 # vector context rather than returning empty.
                 results = self.vs.search(query, top_k=3)
                 context = "\n".join(r["content"] for r in results)
+        elif qtype == "TABULAR" and config.TABULAR_FACT_FALLBACK and \
+                not (config.tenant_dir(self.tenant_id) / "tabular.duckdb").exists():
+            # Document-only tenant: no tabular.duckdb at all, so the entire TABULAR
+            # route is void (every lookup would raise FileNotFoundError or return a
+            # "no data" sentinel). Skip it and answer from the FACT vector path.
+            # This is the dominant Phase-0 miss (31/66 FACT stresskit Qs land here).
+            context = self._fact_context(query)
+            metadata["tabular_fallback"] = "TABULAR->FACT (no tabular.duckdb)"
+            qtype = "FACT"
+            logging.info("TABULAR->FACT fallback: tenant has no tabular.duckdb")
         elif qtype == "TABULAR":
             from retrieval.tabular_queries import get_average_sgpa, count_failures, list_students_below_sgpa, get_student_record, get_student_by_name, generate_and_run_sql
             from retrieval.sql_templates import match_template
             from retrieval.intent import classify_tabular_intent
 
-            # P3.12: try a deterministic parameterized template FIRST (no LLM,
-            # works offline). Only unmatched patterns fall through to the cascade
-            # / LLM text-to-SQL below.
-            matched = match_template(query)
-            if matched:
-                fn, kwargs = matched
-                result = await asyncio.to_thread(fn, tenant_id=self.tenant_id, **kwargs)
-                metadata["debug_sql"] = result.get("debug_sql")
-                metadata["template"] = result.get("template")
-                return qtype, result["answer"], metadata
+            # The tabular path can still fail on a tenant that HAS a db (empty result,
+            # lookup error). Guard the block so those outcomes fall back too.
+            try:
+                # P3.12: try a deterministic parameterized template FIRST (no LLM,
+                # works offline). Only unmatched patterns fall through to the cascade
+                # / LLM text-to-SQL below.
+                matched = match_template(query)
+                if matched:
+                    fn, kwargs = matched
+                    result = await asyncio.to_thread(fn, tenant_id=self.tenant_id, **kwargs)
+                    metadata["debug_sql"] = result.get("debug_sql")
+                    metadata["template"] = result.get("template")
+                    # A valid tabular answer (incl. a legitimate "no rows") wins; only
+                    # an empty answer falls through to the FACT fallback.
+                    if str(result.get("answer", "")).strip():
+                        return qtype, result["answer"], metadata
+                else:
+                    intent = classify_tabular_intent(query)
+                    if intent.kind == "name_search":
+                        context = await get_student_by_name(query, self.tenant_id)
+                    elif intent.kind == "dynamic_sql":
+                        sql_result = await generate_and_run_sql(query, self.tenant_id)
+                        context = sql_result["answer"]
+                        metadata["debug_sql"] = sql_result["debug_sql"]
+                    elif intent.kind == "average_sgpa":
+                        context = get_average_sgpa(intent.params["subject"], self.tenant_id)
+                    elif intent.kind == "count_failures":
+                        context = count_failures(intent.params["subject"], self.tenant_id)
+                    elif intent.kind == "below_sgpa":
+                        context = list_students_below_sgpa(intent.params["threshold"], self.tenant_id)
+                    elif intent.kind == "record_by_roll":
+                        context = get_student_record(intent.params["roll"], self.tenant_id)
+            except Exception as e:
+                # No DB / lookup error — log the source name only, never a payload.
+                logging.warning("TABULAR path failed (%s); fallback_enabled=%s",
+                                type(e).__name__, config.TABULAR_FACT_FALLBACK)
+                metadata["tabular_error"] = type(e).__name__
+                context = ""
 
-            intent = classify_tabular_intent(query)
-            if intent.kind == "name_search":
-                context = await get_student_by_name(query, self.tenant_id)
-            elif intent.kind == "dynamic_sql":
-                sql_result = await generate_and_run_sql(query, self.tenant_id)
-                context = sql_result["answer"]
-                metadata["debug_sql"] = sql_result["debug_sql"]
-            elif intent.kind == "average_sgpa":
-                context = get_average_sgpa(intent.params["subject"], self.tenant_id)
-            elif intent.kind == "count_failures":
-                context = count_failures(intent.params["subject"], self.tenant_id)
-            elif intent.kind == "below_sgpa":
-                context = list_students_below_sgpa(intent.params["threshold"], self.tenant_id)
-            elif intent.kind == "record_by_roll":
-                context = get_student_record(intent.params["roll"], self.tenant_id)
+            # TABULAR-miss -> FACT fallback. Reassign qtype to FACT so the answer is
+            # SYNTHESISED from the vector context (not returned raw) and the route is
+            # honestly reported as FACT to the recovered question.
+            if config.TABULAR_FACT_FALLBACK and not str(context).strip():
+                context = self._fact_context(query)
+                metadata["tabular_fallback"] = "TABULAR->FACT"
+                qtype = "FACT"
+                logging.info("TABULAR->FACT fallback engaged")
 
         return qtype, context, metadata
 
