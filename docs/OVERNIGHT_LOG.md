@@ -86,5 +86,54 @@ embedded or explicitly PII-dropped, else raise — so a silent drop can never re
 duckdb) · ruff clean. Index backed up at `embeddings_backup_pre_icetis_20260819/` (gitignored).
 **Invariant update: tenant_1 index is now 774 vectors, not 745.**
 
-## B — GLOBAL synthesis + abstention
-_in progress_
+## B — GLOBAL synthesis + abstention ⏸️ DIAGNOSED, FIX DEFERRED (no commit)
+
+**Root cause found:** the GLOBAL route dumps **every** community summary as context —
+58,819 chars (~14.7k tokens) for tenant_stress's 110 communities — into a `num_ctx=2048`
+window. Ollama silently truncates ~86%, so the model synthesises from an arbitrary prefix.
+
+**Experiment (reverted):** rank summaries by query-term overlap and pack the top ones under
+a 5000-char budget (`get_relevant_summaries`). Result: GLOBAL **31.8% → 22.7% (worse)**,
+overall 76.7% → 75.0%. Focused retrieval *hurts* GLOBAL because these questions need
+**breadth** (15/22 are cross-document synthesis; "summarize the themes" wants coverage, not
+the single most-relevant community). Arbitrary truncation of all-summaries beat focused
+selection. **Reverted per guardrails (not a clear win).**
+
+**Recommendation (daylight work, needs design review):** the correct fix is a **map-reduce /
+hierarchical GraphRAG** GLOBAL: run the LLM over each community summary (or batches) to
+extract query-relevant points, then reduce those into a final answer — instead of one
+truncated pass. This is a real feature, not a tuning tweak; it also interacts with the
+over-fragmentation (110 communities from 74 chunks → Louvain resolution likely too fine).
+Both deserve attention when you're at the keyboard, not an unattended commit. Community
+summaries were also visibly noisy at ingest (one chunk produced degenerate JSON on the 4B
+extractor) — worth auditing summary quality before investing in map-reduce.
+
+---
+
+## Morning summary
+
+Three-item queue run autonomously off the Phase-0 baseline (`5c996e2`). **2 accepted &
+committed, 1 diagnosed & deferred.** All invariants held throughout; every accepted change
+passed its regression gate before commit.
+
+| Phase | Outcome | Headline | Commit |
+|---|---|---|---|
+| A.1 router fallback | ✅ committed | stress FACT **50% → 93.9%**, overall 43.3% → 76.7%; tenant_1 zero-regression | `9d3a44c` |
+| A.2 ICETIS re-ingest | ✅ committed | tenant_1 FACT **36.4% → 63.6%**, overall → 73.9%; index 745→774; TABULAR 21/22 held | `9083a9b` |
+| B GLOBAL synthesis | ⏸️ deferred | diagnosed num_ctx truncation; relevance-hack made it worse → needs map-reduce (daylight) | — |
+
+**Net after the night:**
+- **stress** (instrument): FACT 50% → **93.9%** · overall 43.3% → **76.7%** · route-class 44% → **75%** · abstention 42% → **92%**.
+- **tenant_1** (real): FACT 36.4% → **63.6%** · overall 67.4% → **73.9%** · TABULAR **21/22 held**.
+
+**Guardrails never tripped:** suite 233p/1s at each gate; `tabular`/`analytics.duckdb`
+checksums unchanged; egress OFF; PII re-verified after the tenant_1 re-embed (bulk rosters
+absent). tenant_1 index backed up pre-re-embed.
+
+**New config knobs (both default ON, safe):** `TABULAR_FACT_FALLBACK`.
+**Invariant update:** tenant_1 index is now **774 vectors** (was 745).
+
+**Open items for you:**
+1. Decide GLOBAL direction (map-reduce GraphRAG vs. coarser Louvain resolution) — see B above.
+2. F05 (author-contact email) still fails on tenant_1 — separate from ICETIS; low priority.
+3. The stress `paraphrase ≈ lexical` result stands → reranker/embedder-swap still not worth it.
