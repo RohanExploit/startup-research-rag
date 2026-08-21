@@ -47,3 +47,4 @@ benchmark_*.txt
 # eval run artifacts (contain answer text w/ student names — PII)
 tests/eval/*_results.json
 tests/eval/*.jsonl
+tests/eval/bench_runs/
