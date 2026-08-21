@@ -80,6 +80,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if fallback_reason:
             text += f"\n\n⚠️ *Note:* Request was routed as fallback due to: `{fallback_reason}`"
 
+        # Provenance, admin-only for now. Source labels are raw document filenames and
+        # at least one real tenant_1 document is named after a student ("Rutuja fees.md"),
+        # so showing them to every allowlisted chat user would be a new PII surface —
+        # a call for the owner, not for an unattended run. The operator dashboard shows
+        # them unconditionally; non-admin chat output is byte-identical to before.
+        sources = metadata.get("sources") or []
+        if sources and is_admin(uid):
+            listed = "\n".join(
+                f"• {s.get('source')}" + (f" › {s['section']}" if s.get("section") else "")
+                for s in sources[:5]
+            )
+            text += f"\n\n─── Sources (Admin) ───\n{listed}"
+
         if context_used and is_admin(uid) and answer.strip() != context_used.strip():
             text += "\n\n─── Context snippet (Admin) ───\n" + context_used[:400]
 

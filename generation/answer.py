@@ -53,6 +53,14 @@ async def aclose_http_client() -> None:
     _http_client = None
 
 async def generate_answer(query: str, context: str, qtype: str = "LOCAL") -> str:
+    # NOTE: the GLOBAL template used to mandate a third section, "### 3. Citations /
+    # Sources — [List the document sources or community references]". The GLOBAL route
+    # feeds it CommunitySearch.get_all_summaries(), and those summaries are generated
+    # from bare entity NAMES (ingestion/summarize_communities.py) — they contain no
+    # source names at all. So the instruction could only ever be satisfied by invention,
+    # and every GLOBAL answer shipped a fabricated citation block. Removed. Real
+    # provenance now travels as metadata["sources"] from the retrieval path, and the
+    # section earns its way back the day GLOBAL context actually carries labels.
     if qtype == "GLOBAL":
         prompt = f"""
 You are the "Company Brain", a helpful internal AI assistant answering a decision-assisting or broad query.
@@ -64,9 +72,6 @@ You MUST format your answer using the following strict Markdown structure:
 
 ### 2. Supporting Evidence
 [Detailed points extracted from the context supporting the summary]
-
-### 3. Citations / Sources
-[List the document sources or community references]
 
 Context:
 {context}

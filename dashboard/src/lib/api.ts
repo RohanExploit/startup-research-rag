@@ -36,12 +36,19 @@ export function apiUrl(path: string): string {
 
 export type QueryType = "FACT" | "LOCAL" | "GLOBAL" | "TABULAR";
 
+/** One document the answer was built from. Emitted by the retrieval path only. */
+export interface SourceRef {
+  source: string;
+  section?: string | null;
+}
+
 export interface QueryResponse {
   query_type: QueryType;
   answer: string;
   context_used: string;
   metadata: {
     fallback_reason?: string;   // e.g. "ollama_exception:RequestError"
+    sources?: SourceRef[];      // provenance; absent on the graph/community paths
     [key: string]: unknown;
   };
 }

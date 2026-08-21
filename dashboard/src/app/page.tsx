@@ -8,6 +8,7 @@ import {
   type QueryResponse,
   type QueryType,
   type AnswerKind,
+  type SourceRef,
 } from "@/lib/api";
 import { SearchIcon, SendIcon, AlertIcon } from "@/components/icons";
 
@@ -159,6 +160,36 @@ function DisambiguationOptions({
       <p style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)", marginTop: 10 }}>
         Click a name to fetch the full record.
       </p>
+    </div>
+  );
+}
+
+// ─── Sources panel ───────────────────────────────────────────────
+
+// Which documents the answer was actually built from. Until now no surface showed
+// this: the retrieval layer had the metadata and dropped it, while the GLOBAL prompt
+// asked the model to write a citations section out of thin air. An answer about fees
+// or rules is not checkable without it.
+function SourcesPanel({ sources }: { sources?: SourceRef[] }) {
+  if (!sources || sources.length === 0) return null;
+  return (
+    <div className="card">
+      <div className="card-header">
+        <span className="card-title">Sources</span>
+        <span className="font-data" style={{ fontSize: "var(--text-xs)", color: "var(--color-faint)" }}>
+          {sources.length} {sources.length === 1 ? "document" : "documents"}
+        </span>
+      </div>
+      <div className="card-body">
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: "var(--text-xs)", color: "var(--color-muted)" }}>
+          {sources.map((s, i) => (
+            <li key={i} style={{ marginBottom: 4 }}>
+              <span style={{ color: "var(--color-text)" }}>{s.source}</span>
+              {s.section ? <span style={{ color: "var(--color-faint)" }}> › {s.section}</span> : null}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -435,6 +466,7 @@ export default function QueryConsolePage() {
 
               {/* Context panel */}
               <div className="result-context">
+                <SourcesPanel sources={response.metadata.sources} />
                 <ContextPanel context={response.context_used} />
               </div>
             </div>

@@ -74,7 +74,9 @@ Output:"""
         "prompt": prompt,
         "stream": False,
         "format": "json",
-        "options": {"num_ctx": 2048}
+        # Pinned to 0 for the same reason as summarize_communities: entity extraction
+        # output is persisted into the graph and served, so it must be reproducible.
+        "options": {"num_ctx": 2048, "temperature": 0}
     }
 
     try:

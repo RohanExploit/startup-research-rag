@@ -265,6 +265,13 @@ class QueryResponse(BaseModel):
     answer: str
     context_used: str
     debug_sql: str | None = None   # The exact SQL executed (for Text-to-SQL queries)
+    # Provenance rides inside metadata["sources"] as [{"source", "section"}, ...] rather
+    # than in a new top-level field: metadata is already returned on every branch and
+    # already typed as an open dict by the dashboard, so nothing downstream breaks.
+    # Deliberately NOT injected into context_used or the prompt — 15 of 120 stress golds
+    # and 16 of 46 tenant_1 golds pass on source-label text alone (e.g. "rag" from the
+    # RAG-MicroSim filename), so putting labels in context would hand the model free
+    # gold tokens to echo and inflate every score measured afterwards.
     metadata: dict = {}
 
 @app.post("/query", response_model=QueryResponse)

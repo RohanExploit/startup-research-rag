@@ -142,12 +142,26 @@ Query: "{query}"
         # is always included even if long.
         results = self.vs.search(query, top_k=10)
         parts, budget = [], 5000
+        sources: list[dict] = []
         for r in results:
             c = r["content"]
             if parts and len(c) > budget:
                 break
             parts.append(c)
             budget -= len(c)
+            # Provenance: VectorSearch already returns per-hit metadata and this
+            # method was the only place it got dropped. Recorded on the instance
+            # rather than returned, so the signature stays single-argument — three
+            # tests monkeypatch this method with a one-arg lambda, and the whole
+            # point of shipping citations is not to break the TABULAR fallback
+            # while doing it. There is no await between this call and the caller
+            # reading _last_sources, so no request can interleave with another.
+            m = r.get("metadata") or {}
+            src = {"source": m.get("source"),
+                   "section": m.get("Header 2") or m.get("Header 1")}
+            if src["source"] and src not in sources:
+                sources.append(src)
+        self._last_sources = sources
         return "\n".join(parts)
 
     async def route_query(self, query: str):
@@ -155,6 +169,7 @@ Query: "{query}"
         logging.info(f"Query classified as: {qtype}")
 
         metadata = {"fallback_reason": fallback_reason} if fallback_reason else {}
+        self._last_sources = []
 
         context = ""
         if qtype == "FACT":
@@ -250,6 +265,14 @@ Query: "{query}"
                 metadata["tabular_fallback"] = "TABULAR->FACT"
                 qtype = "FACT"
                 logging.info("TABULAR->FACT fallback engaged")
+
+        # Attach whatever provenance the chosen path collected. Empty for the
+        # graph/community paths, which carry no source metadata — that absence is
+        # itself the honest signal, and is why the GLOBAL prompt no longer asks
+        # the model to invent a citations section.
+        sources = getattr(self, "_last_sources", [])
+        if sources:
+            metadata["sources"] = sources
 
         return qtype, context, metadata
 

@@ -26,7 +26,11 @@ Entities: {', '.join(nodes)}
         "model": config.OLLAMA_MODEL,
         "prompt": prompt,
         "stream": False,
-        "options": {"num_ctx": 2048}
+        # temperature was unset, i.e. Ollama's default 0.8 — so re-running ingestion
+        # produced different summaries from the same graph. Every other LLM call in the
+        # serving path pins temperature 0; the ingest path is where reproducibility
+        # matters most, because its output is persisted and served for weeks.
+        "options": {"num_ctx": 2048, "temperature": 0}
     }
 
     try:

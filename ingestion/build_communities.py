@@ -4,6 +4,7 @@ for _p in (_Path(__file__).resolve().parent, _Path(__file__).resolve().parent.pa
     if str(_p) not in _sys.path:
         _sys.path.append(str(_p))
 from config import PROJECT_ROOT
+import config
 import json
 import logging
 from pathlib import Path
@@ -26,7 +27,12 @@ def detect_communities(graph_dir):
     # Louvain works on undirected graphs
     G_undirected = G.to_undirected()
 
-    communities = louvain_communities(G_undirected)
+    # config.LOUVAIN_SEED existed since the pipeline was written but was never passed to
+    # anything, so community detection was non-deterministic: two consecutive runs on the
+    # same graph produced 109 and 110 communities with different partitions. Since the
+    # graph artifacts are gitignored and the summaries built from them are LLM output,
+    # an unseeded partition meant a destroyed community set could never be reconstructed.
+    communities = louvain_communities(G_undirected, seed=config.LOUVAIN_SEED)
 
     community_data = {}
     for i, comm in enumerate(communities):
