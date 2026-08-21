@@ -132,14 +132,40 @@ def corpus_forms(anchor: str, corpus_norm: str, corpus: str, aliases: dict) -> t
     return (verbatim or aliased), forms
 
 
-def derive_gold_v2(ans: str, corpus: str, corpus_norm: str, aliases: dict) -> dict:
+def derive_gold_v2(ans: str, corpus: str, corpus_norm: str, aliases: dict,
+                   answer_anchors: list | None = None, cited: str | None = None) -> dict:
+    """`answer_anchors`, when the question generator supplies them, are what the question
+    actually asks for — stated at generation time instead of inferred from prose.
+
+    Inference is fine for a fact ("168 credits"), but it cannot tell the subject of a
+    multi-hop answer from its scenery: "The HPC Laboratory belongs to Computer Science and
+    Engineering, headed by Dr. Meera Joshi" yields three proper nouns, and a scorer that
+    accepts any of them passes an answer that names the laboratory to a question asking who
+    heads the department. Each stated anchor becomes its own required group (AND), so the
+    answer must contain the thing that was asked for.
+    """
+    # Provability is judged against the CITED documents when the question names them.
+    # Against the whole corpus, a computed count like "4" is "provable" purely because the
+    # digit 4 appears somewhere unrelated — which would file a figure the documents never
+    # state as a required anchor, and mark the retriever wrong for not inventing it.
+    scope = cited if cited is not None else corpus
+    scope_norm = strip_group_commas(scope)
+
+    if answer_anchors:
+        required = []
+        for a in answer_anchors:
+            _provable, forms = corpus_forms(str(a), scope_norm, scope, aliases)
+            required.append(forms)
+        return {"mode": "anchors", "required": required, "bonus": [],
+                "aliases": {}, "kind": "stated"}
+
     ans_norm = strip_group_commas(ans)
     anchors = list(dict.fromkeys(
         GROUPED_NUM_RE.findall(ans_norm) + CODE_RE.findall(ans)))
     required, bonus, alias_used = [], [], {}
 
     for a in anchors:
-        provable, forms = corpus_forms(a, corpus_norm, corpus, aliases)
+        provable, forms = corpus_forms(a, scope_norm, scope, aliases)
         if provable:
             required.append(forms)          # a group: ANY form satisfies it
             if forms != [a]:
@@ -166,7 +192,14 @@ def load(name):
     return json.loads((KIT / name).read_text(encoding="utf-8"))["questions"]
 
 
-def main():
+def main(kit=None, corpus_dir=None, out=None, audit=None, tenant_id="tenant_stress",
+         version="stress-2"):
+    global KIT, CORPUS, OUT, AUDIT
+    KIT = Path(kit) if kit else KIT
+    CORPUS = Path(corpus_dir) if corpus_dir else CORPUS
+    OUT = Path(out) if out else OUT
+    AUDIT = Path(audit) if audit else AUDIT
+
     corpus = load_corpus()
     corpus_norm = strip_group_commas(corpus)
     aliases = build_alias_map(corpus)
@@ -176,7 +209,13 @@ def main():
                          ("GLOBAL", "golden_global.json"),
                          ("LOCAL", "golden_local.json")]:
         for q in load(fname):
-            gold = derive_gold_v2(q["expected_answer"], corpus, corpus_norm, aliases)
+            docs_cited = q.get("supporting_docs") or (
+                [q["source_doc"]] if "source_doc" in q else [])
+            cited_text = "\n".join(
+                (CORPUS / d).read_text(encoding="utf-8", errors="replace")
+                for d in docs_cited if (CORPUS / d).exists()) or None
+            gold = derive_gold_v2(q["expected_answer"], corpus, corpus_norm, aliases,
+                                  q.get("answer_anchors"), cited_text)
             item = {"id": q["id"], "route": route, "query": q["question"], "gold": gold}
             if "phrasing" in q:
                 item["phrasing"] = q["phrasing"]
@@ -188,8 +227,8 @@ def main():
                           "gold": {"mode": "insufficient", "expect": []},
                           "gap_type": q.get("gap_type"), "unanswerable": True})
 
-    spec = {"version": "stress-2",
-            "tenant_id": "tenant_stress",
+    spec = {"version": version,
+            "tenant_id": tenant_id,
             "description": ("Stresskit golds re-derived from the same human expected_answer "
                             "prose with digit-group normalisation, corpus-provable acronym "
                             "aliases, and required/bonus separation. v1 remains the decision "
@@ -226,4 +265,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    ap = argparse.ArgumentParser(description="Derive scoreable anchors from a kit + its corpus")
+    ap.add_argument("--kit", default=None, help="directory of golden_*.json (human prose)")
+    ap.add_argument("--corpus", default=None, help="directory of the corpus .md files")
+    ap.add_argument("--out", default=None)
+    ap.add_argument("--audit", default=None)
+    ap.add_argument("--tenant-id", default="tenant_stress")
+    ap.add_argument("--version", default="stress-2")
+    a = ap.parse_args()
+    main(a.kit, a.corpus, a.out, a.audit, a.tenant_id, a.version)
