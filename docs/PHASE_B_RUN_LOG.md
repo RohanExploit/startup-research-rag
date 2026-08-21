@@ -76,6 +76,54 @@ costs 46% of decode throughput. The knobs (`OLLAMA_NUM_CTX`, `CONTEXT_BUDGET_CHA
 `FACT_TOP_K`, `fe48a2c`) stay in the tree at today's values — the experiment is now an env
 var rather than a diff — but the defaults do not move.
 
+### P5 — LOCAL vector arm (`7be2d7d`) — landed behind a flag, default unchanged
+
+| slice | graph (default) | vector arm |
+|---|---|---|
+| LOCAL | 12/20 | **15/20** (b=4, c=1) |
+| FACT | 73/78 | 75/78 (LOCAL-misrouted FACT questions get usable context) |
+| overall | 93/120 | 96/120 |
+
+tenant_1 canary: unchanged on every slice, TABULAR 21/22 held. Under the repaired v2 golds
+the same frozen answers read LOCAL 12→16, GLOBAL 7→9, overall 93→101.
+
+**Not accepted.** The pre-registered rule needs b≥7 at c=1; b=4 (v1) and b=5 (v2) are
+INCONCLUSIVE, and the rule was registered in advance precisely so it could not be argued
+past at 3 a.m. Two replication attempts died in Ollama reload thrash (free RAM ~1.8 GB) —
+the P1 circuit breaker aborted both rather than let a dead engine report ~0% and trigger a
+"revert" of a good change. So the arm ships flagged **off**, and the question moves to the
+bench, where n is large enough to answer it.
+
+## The instrument was rebuilt (`8708fcf`, `e90f1e3`, `07ef7f2`)
+
+Every open decision died on the same limit: at n=20 (LOCAL) and n=22 (GLOBAL), with a
+measured ±2 run-to-run swing at temperature 0, only a ~20pp effect is resolvable. So the
+benchmark was rebuilt rather than argued about.
+
+`tests/eval/bench/` renders **30 documents** and **208 questions** from a single world
+model (`world.py`), so a gold cannot be wrong about the corpus — there is no scraping step
+in between. Slices: **FACT 97** (77 + 20 unanswerable) · **GLOBAL 57** · **LOCAL 54**,
+corpus 26.5k chars → 69 chunks, ingested as its own `tenant_bench` (re-ingesting
+`tenant_stress` would have moved the instrument every baseline above was measured against).
+
+What makes it discriminating rather than merely larger:
+- Facts are **split across documents on purpose**: a laboratory maps to a department only
+  in the infrastructure register, that department's head only in the faculty handbook, its
+  placement rate only in the annual report.
+- Eight department profiles **share a shape and vocabulary** and differ only in names and
+  numbers, so landing in *a* profile is visibly not landing in *the right* profile.
+- Deliberate distractors: two faculty share a surname; custodians are technical staff who
+  are never heads of department; one vendor is also a recruiter.
+- Questions needing a **computed** figure are marked derived, so arithmetic is scored as
+  its own sub-metric instead of being conjoined with retrieval.
+
+`validate_bench.py` gates the benchmark before anything is measured with it, and it
+**rejected 15 questions that would otherwise have shipped**: counting questions whose cited
+document never states the count; four vendor→lab questions that were single-document
+lookups mislabelled LOCAL; and eleven hops that the department profiles silently collapsed
+when the corpus was enriched. Twelve tests now pin those properties, including
+`validate_bench.main()` itself.
+
 ## Escalated to the owner (not decided unattended)
 
 1. **Who may see student identities.** `PII_ROLE_GATE=1` is a one-line flip, but every
