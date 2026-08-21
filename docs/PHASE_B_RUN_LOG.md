@@ -210,6 +210,41 @@ protocol exists to prevent. So the aggregate is pre-registered here, before the 
 - **If it fails:** the flag stays off and this section stays in the log as a rejected
   hypothesis, not a footnote.
 
+## Confirmatory result — primary endpoint PASSES, secondary guard FAILS
+
+Fresh pair, same protocol, 3.8 GB free RAM:
+
+| | graph arm | vector arm |
+|---|---|---|
+| overall | 167/208 (80.3%) | **177/208 (85.1%)** |
+| FACT | 84/97 | 88/97 |
+| GLOBAL | 45/57 | 48/57 |
+| LOCAL | 38/54 | 41/54 |
+| median answer length | 67 ch | 92 ch |
+
+**Pre-registered aggregate: b=12, c=2 → ACCEPT** (needed 9 at c=2). The motivating pair read
+b=9, c=2. So the primary endpoint passes twice, on independent runs, and the artifact floor
+is 39→39 in both — meaning the rotated arm gained nothing, which is the direct evidence that
+the extra length did not buy the result.
+
+**And the secondary guard fails as written.** I registered "median answer length must not
+rise by more than 20%". It rose **+37%** (67→92). The floor evidence argues the length is a
+side effect rather than the cause — chunk context is simply wordier than `A -> REL -> B`
+edges — but re-reading a guard as satisfied *after* watching the primary pass is the same
+error the pre-registration was written to prevent, one level down.
+
+**Therefore the default is NOT flipped autonomously.** `LOCAL_GRAPH_CONTEXT` stays on the
+graph. What the owner is being handed is:
+
+- the primary endpoint passing twice (b=9 and b=12, c=2 both times);
+- an identified mechanism — the gains sit in the `FACT → LOCAL` (64.3% → 92.9%) and
+  `GLOBAL → LOCAL` (0/4 → 3/4) cells, so this is the LOCAL path becoming harmless when the
+  router misdelivers, not a retrieval improvement;
+- `LOCAL → LOCAL` unchanged at 81.5%, i.e. no gain on the work the route exists for;
+- one failed guard, stated rather than explained away.
+
+Flipping it is a one-line change (`LOCAL_GRAPH_CONTEXT=0`) and reversible.
+
 ## Escalated to the owner (not decided unattended)
 
 1. **Who may see student identities.** `PII_ROLE_GATE=1` is a one-line flip, but every
