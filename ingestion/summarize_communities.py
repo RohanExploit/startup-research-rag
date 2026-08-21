@@ -30,7 +30,7 @@ Entities: {', '.join(nodes)}
         # produced different summaries from the same graph. Every other LLM call in the
         # serving path pins temperature 0; the ingest path is where reproducibility
         # matters most, because its output is persisted and served for weeks.
-        "options": {"num_ctx": 2048, "temperature": 0}
+        "options": {"num_ctx": config.OLLAMA_NUM_CTX, "temperature": 0}
     }
 
     try:

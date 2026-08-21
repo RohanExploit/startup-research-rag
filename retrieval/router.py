@@ -108,7 +108,7 @@ Query: "{query}"
             "prompt": prompt,
             "stream": False,
             "keep_alive": OLLAMA_KEEP_ALIVE,
-            "options": {"num_ctx": 2048, "num_predict": 10, "temperature": 0}
+            "options": {"num_ctx": config.OLLAMA_NUM_CTX, "num_predict": 10, "temperature": 0}
         }
         try:
             response = await _http_client.post(OLLAMA_API_URL, json=payload)
@@ -136,12 +136,14 @@ Query: "{query}"
 
     def _fact_context(self, query: str) -> str:
         # Retrieve deeper (k=10) to reduce recall misses, then keep the top
-        # chunks that fit the 2048 num_ctx budget rather than dropping k back
-        # to 3. ~5000 chars of context leaves room for the prompt template
-        # and the 512-token answer within 2048 ctx. The first (best) chunk
+        # chunks that fit the context budget rather than dropping k back to 3.
+        # The budget must stay well inside config.OLLAMA_NUM_CTX (~4 chars/token)
+        # with room for the prompt template and the answer — Ollama truncates a
+        # too-long prompt silently, and it keeps the TAIL, so an overflow here
+        # would discard the highest-ranked chunks first. The first (best) chunk
         # is always included even if long.
-        results = self.vs.search(query, top_k=10)
-        parts, budget = [], 5000
+        results = self.vs.search(query, top_k=config.FACT_TOP_K)
+        parts, budget = [], config.CONTEXT_BUDGET_CHARS
         sources: list[dict] = []
         for r in results:
             c = r["content"]

@@ -96,7 +96,7 @@ Answer:
         "prompt": prompt,
         "stream": False,
         "keep_alive": OLLAMA_KEEP_ALIVE,
-        "options": {"num_ctx": 2048, "num_predict": 512, "temperature": 0}
+        "options": {"num_ctx": config.OLLAMA_NUM_CTX, "num_predict": 512, "temperature": 0}
     }
 
     try:

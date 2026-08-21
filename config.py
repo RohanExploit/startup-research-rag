@@ -218,3 +218,30 @@ PII_PRIVILEGED_ROLES = set(
     r.strip() for r in os.environ.get("PII_PRIVILEGED_ROLES", "admin,registrar").split(",")
     if r.strip()
 )
+
+
+# --- Ollama context window (every LLM call site) ---
+# Was hardcoded to 2048 in six places. Measured on the RTX 2050 (4 GB):
+#   2048  -> 100% resident on GPU, 33.9 tok/s decode   <- the only fully-resident setting
+#   4096  ->  82% resident, 18.3 tok/s  (-46%)
+#   8192  ->  71% resident,  7.2 tok/s  (-79%)  breaches API_TIMEOUT on long answers
+#  16384  ->  53% resident,  5.05 tok/s
+# The KV cache spills to system RAM rather than OOM-ing, so the cost of a bigger window is
+# throughput, not stability. 4096 keeps the worst observed answer inside API_TIMEOUT=60;
+# 8192+ does not, and an answer that times out is a product regression, not a slow success.
+#
+# It is deliberately ONE knob for ALL call sites: Ollama reloads the model whenever num_ctx
+# changes between requests (measured 2.9-3.0 s clean, up to 170 s under RAM pressure), so a
+# mixed configuration would pay two reloads per question.
+OLLAMA_NUM_CTX = int(os.environ.get("OLLAMA_NUM_CTX", "2048"))
+
+# Character budget for the packed FACT/vector context. Must stay well inside OLLAMA_NUM_CTX
+# (~4 chars/token) with room for the prompt template and the answer. At num_ctx 2048 the
+# safe budget is ~5000 chars; raising one without the other buys nothing, because Ollama
+# silently truncates the overflow — and it keeps the prompt TAIL, so an over-budget context
+# loses its best-ranked chunks first.
+CONTEXT_BUDGET_CHARS = int(os.environ.get("CONTEXT_BUDGET_CHARS", "5000"))
+
+# Candidates pulled from FAISS before budget packing. More candidates only help if the
+# budget can hold them: on tenant_1 (mean 861 chars/chunk) a 5000-char budget fits ~6.
+FACT_TOP_K = int(os.environ.get("FACT_TOP_K", "10"))

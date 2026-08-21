@@ -248,7 +248,7 @@ Format: {{"name": "extracted name or null", "roll_no": "extracted roll number or
         "model": config.OLLAMA_MODEL,
         "prompt": prompt,
         "stream": False,
-        "options": {"temperature": 0.0, "num_ctx": 2048}
+        "options": {"temperature": 0.0, "num_ctx": config.OLLAMA_NUM_CTX}
     }
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -520,7 +520,7 @@ async def _ask_llm_for_sql(prompt: str) -> str | None:
         "prompt": prompt,
         "stream": False,
         "keep_alive": "10m",
-        "options": {"temperature": 0.0, "num_ctx": 2048},
+        "options": {"temperature": 0.0, "num_ctx": config.OLLAMA_NUM_CTX},
     }
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
