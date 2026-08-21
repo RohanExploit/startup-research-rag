@@ -176,6 +176,40 @@ Two caveats recorded against these numbers, so nobody over-reads them later:
 - **Derived-figure anchors: 13/24.** The 4B model does manage some cross-document
   arithmetic here, against 1/5 on the old kit.
 
+## Pre-registration for the confirmatory run (written BEFORE it was executed)
+
+The routing-cell table shows the vector arm is not a LOCAL improvement at all — it is a
+**robustness fix for the LOCAL path when the router misdelivers to it**:
+
+| cell | graph arm | vector arm |
+|---|---|---|
+| FACT → FACT | 90.4% | 90.4% |
+| GLOBAL → FACT | 84.0% | 84.0% |
+| **LOCAL → LOCAL** | **81.5%** | **81.5%** — identical, no LOCAL gain |
+| LOCAL → FACT | 70.4% | 70.4% |
+| **FACT → LOCAL** | 64.3% | **92.9%** |
+| **GLOBAL → LOCAL** | 0/4 | **3/4** |
+| **GLOBAL → GLOBAL** | **1/3 (33%)** | 1/3 — the worst cell on the board |
+
+Because the benefit is spread across whichever slice the router happens to misdeliver, a
+**per-slice** endpoint cannot see it: it splits one effect into three underpowered pieces.
+The aggregate over all 208 questions reads b=9, c=2 → ACCEPT on the same table.
+
+**That number does not count.** The per-slice endpoint was the registered one, and picking
+an aggregate after seeing it favour the arm is the multiple-comparisons trap this whole
+protocol exists to prevent. So the aggregate is pre-registered here, before the run:
+
+- **Endpoint:** discordant pairs over all 208 bench questions, graph arm vs vector arm,
+  scored by `run_eval.score` on `golden_bench.json`.
+- **Rule:** the same frozen table — ACCEPT needs b ≥ 5 at c=0, 7 at c=1, 9 at c=2, 10 at
+  c=3, 12 at c=4. REJECT if c ≥ b.
+- **Also required:** the artifact floor must not move materially (it was 39→39), and
+  median answer length must not rise by more than 20% (73→92 ch is +26%, so this is a
+  live risk and is why the floor is checked alongside it).
+- **Data:** a FRESH pair of runs, not the pair that motivated this rule.
+- **If it fails:** the flag stays off and this section stays in the log as a rejected
+  hypothesis, not a footnote.
+
 ## Escalated to the owner (not decided unattended)
 
 1. **Who may see student identities.** `PII_ROLE_GATE=1` is a one-line flip, but every
