@@ -33,6 +33,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from tests.eval.run_eval import score as score_v1  # noqa: E402  the frozen decision scorer
+from tests.eval.derive_gold_v2 import strip_group_commas  # noqa: E402
 
 
 def score_wb(answer: str, gold: dict) -> bool:
@@ -53,7 +54,40 @@ def score_wb(answer: str, gold: dict) -> bool:
     return score_v1(answer, gold)  # 'insufficient' is unchanged
 
 
-SCORERS = {"v1": score_v1, "wb": score_wb}
+def _hit(tok: str, answer_norm: str) -> bool:
+    """Short anchors match on word boundaries: 'AI' must not match the 'ai' in 'chair'."""
+    t = tok.lower()
+    if len(t) <= 3:
+        return re.search(rf"\b{re.escape(t)}\b", answer_norm) is not None
+    return t in answer_norm
+
+
+def score_v2(answer: str, gold: dict) -> bool:
+    """Required anchors only. See tests/eval/derive_gold_v2.py for how they are derived.
+
+    Digit-group commas are stripped from the answer exactly as they were from the gold, so
+    an answer writing 1,42,000 satisfies an anchor derived from 142000 and vice versa.
+    Each required entry is a group of accepted surfaces (anchor + corpus expansions) and is
+    satisfied by ANY of them. `bonus` anchors are NOT consulted here — they are reported
+    separately by score_v2_bonus so that arithmetic ability stays visible without being
+    conjoined with quotable retrieval.
+    """
+    if gold.get("mode") != "anchors":
+        return score_v1(answer, gold)          # 'insufficient' items are unchanged
+    a = strip_group_commas((answer or "").lower())
+    return all(any(_hit(form, a) for form in group) for group in gold.get("required", []))
+
+
+def score_v2_bonus(answer: str, gold: dict) -> bool | None:
+    """Did the answer produce the DERIVED figures (sums, totals) too? None = not applicable."""
+    bonus = gold.get("bonus") or []
+    if not bonus:
+        return None
+    a = strip_group_commas((answer or "").lower())
+    return all(_hit(tok, a) for tok in bonus)
+
+
+SCORERS = {"v1": score_v1, "wb": score_wb, "v2": score_v2}
 
 
 def load_answers(path: Path) -> dict:
@@ -115,15 +149,36 @@ def verdict(b: int, c: int) -> str:
     return f"INCONCLUSIVE (b={b}, need {need} at c={c}) — keep behind the flag, claim nothing"
 
 
+def applicable_scorers(golds: dict) -> dict:
+    """v1/wb read the {mode: contains, expect: [...]} schema; v2 reads {mode: anchors}.
+
+    A gold FILE is written in one schema or the other, so pick the scorers that can read
+    it rather than crashing on the first mismatched question. The v2 file is scored by v2
+    alone, which also means the two schemas can never be silently averaged together.
+    """
+    if "anchors" in {q["gold"].get("mode") for q in golds.values()}:
+        return {"v2": score_v2}
+    return SCORERS
+
+
 def report(label: str, answers: dict, golds: dict) -> dict:
     out = {}
+    scorers = applicable_scorers(golds)
+    primary = score_v2 if "v2" in scorers and "v1" not in scorers else score_v1
     print(f"\n=== {label} (n={len(answers)}) ===")
-    for name, fn in SCORERS.items():
+    for name, fn in scorers.items():
         r = evaluate(answers, golds, fn)
         out[name] = r
         routes = "  ".join(f"{k} {c}/{t}" for k, (c, t) in r["per_route"].items())
         print(f"  {name:8s} overall {r['overall']}/{r['n']}   {routes}")
-    rot = evaluate(answers, golds, score_v1, rotate=True)
+    bonus_ids = [i for i, q in golds.items()
+                 if i in answers and (q["gold"].get("bonus"))]
+    if bonus_ids:
+        hit = sum(1 for i in bonus_ids if score_v2_bonus(answers[i]["answer"], golds[i]["gold"]))
+        print(f"  {'bonus':8s} derived-figure anchors {hit}/{len(bonus_ids)} "
+              f"({', '.join(sorted(bonus_ids))})   <- arithmetic, reported not conjoined")
+
+    rot = evaluate(answers, golds, primary, rotate=True)
     out["rotated"] = rot
     routes = "  ".join(f"{k} {c}/{t}" for k, (c, t) in rot["per_route"].items())
     print(f"  {'rotated':8s} overall {rot['overall']}/{rot['n']}   {routes}   <- artifact floor")
@@ -148,12 +203,15 @@ def main():
     if args.compare:
         cmp_rows = load_answers(Path(args.compare))
         res["compare"] = report(Path(args.compare).name, cmp_rows, golds)
-        print("\n=== DECISION (v1 scorer, the pre-registered decision variable) ===")
+        key = "v1" if "v1" in res["baseline"] else "v2"
+        shown = ("v1 scorer, the pre-registered decision variable" if key == "v1"
+                 else "v2 scorer, repaired derivation — REPORTED, never the decision variable")
+        print(f"\n=== DECISION ({shown}) ===")
         for route in sorted({q["route"] for q in golds.values()}):
             ids = [i for i, q in golds.items() if q["route"] == route]
-            bd = {i: res["baseline"]["v1"]["detail"].get(i) for i in ids
-                  if i in res["baseline"]["v1"]["detail"]}
-            ad = {i: res["compare"]["v1"]["detail"].get(i) for i in ids}
+            bd = {i: res["baseline"][key]["detail"].get(i) for i in ids
+                  if i in res["baseline"][key]["detail"]}
+            ad = {i: res["compare"][key]["detail"].get(i) for i in ids}
             b, c, gained, lost = mcnemar(bd, ad)
             print(f"  {route:8s} b(gained)={b} c(lost)={c}  {verdict(b, c)}")
             if gained:
