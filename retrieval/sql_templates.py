@@ -69,11 +69,37 @@ def _rows(tenant_id, sql, params=()):
     return result
 
 
+
+# --------------------------------------------------------------------------
+# Student-identity rendering  (Phase-B T2.3)
+# --------------------------------------------------------------------------
+
+def _student_label(name, roll, redact: bool) -> str:
+    """How one student is named in a multi-row answer.
+
+    These roster templates are the system's largest PII surface: they emit every
+    matching student's full name and roll number, and api/main.py returns TABULAR
+    context verbatim, so whatever is formatted here is what the user reads.
+
+    `redact=False` reproduces the original f-string byte-for-byte — that is the shipped
+    default and tests/test_pii_role_gate.py asserts it, because the TABULAR invariant
+    (21/22 on tenant_1) is measured against these exact strings. Redaction is applied
+    HERE, at the point of rendering, rather than as a regex over a finished answer:
+    a post-hoc regex over TABULAR output would be guessing at which digits are roll
+    numbers and which are marks, and that is how an invariant gets broken quietly.
+    """
+    if not redact:
+        return f"{name or 'Unknown'} (Roll: {roll})"
+    # Keep the row (the count is the answer) but drop the identity. The roll number is
+    # replaced rather than truncated: a partial roll is still an identifier.
+    return "[student identity withheld]"
+
+
 # --------------------------------------------------------------------------
 # Templates  (each returns {"answer", "debug_sql", "template"})
 # --------------------------------------------------------------------------
 
-def students_failed_at_least(n: int, tenant_id: str = None) -> dict:
+def students_failed_at_least(n: int, tenant_id: str = None, redact: bool = False) -> dict:
     sql = (
         "SELECT roll_no, name, COUNT(DISTINCT subject_code) AS failed_subjects "
         "FROM exam_results WHERE is_fail "
@@ -87,11 +113,11 @@ def students_failed_at_least(n: int, tenant_id: str = None) -> dict:
                 "debug_sql": sql, "template": "students_failed_at_least"}
     lines = [f"Found {len(rows)} students who failed at least {n} subjects:"]
     for roll, name, fails in rows:
-        lines.append(f"- {name or 'Unknown'} (Roll: {roll}): {fails} subjects")
+        lines.append(f"- {_student_label(name, roll, redact)}: {fails} subjects")
     return {"answer": "\n".join(lines), "debug_sql": sql, "template": "students_failed_at_least"}
 
 
-def students_failed_most(limit: int = 10, tenant_id: str = None) -> dict:
+def students_failed_most(limit: int = 10, tenant_id: str = None, redact: bool = False) -> dict:
     sql = (
         "SELECT roll_no, name, COUNT(DISTINCT subject_code) AS failed_subjects "
         "FROM exam_results WHERE is_fail "
@@ -106,7 +132,7 @@ def students_failed_most(limit: int = 10, tenant_id: str = None) -> dict:
     top = rows[0][2]
     lines = [f"Students who failed the most subjects (max = {top}):"]
     for roll, name, fails in rows:
-        lines.append(f"- {name or 'Unknown'} (Roll: {roll}): {fails} subjects")
+        lines.append(f"- {_student_label(name, roll, redact)}: {fails} subjects")
     return {"answer": "\n".join(lines), "debug_sql": sql, "template": "students_failed_most"}
 
 
@@ -126,7 +152,7 @@ def pass_percentage(tenant_id: str = None) -> dict:
             "debug_sql": sql, "template": "pass_percentage"}
 
 
-def toppers_by_sgpa(limit: int = 10, tenant_id: str = None) -> dict:
+def toppers_by_sgpa(limit: int = 10, tenant_id: str = None, redact: bool = False) -> dict:
     sql = (
         "SELECT DISTINCT roll_no, name, sgpa FROM exam_results "
         "WHERE sgpa IS NOT NULL ORDER BY sgpa DESC, roll_no LIMIT ?"
@@ -136,7 +162,7 @@ def toppers_by_sgpa(limit: int = 10, tenant_id: str = None) -> dict:
         return {"answer": "No SGPA data available.", "debug_sql": sql, "template": "toppers_by_sgpa"}
     lines = [f"Top {len(rows)} students by SGPA:"]
     for i, (roll, name, sgpa) in enumerate(rows, 1):
-        lines.append(f"{i}. {name or 'Unknown'} (Roll: {roll}): SGPA {sgpa:.2f}")
+        lines.append(f"{i}. {_student_label(name, roll, redact)}: SGPA {sgpa:.2f}")
     return {"answer": "\n".join(lines), "debug_sql": sql, "template": "toppers_by_sgpa"}
 
 
@@ -180,7 +206,7 @@ def result_count(status: str = "PASS", tenant_id: str = None) -> dict:
             "debug_sql": sql, "template": "result_count"}
 
 
-def bottom_by_sgpa(limit: int = 10, tenant_id: str = None) -> dict:
+def bottom_by_sgpa(limit: int = 10, tenant_id: str = None, redact: bool = False) -> dict:
     sql = ("SELECT DISTINCT roll_no, name, sgpa FROM exam_results "
            "WHERE sgpa IS NOT NULL ORDER BY sgpa ASC, roll_no LIMIT ?")
     rows, _ = _rows(tenant_id, sql, (limit,))
@@ -188,7 +214,7 @@ def bottom_by_sgpa(limit: int = 10, tenant_id: str = None) -> dict:
         return {"answer": "No SGPA data available.", "debug_sql": sql, "template": "bottom_by_sgpa"}
     lines = [f"Lowest {len(rows)} students by SGPA:"]
     for i, (roll, name, sgpa) in enumerate(rows, 1):
-        lines.append(f"{i}. {name or 'Unknown'} (Roll: {roll}): SGPA {sgpa:.2f}")
+        lines.append(f"{i}. {_student_label(name, roll, redact)}: SGPA {sgpa:.2f}")
     return {"answer": "\n".join(lines), "debug_sql": sql, "template": "bottom_by_sgpa"}
 
 

@@ -259,6 +259,12 @@ async def admin_status(request: Request):
 class QueryRequest(BaseModel):
     query: str
     tenant_id: str
+    # Who is asking. The bots historically posted only {query, tenant_id}, discarding the
+    # sender at the bot boundary — so the API could not have made a per-user decision even
+    # if it had wanted to, and every allowlisted user received registrar-grade answers.
+    # Optional, and ignored entirely unless config.PII_ROLE_GATE is on.
+    user_id: str | None = None
+    channel: str | None = None   # "telegram" | "whatsapp" | None (dashboard/direct)
 
 class QueryResponse(BaseModel):
     query_type: str
@@ -286,7 +292,19 @@ async def query_documents(req: QueryRequest, request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load tenant data: {e}")
 
-    qtype, context, metadata = await tenant_router.route_query(req.query)
+    role = None
+    if config.PII_ROLE_GATE and req.user_id:
+        try:
+            from auth.allowlist import AllowlistManager
+            role = AllowlistManager().get_role(tenant_id, req.user_id)
+        except Exception as e:   # a role lookup must never take the query path down
+            logging.warning("role lookup failed (%s); treating as unprivileged", type(e).__name__)
+
+    # Pass `role` only when there is one to pass. With the gate off this is the exact
+    # single-argument call the router has always received — so "gate off" is byte-identical
+    # at the call site too, not merely in effect.
+    route_kwargs = {"role": role} if role else {}
+    qtype, context, metadata = await tenant_router.route_query(req.query, **route_kwargs)
     context_text = str(context).strip()
 
     if not context_text:

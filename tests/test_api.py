@@ -21,7 +21,7 @@ class _FakeRouter:
         self._qtype, self._context = qtype, context
         self._metadata = metadata or {"debug_sql": None}
 
-    async def route_query(self, query):
+    async def route_query(self, query, role=None):
         return self._qtype, self._context, self._metadata
 
 

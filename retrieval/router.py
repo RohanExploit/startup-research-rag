@@ -164,7 +164,11 @@ Query: "{query}"
         self._last_sources = sources
         return "\n".join(parts)
 
-    async def route_query(self, query: str):
+    async def route_query(self, query: str, role: str | None = None):
+        # `role` is the requester's role within this tenant (auth.allowlist.get_role), or
+        # None when the caller did not supply one — every existing caller. It is consulted
+        # only when config.PII_ROLE_GATE is ON, which it is not by default, so passing
+        # nothing reproduces today's behaviour exactly.
         qtype, fallback_reason = await self.classify_query(query)
         logging.info(f"Query classified as: {qtype}")
 
@@ -227,6 +231,16 @@ Query: "{query}"
                 matched = match_template(query)
                 if matched:
                     fn, kwargs = matched
+                    # Roster templates render student names + roll numbers. Ask them to
+                    # withhold identities when the gate is on and the requester is not
+                    # privileged. Templates that emit no identity don't accept the kwarg,
+                    # so it is passed only to those that do — no behaviour change at all
+                    # while PII_ROLE_GATE is off, which is the shipped default.
+                    if config.PII_ROLE_GATE and role not in config.PII_PRIVILEGED_ROLES:
+                        import inspect
+                        if "redact" in inspect.signature(fn).parameters:
+                            kwargs = {**kwargs, "redact": True}
+                            metadata["pii_redacted"] = True
                     result = await asyncio.to_thread(fn, tenant_id=self.tenant_id, **kwargs)
                     metadata["debug_sql"] = result.get("debug_sql")
                     metadata["template"] = result.get("template")

@@ -194,3 +194,27 @@ SQL_ALLOWED_TABLES = set(
 VECTOR_PII_EMAIL_BULK_THRESHOLD = int(
     os.environ.get("VECTOR_PII_EMAIL_BULK_THRESHOLD", "5")
 )
+
+
+# --- Student-identity role gate (auth/allowlist.py + retrieval/sql_templates.py) ---
+# TABULAR answers list real students by full name and roll number, e.g.
+#   "- JAGTAP ANANT TANAJI (Roll: 23063181242004): 5 subjects".
+# Today every allowlisted chat user receives that: the bots discard the sender's identity
+# before calling /query, and auth/allowlist.py exposes only allowed/not-allowed booleans,
+# so the API cannot distinguish a registrar from a student even in principle.
+#
+# This flag turns on the MECHANISM (identity plumbing + role lookup + redaction of names
+# and roll numbers for non-privileged roles). It ships OFF, and OFF is byte-for-byte
+# today's behaviour — asserted by tests/test_pii_role_gate.py.
+#
+# Turning it ON is a POLICY decision (who may see student identities) and is deliberately
+# left to a human: every non-admin role list in auth/allowlist.json is currently empty, so
+# enabling the gate would deny everyone except the admin. Populate the "registrar"/"faculty"
+# lists first, then set PII_ROLE_GATE=1.
+PII_ROLE_GATE = _truthy(os.environ.get("PII_ROLE_GATE", "0"))
+
+# Roles permitted to see student names/roll numbers when the gate is ON.
+PII_PRIVILEGED_ROLES = set(
+    r.strip() for r in os.environ.get("PII_PRIVILEGED_ROLES", "admin,registrar").split(",")
+    if r.strip()
+)

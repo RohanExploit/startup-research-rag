@@ -64,6 +64,27 @@ class AllowlistManager:
         return (self.is_telegram_user_allowed(tenant_id, user_id)
                 or self.is_whatsapp_user_allowed(tenant_id, user_id))
 
+    def get_role(self, tenant_id: str, user_id: str) -> str | None:
+        """The user's role within a tenant, or None if unassigned.
+
+        auth/allowlist.json has carried a "roles" map ({"admin": [...], "registrar": [],
+        "faculty": [], "student": []}) since it was written, but nothing ever read it —
+        so allow/deny was the only distinction the system could make, and every
+        allowlisted user got registrar-grade answers including other students' names and
+        roll numbers. This is the reader. It makes no access decision by itself; see
+        config.PII_ROLE_GATE.
+
+        An unassigned user returns None, which callers must treat as *non-privileged* —
+        failing closed, the same way _load() fails closed on a corrupt allowlist.
+        """
+        tenant = self.allowlist.get(tenant_id)
+        if not tenant:
+            return None
+        for role, members in (tenant.get("roles") or {}).items():
+            if user_id in (members or []):
+                return role
+        return None
+
 if __name__ == "__main__":
     mgr = AllowlistManager()
     print(f"Is Telegram user allowed? {mgr.is_telegram_user_allowed('tenant_1', 'telegram_user_123')}")

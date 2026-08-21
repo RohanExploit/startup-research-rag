@@ -63,7 +63,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         response = await http_client.post(API_URL, json={
             "query": user_query,
-            "tenant_id": TENANT_ID
+            "tenant_id": TENANT_ID,
+            # Carry the sender through. Until now the bot authenticated the user and then
+            # threw their identity away, so the API answered every allowlisted user
+            # identically — including roster answers listing other students by name.
+            # The API ignores these unless config.PII_ROLE_GATE is on.
+            "user_id": uid,
+            "channel": "telegram",
         })
         response.raise_for_status()
         data = response.json()

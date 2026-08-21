@@ -68,7 +68,11 @@ async def whatsapp_webhook(request: Request, msg: WhatsAppMessage):
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(API_URL, json={
                 "query": msg.text,
-                "tenant_id": msg.tenant_id
+                "tenant_id": msg.tenant_id,
+                # See telegram_bot: the sender was authenticated and then discarded.
+                # Ignored by the API unless config.PII_ROLE_GATE is on.
+                "user_id": msg.sender_number,
+                "channel": "whatsapp",
             })
             response.raise_for_status()
             data = response.json()
