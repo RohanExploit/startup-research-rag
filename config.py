@@ -259,3 +259,23 @@ FACT_TOP_K = int(os.environ.get("FACT_TOP_K", "10"))
 # understates the graph. Set LOCAL_GRAPH_CONTEXT=0 to serve LOCAL from vector chunks.
 LOCAL_GRAPH_CONTEXT = _truthy(os.environ.get("LOCAL_GRAPH_CONTEXT", "1"))
 LOCAL_VECTOR_K = int(os.environ.get("LOCAL_VECTOR_K", "15"))
+
+
+# --- GLOBAL route context source (retrieval/router.py) — Phase-B ---
+# The GLOBAL route builds context from LLM-written community summaries. Those summaries are
+# generated from bare entity NAMES (ingestion/summarize_communities.py passes
+# "Entities: {names}" and nothing else), so they contain no figures, dates or source names
+# and are frequently degenerate — one bench summary reads "The entity '62' appears to be a
+# single numerical value without contextual information".
+#
+# Measured on the 208-question bench: GLOBAL questions actually served by the GLOBAL route
+# score 33%, while the same class of question served by the FACT chunk path scores 84%.
+# Setting this to 1 serves GLOBAL from a broad chunk fan-out instead. Default OFF pending
+# the measurement with routing held at 100% (run_eval.py --force-route), because only 3 of
+# 57 GLOBAL questions currently reach the GLOBAL route at all.
+GLOBAL_CHUNK_FANOUT = _truthy(os.environ.get("GLOBAL_CHUNK_FANOUT", "0"))
+
+# Candidates pulled for a GLOBAL fan-out. Higher than FACT_TOP_K because these questions
+# want breadth (a ranking across a whole table, a theme across documents) rather than the
+# single best passage — but the char budget still bounds what actually reaches the prompt.
+GLOBAL_FANOUT_K = int(os.environ.get("GLOBAL_FANOUT_K", "30"))

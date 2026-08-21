@@ -245,6 +245,36 @@ graph. What the owner is being handed is:
 
 Flipping it is a one-line change (`LOCAL_GRAPH_CONTEXT=0`) and reversible.
 
+## Pre-registration #2 — GLOBAL route quality, with routing held at 100%
+
+Only **3 of 57** GLOBAL questions reach the GLOBAL route, so the route's own quality is
+currently measured on a sample of three. That also creates an ordering trap: "fix the
+router" is the obvious next lever, but a correct router would deliver 54 more questions
+into a route that scores 33% — improving routing accuracy while *reducing* answer accuracy.
+Route quality has to be measured and fixed before routing accuracy is touched.
+
+`run_eval.py --force-route` serves each question on the route its gold declares, bypassing
+the classifier. Route QUALITY and routing ACCURACY are different failures with different
+fixes, and no number that is the product of both can separate them.
+
+Registered before running:
+
+- **Comparison:** `--force-route` on the bench, `GLOBAL_CHUNK_FANOUT=0` (community
+  summaries, today's behaviour) vs `=1` (chunk fan-out, k=30 under the same char budget).
+- **Endpoint:** discordant pairs on the **57 GLOBAL questions**, scored by
+  `run_eval.score`. Same frozen table: ACCEPT needs b ≥ 5 at c=0, 7 at c=1, 9 at c=2,
+  10 at c=3, 12 at c=4; REJECT if c ≥ b.
+- **Guards:** FACT and LOCAL slices must not regress (the fan-out shares `_fact_context`,
+  so a change there would show up as collateral damage); the rotated artifact floor on
+  GLOBAL must not rise by more than 2 questions. **GLOBAL's floor is 19/57 — the softest
+  slice on the bench — so a gain smaller than the floor movement means nothing.**
+- **Length is recorded, not gated.** The previous guard failed on a +37% rise while the
+  artifact floor stayed flat, which is evidence the length rule was the wrong instrument
+  for this question; the floor is the direct control and is gated instead. Writing that
+  down here, in advance, rather than discovering it convenient afterwards.
+- **If it fails:** `GLOBAL_CHUNK_FANOUT` stays off and the community-summary path stands,
+  whatever the 33%-vs-84% observational figure suggested.
+
 ## Escalated to the owner (not decided unattended)
 
 1. **Who may see student identities.** `PII_ROLE_GATE=1` is a one-line flip, but every

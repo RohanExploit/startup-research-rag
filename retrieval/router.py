@@ -170,12 +170,22 @@ Query: "{query}"
         self._last_sources = sources
         return "\n".join(parts)
 
-    async def route_query(self, query: str, role: str | None = None):
+    async def route_query(self, query: str, role: str | None = None,
+                          force_route: str | None = None):
         # `role` is the requester's role within this tenant (auth.allowlist.get_role), or
         # None when the caller did not supply one — every existing caller. It is consulted
         # only when config.PII_ROLE_GATE is ON, which it is not by default, so passing
         # nothing reproduces today's behaviour exactly.
-        qtype, fallback_reason = await self.classify_query(query)
+        #
+        # `force_route` skips classification and serves the named route. It exists for
+        # measurement, not for production: route QUALITY and routing ACCURACY are different
+        # failures with different fixes, and they cannot be told apart while every number
+        # is the product of both. On the bench only 3 of 57 GLOBAL questions ever reach the
+        # GLOBAL route, so the route's own accuracy is otherwise measured on a sample of 3.
+        if force_route:
+            qtype, fallback_reason = force_route, None
+        else:
+            qtype, fallback_reason = await self.classify_query(query)
         logging.info(f"Query classified as: {qtype}")
 
         metadata = {"fallback_reason": fallback_reason} if fallback_reason else {}
@@ -184,6 +194,16 @@ Query: "{query}"
         context = ""
         if qtype == "FACT":
             context = self._fact_context(query)
+        elif qtype == "GLOBAL" and config.GLOBAL_CHUNK_FANOUT:
+            # Broad chunk fan-out instead of community summaries. The summaries are
+            # generated from bare entity NAMES (ingestion/summarize_communities.py), so they
+            # contain no figures, no dates and no source names — on the bench, one reads
+            # "The entity '62' appears to be a single numerical value without contextual
+            # information". Measured: GLOBAL questions served by the GLOBAL route score 33%,
+            # while the same class of question served by the FACT chunk path scores 84%.
+            context = self._fact_context(query, top_k=config.GLOBAL_FANOUT_K,
+                                         budget=config.CONTEXT_BUDGET_CHARS)
+            metadata["global_mode"] = "chunks"
         elif qtype == "GLOBAL":
             context = self.cs.get_all_summaries()
         elif qtype == "LOCAL" and not config.LOCAL_GRAPH_CONTEXT:

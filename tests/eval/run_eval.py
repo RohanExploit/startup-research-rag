@@ -116,10 +116,11 @@ def score(answer: str, gold: dict) -> bool:
     raise ValueError(f"unknown gold.mode: {mode}")
 
 
-async def answer_for(router, query: str) -> tuple[str, str]:
+async def answer_for(router, query: str, force_route: str | None = None) -> tuple[str, str]:
     """Mirror api/main.py: route -> (TABULAR short-circuit | LLM synthesis)."""
     from generation.answer import generate_answer  # lazy: heavy ML import
-    qtype, context, _meta = await router.route_query(query)
+    kwargs = {"force_route": force_route} if force_route else {}
+    qtype, context, _meta = await router.route_query(query, **kwargs)
     context_text = str(context).strip()
     if not context_text:
         return qtype, "I don't have enough information to answer that."
@@ -162,7 +163,7 @@ def _completed_ids(answers_path: Path) -> set[str]:
 
 
 async def run(golden_path: Path, limit: int | None, answers_path: Path | None = None,
-              resume: bool = False):
+              resume: bool = False, force_route: bool = False):
     enforce_no_egress()  # Phase -1.2: never let a cloud model answer during eval
     from retrieval.router import QueryRouter  # lazy: heavy ML import
     spec = json.loads(golden_path.read_text(encoding="utf-8"))
@@ -197,7 +198,8 @@ async def run(golden_path: Path, limit: int | None, answers_path: Path | None = 
         else:
             t0 = time.perf_counter()
             try:
-                got_route, answer = await answer_for(router, q["query"])
+                got_route, answer = await answer_for(
+                    router, q["query"], q["route"] if force_route else None)
             except Exception as e:
                 got_route, answer = "ERROR", f"<exception: {e}>"
             elapsed = time.perf_counter() - t0
@@ -284,9 +286,14 @@ def main():
                     help="append every full answer to this JSONL (RUN half of the RUN/SCORE split)")
     ap.add_argument("--resume", action="store_true",
                     help="skip ids already present in --answers (recover a killed run)")
+    ap.add_argument("--force-route", action="store_true",
+                    help="serve each question on the route its gold declares, bypassing the "
+                         "classifier. Measures route QUALITY with routing accuracy held at "
+                         "100%%, which is the only way to tell a bad route from a bad router.")
     args = ap.parse_args()
     answers_path = Path(args.answers) if args.answers else None
-    summary, rows = asyncio.run(run(Path(args.golden), args.limit, answers_path, args.resume))
+    summary, rows = asyncio.run(run(Path(args.golden), args.limit, answers_path, args.resume,
+                                    args.force_route))
     if args.out:
         # --out gets the PII-safe summary only. The full rows (answer text can
         # contain student names) always go to a sibling *_results.json, which is
