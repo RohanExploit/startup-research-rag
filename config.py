@@ -245,3 +245,17 @@ CONTEXT_BUDGET_CHARS = int(os.environ.get("CONTEXT_BUDGET_CHARS", "5000"))
 # Candidates pulled from FAISS before budget packing. More candidates only help if the
 # budget can hold them: on tenant_1 (mean 861 chars/chunk) a 5000-char budget fits ~6.
 FACT_TOP_K = int(os.environ.get("FACT_TOP_K", "10"))
+
+
+# --- LOCAL route context source (retrieval/router.py) — Phase-B T1.2 ---
+# The LOCAL route answers relationship questions from 2-hop graph edges rendered as
+# "A -> RELATION -> B" lines. Measured on the stress corpus, the gold answer string
+# appears in that edge context for 2 of 20 LOCAL questions and in plain retrieved chunk
+# text for 18-19 of 20 — and on 5 questions entity linking matches a junk node, which
+# makes `edges` non-empty and so suppresses the existing empty-edges fallback.
+#
+# Default ON (graph), i.e. unchanged behaviour: that measurement is substring-of-answer
+# on name-shaped golds, and an edge projection deliberately discards the sentence, so it
+# understates the graph. Set LOCAL_GRAPH_CONTEXT=0 to serve LOCAL from vector chunks.
+LOCAL_GRAPH_CONTEXT = _truthy(os.environ.get("LOCAL_GRAPH_CONTEXT", "1"))
+LOCAL_VECTOR_K = int(os.environ.get("LOCAL_VECTOR_K", "15"))

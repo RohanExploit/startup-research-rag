@@ -134,7 +134,8 @@ Query: "{query}"
             logging.error(f"Router fallback triggered — Unexpected error: {e}. Defaulting to FACT. Query: {query}", exc_info=True)
             return "FACT", fallback
 
-    def _fact_context(self, query: str) -> str:
+    def _fact_context(self, query: str, *, top_k: int | None = None,
+                      budget: int | None = None) -> str:
         # Retrieve deeper (k=10) to reduce recall misses, then keep the top
         # chunks that fit the context budget rather than dropping k back to 3.
         # The budget must stay well inside config.OLLAMA_NUM_CTX (~4 chars/token)
@@ -142,8 +143,11 @@ Query: "{query}"
         # too-long prompt silently, and it keeps the TAIL, so an overflow here
         # would discard the highest-ranked chunks first. The first (best) chunk
         # is always included even if long.
-        results = self.vs.search(query, top_k=config.FACT_TOP_K)
-        parts, budget = [], config.CONTEXT_BUDGET_CHARS
+        # top_k/budget are keyword-only and default to the FACT settings, so every
+        # existing call — including the three tests that monkeypatch this method with a
+        # one-argument lambda — is unaffected. Only the LOCAL arm passes them.
+        results = self.vs.search(query, top_k=top_k or config.FACT_TOP_K)
+        parts, budget = [], budget or config.CONTEXT_BUDGET_CHARS
         sources: list[dict] = []
         for r in results:
             c = r["content"]
@@ -182,6 +186,23 @@ Query: "{query}"
             context = self._fact_context(query)
         elif qtype == "GLOBAL":
             context = self.cs.get_all_summaries()
+        elif qtype == "LOCAL" and not config.LOCAL_GRAPH_CONTEXT:
+            # Vector arm. Measured on the stress corpus: the gold answer string is present
+            # in the 2-hop graph-edge context for 2 of 20 LOCAL questions, and in plain
+            # retrieved chunk text for 18-19 of 20. Worse, on 5 questions link_entities
+            # matches a confident junk node ('the campus', 'committee') so `edges` is
+            # non-empty and the existing fallback below — which only fires when edges are
+            # EMPTY — never runs, blocking a context that already held the answer.
+            #
+            # Caveat kept in view: that comparison is substring-of-answer on name-shaped
+            # golds, and edges (A -> REL -> B) discard the sentence the names sat in, so
+            # some of the gap is the encoding rather than the retrieval. Hence a flag,
+            # defaulted to the graph, rather than a deletion.
+            context = self._fact_context(query, top_k=config.LOCAL_VECTOR_K,
+                                         budget=config.CONTEXT_BUDGET_CHARS)
+            metadata["local_mode"] = "vector"
+            # Route stays LOCAL. Relabelling it FACT would inflate route-classification
+            # accuracy against a LOCAL-expected gold without answering anything better.
         elif qtype == "LOCAL":
             # Link entities named in the QUESTION to graph nodes (the graph is
             # keyed by entity names, not source filenames), then return their
