@@ -124,6 +124,58 @@ lookups mislabelled LOCAL; and eleven hops that the department profiles silently
 when the corpus was enriched. Twelve tests now pin those properties, including
 `validate_bench.main()` itself.
 
+## First bench measurement — and it overturns the P5 reading
+
+Both LOCAL arms, 208 questions, run back to back behind one RAM preflight
+(`tests/eval/bench/run_arms.py`, 3.3 GB free, no thrash).
+
+| slice | graph arm (default) | vector arm | McNemar |
+|---|---|---|---|
+| **LOCAL** | **41/54** | **41/54** | b=2, c=2 → **REJECT** |
+| FACT | 84/97 | 88/97 | b=4, c=0 → inconclusive (needs 5) |
+| GLOBAL | 43/57 | 46/57 | b=3, c=0 → inconclusive (needs 5) |
+| overall | 168/208 (80.8%) | 175/208 (84.1%) | |
+| answer length (median) | 73 ch | 92 ch | artifact floor unmoved, 39→39 |
+
+**On questions that are verifiably multi-hop, the graph and the vector arm score
+identically.** The "+3 LOCAL" measured on the old 20-question kit does not replicate at
+n=54. The earlier reading was not wrong arithmetic — it was a slice too small to separate a
+real effect from noise, which is exactly why the pre-registered rule refused to accept it.
+
+Where the flag actually acts, from the frozen answers:
+
+| expected → actual route | n |
+|---|---|
+| FACT → FACT | 83 |
+| **GLOBAL → FACT** | **50** |
+| LOCAL → LOCAL | 27 |
+| **LOCAL → FACT** | **27** |
+| FACT → LOCAL | 14 |
+| GLOBAL → GLOBAL | **3** |
+
+45 questions took the LOCAL path and the flag changed 37 of their answers — but only 27 of
+those 45 are LOCAL questions. The vector arm's gains are on the 18 FACT/GLOBAL questions
+that were **misrouted into** LOCAL, not on LOCAL work. (2 answers changed outside the LOCAL
+path: the known temp-0 nondeterminism.)
+
+**So the flag stays default-off.** Both slices that improved are inconclusive under the
+pre-registered thresholds, and the slice it was built for shows nothing.
+
+### What the bench says the real defect is
+
+**Route classification is 54.3%.** The GLOBAL route serves **3 of 57** GLOBAL questions; 50
+go to FACT. Half the LOCAL questions never reach the LOCAL path. Yet GLOBAL still scores
+43-46/57 — because the FACT chunk path answers those questions perfectly well without the
+community summaries. That is the council's "chunks beat summaries" claim, now confirmed
+end-to-end on an instrument whose golds are known to be satisfiable.
+
+Two caveats recorded against these numbers, so nobody over-reads them later:
+- **GLOBAL's artifact floor is 19/57** — a third of that slice is passable by generic
+  in-domain text. LOCAL's floor is **1/54** and FACT's 19/97, so LOCAL is the cleanest
+  measurement on the bench and GLOBAL the softest.
+- **Derived-figure anchors: 13/24.** The 4B model does manage some cross-document
+  arithmetic here, against 1/5 on the old kit.
+
 ## Escalated to the owner (not decided unattended)
 
 1. **Who may see student identities.** `PII_ROLE_GATE=1` is a one-line flip, but every

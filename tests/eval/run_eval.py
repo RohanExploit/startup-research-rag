@@ -32,6 +32,7 @@ Scoring modes (per question `gold.mode`):
 import argparse
 import asyncio
 import json
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -70,6 +71,34 @@ _INSUFFICIENT_MARKERS = (
 )
 
 
+def _strip_group_commas(text: str) -> str:
+    """1,42,000 -> 142000. Applied to gold and answer alike (see derive_gold_v2)."""
+    return re.sub(r"(?<=\d),(?=\d)", "", text)
+
+
+def score_anchors(answer: str, gold: dict) -> bool:
+    """The `anchors` schema written by tests/eval/derive_gold_v2.py.
+
+    `required` is a list of GROUPS; a group holds the accepted surfaces for one anchor
+    (e.g. ["CSE", "Computer Science and Engineering"]) and is satisfied by any of them.
+    Every group must be satisfied. Anchors of <=3 chars match on word boundaries, so an
+    'AI' anchor does not match the "ai" inside chair/maintain/said.
+
+    `bonus` anchors — figures the documents never state, which an answer would have to
+    compute — are deliberately NOT consulted here; they are reported as their own
+    sub-metric by score_answers.py rather than conjoined with quotable retrieval.
+    """
+    a = _strip_group_commas((answer or "").lower())
+
+    def hit(tok: str) -> bool:
+        t = _strip_group_commas(str(tok).lower())
+        if len(t) <= 3:
+            return re.search(rf"\b{re.escape(t)}\b", a) is not None
+        return t in a
+
+    return all(any(hit(f) for f in group) for group in gold.get("required", []))
+
+
 def score(answer: str, gold: dict) -> bool:
     a = (answer or "").lower()
     mode = gold["mode"]
@@ -80,6 +109,10 @@ def score(answer: str, gold: dict) -> bool:
         return any(e in a for e in expect)
     if mode == "insufficient":
         return any(m in a for m in _INSUFFICIENT_MARKERS)
+    # Added for the bench gold schema. The three modes above are untouched, so every
+    # historical number measured with this scorer remains comparable to itself.
+    if mode == "anchors":
+        return score_anchors(answer, gold)
     raise ValueError(f"unknown gold.mode: {mode}")
 
 

@@ -33,6 +33,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from tests.eval.run_eval import score as score_v1  # noqa: E402  the frozen decision scorer
+from tests.eval.run_eval import score_anchors  # noqa: E402
 from tests.eval.derive_gold_v2 import strip_group_commas  # noqa: E402
 
 
@@ -63,19 +64,14 @@ def _hit(tok: str, answer_norm: str) -> bool:
 
 
 def score_v2(answer: str, gold: dict) -> bool:
-    """Required anchors only. See tests/eval/derive_gold_v2.py for how they are derived.
+    """Required anchors only — see tests/eval/derive_gold_v2.py for how they are derived.
 
-    Digit-group commas are stripped from the answer exactly as they were from the gold, so
-    an answer writing 1,42,000 satisfies an anchor derived from 142000 and vice versa.
-    Each required entry is a group of accepted surfaces (anchor + corpus expansions) and is
-    satisfied by ANY of them. `bonus` anchors are NOT consulted here — they are reported
-    separately by score_v2_bonus so that arithmetic ability stays visible without being
-    conjoined with quotable retrieval.
+    Delegates to run_eval.score_anchors so the live run and this replay cannot drift into
+    scoring the same answer differently. Non-anchor golds fall through to v1 unchanged.
     """
     if gold.get("mode") != "anchors":
         return score_v1(answer, gold)          # 'insufficient' items are unchanged
-    a = strip_group_commas((answer or "").lower())
-    return all(any(_hit(form, a) for form in group) for group in gold.get("required", []))
+    return score_anchors(answer, gold)
 
 
 def score_v2_bonus(answer: str, gold: dict) -> bool | None:
