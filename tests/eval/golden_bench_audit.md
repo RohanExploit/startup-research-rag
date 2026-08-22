@@ -2,7 +2,7 @@
 
 Every anchor below was classified mechanically from the corpus. `required` groups are satisfied by ANY listed form (that is what an alias is); `bonus` anchors have no corpus-provable form — they are figures the human gold derived by arithmetic, scored as their own sub-metric rather than conjoined with the quotable anchors.
 
-- 208 questions · 0 use a corpus-derived alias · 24 carry bonus anchors · kinds: {'quotable': 99, 'proper_noun': 17, 'derived_only': 16, 'soft_prose': 2, 'stated': 54}
+- 208 questions · 0 use a corpus-derived alias · 24 carry bonus anchors · kinds: {'quotable': 90, 'proper_noun': 17, 'stated': 63, 'derived_only': 16, 'soft_prose': 2}
 
 | id | route | required (any-of groups) | bonus (derived) | aliases | expected_answer |
 |---|---|---|---|---|---|
@@ -34,17 +34,17 @@ Every anchor below was classified mechanically from the corpus. `required` group
 | BF026 | FACT | Dr. Anjali Pawar |  |  | The warden of Block C is Dr. Anjali Pawar. |
 | BF027 | FACT | 142000 |  |  | Tuition for the General category is Rs. 1,42,000. |
 | BF028 | FACT | 35500 · ST |  |  | Tuition for the ST category is Rs. 35,500. |
-| BF029 | FACT | 75 · 80 |  |  | A student must maintain at least 75% attendance, rising to 80% in the  |
+| BF029 | FACT | 75 |  |  | A student must maintain at least 75% attendance, rising to 80% in the  |
 | BF030 | FACT | 12 |  |  | The final-year project carries 12 credits. |
 | BF031 | FACT | 750 |  |  | Revaluation costs Rs. 750 per subject. |
 | BF032 | FACT | 5.5 · CGPA |  |  | A CGPA of 5.5 is required. |
 | BF033 | FACT | 48200 |  |  | The library holds 48200 titles. |
 | BF034 | FACT | 310 |  |  | 310 journals. |
 | BF035 | FACT | 5 |  |  | Rs. 5 per day. |
-| BF036 | FACT | 4 · 14 |  |  | 4 books for 14 days. |
+| BF036 | FACT | 4 |  |  | 4 books for 14 days. |
 | BF037 | FACT | 08 · 00 · 22 |  |  | 08:00 to 22:00 on weekdays. |
 | BF038 | FACT | 420 |  |  | 420 seats. |
-| BF039 | FACT | 6.0 · 0 · CGPA |  |  | A CGPA of at least 6.0 and 0 live backlogs. |
+| BF039 | FACT | 6.0 |  |  | A CGPA of at least 6.0 and 0 live backlogs. |
 | BF040 | FACT | 8 |  |  | 8 weeks. |
 | BF041 | FACT | 87 |  |  | 87 companies visited. |
 | BF042 | FACT | 612 |  |  | 612 offers were made. |
@@ -70,16 +70,16 @@ Every anchor below was classified mechanically from the corpus. `required` group
 | BF062 | FACT | The Research Advisory Board/Dr. Iqbal Shaikh |  |  | The Research Advisory Board is chaired by Dr. Iqbal Shaikh. |
 | BF063 | FACT | 9 |  |  | 9 members. |
 | BF064 | FACT | Dr. Farhan Shaikh |  |  | Dr. Farhan Shaikh leads the project. |
-| BF065 | FACT | 3400000 · SERB |  |  | Rs. 34,00,000 sanctioned by SERB. |
+| BF065 | FACT | 3400000 |  |  | Rs. 34,00,000 sanctioned by SERB. |
 | BF066 | FACT | Dr. Ramesh Bhosale |  |  | Dr. Ramesh Bhosale leads the project. |
-| BF067 | FACT | 5100000 · DST |  |  | Rs. 51,00,000 sanctioned by DST. |
+| BF067 | FACT | 5100000 |  |  | Rs. 51,00,000 sanctioned by DST. |
 | BF068 | FACT | Dr. Vasant Rane |  |  | Dr. Vasant Rane leads the project. |
-| BF069 | FACT | 7250000 · ARDB |  |  | Rs. 72,50,000 sanctioned by ARDB. |
+| BF069 | FACT | 7250000 |  |  | Rs. 72,50,000 sanctioned by ARDB. |
 | BF070 | FACT | Dr. Anjali Pawar |  |  | Dr. Anjali Pawar leads the project. |
-| BF071 | FACT | 2900000 · SERB |  |  | Rs. 29,00,000 sanctioned by SERB. |
+| BF071 | FACT | 2900000 |  |  | Rs. 29,00,000 sanctioned by SERB. |
 | BF072 | FACT | 12 |  |  | Convocation is on 12 February. |
 | BF073 | FACT | 15 |  |  | The odd semester begins on 15 July. |
-| BF074 | FACT | 31 · 500 |  |  | Fees are due by 31 August, with a late fine of Rs. 500. |
+| BF074 | FACT | 31 |  |  | Fees are due by 31 August, with a late fine of Rs. 500. |
 | BF075 | FACT | The Director/Dr. Nandini Apte |  |  | The Director is Dr. Nandini Apte. |
 | BF076 | FACT | Shivaji University |  |  | It is affiliated to Shivaji University, Kolhapur. |
 | BF077 | FACT | 1983 |  |  | The Institute was established in 1983. |
@@ -87,7 +87,7 @@ Every anchor below was classified mechanically from the corpus. `required` group
 | BG002 | GLOBAL | 9.2 · LPA |  |  | Artificial Intelligence and Data Science at 9.2 LPA. |
 | BG003 | GLOBAL | 79.4 |  |  | Civil Engineering at 79.4%. |
 | BG004 | GLOBAL | 3 |  |  | 3 departments: Computer Science and Engineering, Information Technolog |
-| BG005 | GLOBAL | 94.1 · 92.4 · 82.3 · 57.9 |  |  | Broadly yes. Computer Science and Engineering leads both at 94.1% pass |
+| BG005 | GLOBAL | Computer Science and Engineering |  |  | Broadly yes. Computer Science and Engineering leads both at 94.1% pass |
 | BG006 | GLOBAL | 1983 · 2021 |  |  | Mechanical Engineering and Civil Engineering date from 1983; the newes |
 | BG007 | GLOBAL | 41 |  |  | Mechanical Engineering with 41 faculty. |
 | BG008 | GLOBAL |  | 690 |  | The eight departments admit 690 students per year in total. |
@@ -114,7 +114,7 @@ Every anchor below was classified mechanically from the corpus. `required` group
 | BG029 | GLOBAL | 7250000 |  |  | "Additive Manufacturing of Turbine Blades" at Rs. 72,50,000, led by Dr |
 | BG030 | GLOBAL | 2023 |  |  | Under the Digital Personal Data Protection Act, 2023. Academic records |
 | BG031 | GLOBAL | Grievance Redressal Cell/Internal Complaints Committee |  |  | It starts with the Head of Department, moves to the Grievance Redressa |
-| BG032 | GLOBAL | regulations/governance |  |  | Academic regulations covering credits and attendance, the fee structur |
+| BG032 | GLOBAL | regulations/committees |  |  | Academic regulations covering credits and attendance, the fee structur |
 | BG033 | GLOBAL |  | 2 |  | 2 laboratories: High Performance Computing Laboratory, Data Analytics  |
 | BG034 | GLOBAL |  | 2 |  | 2 laboratories: Advanced Manufacturing Laboratory, Structural Testing  |
 | BG035 | GLOBAL |  | 3 |  | 3 laboratories: Thermal Engineering Laboratory, Power Systems Laborato |

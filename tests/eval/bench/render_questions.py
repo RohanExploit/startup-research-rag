@@ -60,9 +60,20 @@ def hod_of(code):
 def fact_questions():
     q = []
 
-    def add(question, answer, doc, difficulty="easy"):
-        q.append({"question": question, "expected_answer": answer,
-                  "source_doc": doc, "difficulty": difficulty})
+    def add(question, answer, doc, difficulty="easy", answer_anchors=None):
+        """answer_anchors: what THIS question asks for.
+
+        Without it the derivation scrapes every figure out of the expected_answer prose,
+        so "what is the sanctioned amount for project X" ends up requiring the funding
+        agency too, and a correct answer is scored wrong for not volunteering it. This is
+        the same over-specification that made the old stresskit unable to recognise a
+        correct answer; it must not be reintroduced here.
+        """
+        item = {"question": question, "expected_answer": answer,
+                "source_doc": doc, "difficulty": difficulty}
+        if answer_anchors:
+            item["answer_anchors"] = answer_anchors
+        q.append(item)
 
     for name, code, est, hod, faculty, intake, *_ in DEPARTMENTS:
         add(f"What is the sanctioned faculty strength of the Department of {name}?",
@@ -101,7 +112,8 @@ def fact_questions():
         f"{R['btech_credits']} credits are required.", REGS)
     add("What is the minimum attendance requirement?",
         f"A student must maintain at least {R['min_attendance_pct']}% attendance, rising to "
-        f"{R['min_attendance_final_year_pct']}% in the final year.", REGS)
+        f"{R['min_attendance_final_year_pct']}% in the final year.", REGS,
+        answer_anchors=[str(R['min_attendance_pct'])])
     add("Below what attendance is a student debarred from the examination?",
         f"Attendance below {R['debarment_attendance_pct']}% results in debarment.", REGS,
         "medium")
@@ -130,14 +142,16 @@ def fact_questions():
     add("What is the overdue fine per day in the library?",
         f"Rs. {LIBRARY['fine_per_day']} per day.", LIB)
     add("How many books may a student borrow at one time?",
-        f"{LIBRARY['loan_limit']} books for {LIBRARY['loan_days']} days.", LIB)
+        f"{LIBRARY['loan_limit']} books for {LIBRARY['loan_days']} days.", LIB,
+        answer_anchors=[str(LIBRARY['loan_limit'])])
     add("What are the library's weekday opening hours?",
         f"{LIBRARY['weekday_hours']} on weekdays.", LIB)
     add("How many seats does the library have?", f"{LIBRARY['seats']} seats.", LIB)
 
     add("What CGPA is needed to register with the placement cell?",
         f"A CGPA of at least {PLACEMENT['eligibility_cgpa']} and "
-        f"{PLACEMENT['eligibility_backlogs']} live backlogs.", PLACE)
+        f"{PLACEMENT['eligibility_backlogs']} live backlogs.", PLACE,
+        answer_anchors=[str(PLACEMENT['eligibility_cgpa'])])
     add("How long is the compulsory industrial internship?",
         f"{PLACEMENT['internship_weeks']} weeks.", PLACE)
     add("How many companies visited the campus in 2024-25?",
@@ -161,14 +175,16 @@ def fact_questions():
         add(f"Who is the principal investigator of the project \"{title}\"?",
             f"{pi} leads the project.", RESEARCH)
         add(f"What is the sanctioned amount for the project \"{title}\"?",
-            f"Rs. {rupees(amt)} sanctioned by {agency}.", RESEARCH, "medium")
+            f"Rs. {rupees(amt)} sanctioned by {agency}.", RESEARCH, "medium",
+            answer_anchors=[str(amt)])
 
     add("When is convocation held?", f"Convocation is on {CALENDAR['convocation']}.", CAL)
     add("When does the odd semester begin?",
         f"The odd semester begins on {CALENDAR['odd_semester_start']}.", CAL)
     add("What is the fee payment deadline?",
         f"Fees are due by {CALENDAR['fee_deadline']}, with a late fine of Rs. "
-        f"{rupees(CALENDAR['late_fee'])}.", FEE_DOC, "medium")
+        f"{rupees(CALENDAR['late_fee'])}.", FEE_DOC, "medium",
+        answer_anchors=[CALENDAR['fee_deadline'].split()[0]])
     add("Who is the Director of the Institute?",
         f"The Director is {INSTITUTE['director']}.", "01_about_institute.md")
     add("Which university is the Institute affiliated to?",
@@ -297,10 +313,14 @@ def local_questions():
 def global_questions():
     q = []
 
-    def add(question, answer, docs, reasoning, derived=False, difficulty="medium"):
-        q.append({"question": question, "expected_answer": answer,
-                  "supporting_docs": docs, "reasoning_type": reasoning,
-                  "derived": derived, "difficulty": difficulty})
+    def add(question, answer, docs, reasoning, derived=False, difficulty="medium",
+            answer_anchors=None):
+        item = {"question": question, "expected_answer": answer,
+                "supporting_docs": docs, "reasoning_type": reasoning,
+                "derived": derived, "difficulty": difficulty}
+        if answer_anchors:
+            item["answer_anchors"] = answer_anchors
+        q.append(item)
 
     best = max(DEPARTMENTS, key=lambda d: d[7])
     worst = min(DEPARTMENTS, key=lambda d: d[7])
@@ -320,7 +340,7 @@ def global_questions():
     add("Do departments with higher pass rates also place better?",
         f"Broadly yes. {best[0]} leads both at {best[6]}% pass and {best[7]}% placement, "
         f"while {worst[0]} trails both at {worst[6]}% and {worst[7]}%.",
-        [REPORT], "correlation", difficulty="hard")
+        [REPORT], "correlation", difficulty="hard", answer_anchors=[best[0]])
     add("Which is the oldest department and which is the newest?",
         f"{min(DEPARTMENTS, key=lambda d: d[2])[0]} and Civil Engineering date from "
         f"{min(d[2] for d in DEPARTMENTS)}; the newest is "

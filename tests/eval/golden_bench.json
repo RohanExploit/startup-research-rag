@@ -494,14 +494,11 @@
         "required": [
           [
             "75"
-          ],
-          [
-            "80"
           ]
         ],
         "bonus": [],
         "aliases": {},
-        "kind": "quotable"
+        "kind": "stated"
       },
       "phrasing": "lexical"
     },
@@ -619,14 +616,11 @@
         "required": [
           [
             "4"
-          ],
-          [
-            "14"
           ]
         ],
         "bonus": [],
         "aliases": {},
-        "kind": "quotable"
+        "kind": "stated"
       },
       "phrasing": "paraphrase"
     },
@@ -679,17 +673,11 @@
         "required": [
           [
             "6.0"
-          ],
-          [
-            "0"
-          ],
-          [
-            "CGPA"
           ]
         ],
         "bonus": [],
         "aliases": {},
-        "kind": "quotable"
+        "kind": "stated"
       },
       "phrasing": "lexical"
     },
@@ -1137,14 +1125,11 @@
         "required": [
           [
             "3400000"
-          ],
-          [
-            "SERB"
           ]
         ],
         "bonus": [],
         "aliases": {},
-        "kind": "quotable"
+        "kind": "stated"
       },
       "phrasing": "lexical"
     },
@@ -1174,14 +1159,11 @@
         "required": [
           [
             "5100000"
-          ],
-          [
-            "DST"
           ]
         ],
         "bonus": [],
         "aliases": {},
-        "kind": "quotable"
+        "kind": "stated"
       },
       "phrasing": "lexical"
     },
@@ -1211,14 +1193,11 @@
         "required": [
           [
             "7250000"
-          ],
-          [
-            "ARDB"
           ]
         ],
         "bonus": [],
         "aliases": {},
-        "kind": "quotable"
+        "kind": "stated"
       },
       "phrasing": "lexical"
     },
@@ -1248,14 +1227,11 @@
         "required": [
           [
             "2900000"
-          ],
-          [
-            "SERB"
           ]
         ],
         "bonus": [],
         "aliases": {},
-        "kind": "quotable"
+        "kind": "stated"
       },
       "phrasing": "lexical"
     },
@@ -1302,14 +1278,11 @@
         "required": [
           [
             "31"
-          ],
-          [
-            "500"
           ]
         ],
         "bonus": [],
         "aliases": {},
-        "kind": "quotable"
+        "kind": "stated"
       },
       "phrasing": "paraphrase"
     },
@@ -1443,21 +1416,12 @@
         "mode": "anchors",
         "required": [
           [
-            "94.1"
-          ],
-          [
-            "92.4"
-          ],
-          [
-            "82.3"
-          ],
-          [
-            "57.9"
+            "Computer Science and Engineering"
           ]
         ],
         "bonus": [],
         "aliases": {},
-        "kind": "quotable"
+        "kind": "stated"
       }
     },
     {
@@ -1902,7 +1866,7 @@
         "required": [
           [
             "regulations",
-            "governance"
+            "committees"
           ]
         ],
         "bonus": [],
