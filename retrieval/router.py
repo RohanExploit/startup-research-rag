@@ -243,13 +243,29 @@ Query: "{query}"
                     break
             metadata["linked_entities"] = matched
             logging.info("LOCAL entity-link: matched=%s edges=%d", matched, len(edges))
-            if edges:
+            if edges and config.LOCAL_CONTEXT_MODE == "hybrid":
+                # Both context types, because they fail in disjoint places. Measured on the
+                # bench: chunks beat edges 42/54 to 31/54 overall, yet lose three questions
+                # REPRODUCIBLY (BL011, BL040, BL051) — all two-hop questions whose second
+                # hop sits in a document the question's own wording never retrieves, so one
+                # query embedding fetches the first hop and misses the second. Edges follow
+                # the relation; chunks carry the sentence the relation was stated in.
+                # Edges lead because they are short, so a truncated tail costs less there.
+                edge_text = "\n".join(edges)
+                chunks = self._fact_context(
+                    query, top_k=config.LOCAL_VECTOR_K,
+                    budget=max(1000, config.CONTEXT_BUDGET_CHARS - len(edge_text)))
+                context = edge_text + "\n\n" + chunks
+                metadata["local_mode"] = "hybrid"
+            elif edges:
                 context = "\n".join(edges)
+                metadata["local_mode"] = "graph"
             else:
                 # entity absent from graph (coverage gap) -> degrade to FACT-like
                 # vector context rather than returning empty.
                 results = self.vs.search(query, top_k=3)
                 context = "\n".join(r["content"] for r in results)
+                metadata["local_mode"] = "graph_miss_vector"
         elif qtype == "TABULAR" and config.TABULAR_FACT_FALLBACK and \
                 not (config.tenant_dir(self.tenant_id) / "tabular.duckdb").exists():
             # Document-only tenant: no tabular.duckdb at all, so the entire TABULAR
