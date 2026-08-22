@@ -268,12 +268,19 @@ LOCAL_VECTOR_K = int(os.environ.get("LOCAL_VECTOR_K", "15"))
 # and are frequently degenerate — one bench summary reads "The entity '62' appears to be a
 # single numerical value without contextual information".
 #
-# Measured on the 208-question bench: GLOBAL questions actually served by the GLOBAL route
-# score 33%, while the same class of question served by the FACT chunk path scores 84%.
-# Setting this to 1 serves GLOBAL from a broad chunk fan-out instead. Default OFF pending
-# the measurement with routing held at 100% (run_eval.py --force-route), because only 3 of
-# 57 GLOBAL questions currently reach the GLOBAL route at all.
-GLOBAL_CHUNK_FANOUT = _truthy(os.environ.get("GLOBAL_CHUNK_FANOUT", "0"))
+# Measured on the 208-question bench with routing held at 100% (run_eval.py --force-route),
+# so that route quality is separated from routing accuracy:
+#   community summaries  GLOBAL 20/57 (35.1%)  and on a second pair 21/57 (36.8%)
+#   chunk fan-out        GLOBAL 47/57 (82.5%)  on both pairs
+# Pre-registered endpoint on the confirmatory pair: b=27, c=1, net 26 against a required
+# 11 (artifact-floor movement 4 + table threshold 7) -> ACCEPT. FACT b=0/c=0 and LOCAL
+# b=1/c=1, i.e. no collateral.
+#
+# Default ON. The community-summary path is not merely weaker; it is worse than not having
+# a GLOBAL route at all, because those summaries are generated from bare entity NAMES
+# (ingestion/summarize_communities.py) and so contain no figures, dates or source names.
+# Set 0 to restore the summary path.
+GLOBAL_CHUNK_FANOUT = _truthy(os.environ.get("GLOBAL_CHUNK_FANOUT", "1"))
 
 # Candidates pulled for a GLOBAL fan-out. Higher than FACT_TOP_K because these questions
 # want breadth (a ranking across a whole table, a theme across documents) rather than the

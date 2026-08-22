@@ -19,6 +19,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
+import config
 import retrieval.router as router_mod
 
 
@@ -80,11 +81,30 @@ def test_fact_context_stays_single_argument(router):
 
 
 @pytest.mark.asyncio
-async def test_no_sources_key_when_path_has_no_provenance(router, monkeypatch):
-    """GLOBAL/LOCAL graph paths carry no source metadata; absence is the honest signal."""
+async def test_summary_path_reports_no_sources(router, monkeypatch):
+    """Community summaries are generated from bare entity names and carry no source at all.
+    The absence of a sources key is the honest signal, and is why the GLOBAL prompt no
+    longer asks the model to write a citations section over them."""
+    monkeypatch.setattr(config, "GLOBAL_CHUNK_FANOUT", False)
     monkeypatch.setattr(router, "classify_query", AsyncMock(return_value=("GLOBAL", None)))
     router.cs = SimpleNamespace(get_all_summaries=lambda: "Community 0:\nsomething")
 
     _, _, metadata = await router.route_query("Summarise the themes.")
 
     assert "sources" not in metadata
+
+
+@pytest.mark.asyncio
+async def test_global_chunk_fanout_carries_real_provenance(router, monkeypatch):
+    """With the fan-out on (the default since it measured 82.5% against 36.8%), GLOBAL
+    answers are built from real chunks — so unlike the summary path they can actually be
+    cited, and the citations section deleted from the prompt could be earned back."""
+    monkeypatch.setattr(config, "GLOBAL_CHUNK_FANOUT", True)
+    monkeypatch.setattr(router, "classify_query", AsyncMock(return_value=("GLOBAL", None)))
+
+    _, context, metadata = await router.route_query("Summarise the themes.")
+
+    assert [s["source"] for s in metadata["sources"]] == [
+        "01_academic_regulations.md", "02_fee_structure.md"
+    ]
+    assert "01_academic_regulations.md" not in context, "labels must stay out of context"
