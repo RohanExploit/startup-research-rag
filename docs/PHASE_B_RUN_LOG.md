@@ -275,6 +275,52 @@ Registered before running:
 - **If it fails:** `GLOBAL_CHUNK_FANOUT` stays off and the community-summary path stands,
   whatever the 33%-vs-84% observational figure suggested.
 
+## Result #2 — the GLOBAL route is the defect, and correct routing currently HURTS
+
+With routing pinned at 100% (`--force-route`), community summaries vs chunk fan-out:
+
+| slice | summaries (today) | chunk fan-out |
+|---|---|---|
+| **GLOBAL** | **20/57 (35.1%)** | **47/57 (82.5%)** |
+| FACT | 88/97 | 88/97 (b=0, c=0 — no collateral) |
+| LOCAL | 31/54 | 31/54 (b=2, c=2 — unchanged) |
+| overall | 139/208 (66.8%) | 166/208 (79.8%) |
+
+**Pre-registered primary: b=28, c=1 → ACCEPT** (needed 7 at c=1). The n=3 estimate of 33%
+is confirmed at n=57: **35.1%**. The community-summary path is not merely weak, it is worse
+than not having a GLOBAL route at all.
+
+**The bigger finding is what forcing correct routing did to the system:**
+
+| | actual routing (54.3% correct) | forced routing (100% correct) |
+|---|---|---|
+| overall | 80.8% | **66.8%** |
+| GLOBAL | 79.0% | **35.1%** |
+| LOCAL | 70.4% | **57.4%** |
+
+**Correct routing costs 14 points.** The classifier's errors are load-bearing: they dump
+GLOBAL and LOCAL work onto the FACT chunk path, which answers those questions far better
+than their own routes do. Anyone who had "fix the 54.3% router" as the next task — as I did
+— would have shipped a metric improvement and a product regression.
+
+This also corrects an earlier reading in this log: `LOCAL → LOCAL` at 81.5% was a **biased
+subsample**. The router was sending the LOCAL route only the questions it could handle;
+forced to take all 54, that route scores **57.4%**.
+
+### The floor guard failed again, and it was the wrong guard
+
+GLOBAL's rotated artifact floor rose 17 → 22 against a registered limit of +2. The net gain
+is +27 against a floor movement of +5, so the concern the guard encodes — that the gain was
+bought by dumping more corpus text — is not supported by its own numbers. But that is an
+argument made after seeing the result, and a bright line was set. So, as before: **the flag
+is not flipped autonomously.**
+
+The guard itself is the problem, and it has now failed twice for the same structural reason:
+an absolute cap on floor movement is not comparable to an effect size. **Corrected rule,
+registered here for the confirmatory run:** `(b − c)` must exceed the floor movement by at
+least the table threshold for the observed `c`. On this data that reads 27 > 5 + 7 = 12,
+which passes — but the decision is taken on a FRESH pair, not this one.
+
 ## Escalated to the owner (not decided unattended)
 
 1. **Who may see student identities.** `PII_ROLE_GATE=1` is a one-line flip, but every
