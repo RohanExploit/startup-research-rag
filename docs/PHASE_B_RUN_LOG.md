@@ -321,6 +321,27 @@ registered here for the confirmatory run:** `(b − c)` must exceed the floor mo
 least the table threshold for the observed `c`. On this data that reads 27 > 5 + 7 = 12,
 which passes — but the decision is taken on a FRESH pair, not this one.
 
+## Pre-registration #3 — the LOCAL route, measured the same way
+
+Forcing correct routing exposed the LOCAL route at **55.6-57.4%**, against the 81.5% it
+appeared to score when the classifier was hand-picking its questions. GLOBAL has now been
+fixed by replacing summaries with chunks; LOCAL is the same shape of defect — graph edges
+rendered as `A -> REL -> B`, with the sentence they came from discarded.
+
+Registered before running:
+
+- **Comparison:** `--force-route`, `GLOBAL_CHUNK_FANOUT=1` fixed in both arms, varying only
+  `LOCAL_GRAPH_CONTEXT` (1 = graph edges, today's default; 0 = chunk context).
+- **Endpoint:** discordant pairs on the **54 LOCAL questions**, `run_eval.score`.
+- **Rule (the corrected one):** `(b - c)` must exceed LOCAL artifact-floor movement plus the
+  table threshold for the observed `c`. LOCAL's floor is 1/54 — the cleanest slice on the
+  bench — so this is a demanding test rather than a formality.
+- **Guards:** FACT and GLOBAL must not regress (`c <= b` on each).
+- **If it fails:** `LOCAL_GRAPH_CONTEXT` stays on the graph, and the earlier aggregate
+  result stands as the only evidence for the vector arm — which, notably, was a
+  *robustness* argument about misrouting, not a claim that chunks answer LOCAL better.
+  Those are different claims and this is the one that tests the second.
+
 ## Escalated to the owner (not decided unattended)
 
 1. **Who may see student identities.** `PII_ROLE_GATE=1` is a one-line flip, but every
