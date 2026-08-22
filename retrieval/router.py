@@ -206,7 +206,7 @@ Query: "{query}"
             metadata["global_mode"] = "chunks"
         elif qtype == "GLOBAL":
             context = self.cs.get_all_summaries()
-        elif qtype == "LOCAL" and not config.LOCAL_GRAPH_CONTEXT:
+        elif qtype == "LOCAL" and config.LOCAL_CONTEXT_MODE == "vector":
             # Vector arm. Measured on the stress corpus: the gold answer string is present
             # in the 2-hop graph-edge context for 2 of 20 LOCAL questions, and in plain
             # retrieved chunk text for 18-19 of 20. Worse, on 5 questions link_entities

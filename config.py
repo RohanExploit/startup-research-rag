@@ -260,6 +260,22 @@ FACT_TOP_K = int(os.environ.get("FACT_TOP_K", "10"))
 LOCAL_GRAPH_CONTEXT = _truthy(os.environ.get("LOCAL_GRAPH_CONTEXT", "1"))
 LOCAL_VECTOR_K = int(os.environ.get("LOCAL_VECTOR_K", "15"))
 
+# graph | vector | hybrid. Measured on the bench with routing forced to 100%:
+#   graph   LOCAL 30-31/54   vector  LOCAL 42/54
+# but the vector arm loses three questions REPRODUCIBLY (BL011, BL040, BL051 — identical in
+# both pairs, while the graph arm's own run-to-run noise falls on different questions
+# entirely). All three are two-hop questions whose SECOND hop lives in a document the
+# question's own wording does not retrieve: "how many faculty in the department that runs
+# lab X" needs the lab->department line and then the department's faculty count, and a
+# single query embedding pulls the first and misses the second. The graph answers them
+# because entity linking walks the ego network across both documents.
+#
+# So the two context types are complementary rather than competing, and `hybrid` supplies
+# both: the linked entity's edges AND retrieved chunk text. Default stays `graph` until the
+# hybrid is measured under the same pre-registered rule.
+LOCAL_CONTEXT_MODE = os.environ.get(
+    "LOCAL_CONTEXT_MODE", "graph" if LOCAL_GRAPH_CONTEXT else "vector").strip().lower()
+
 
 # --- GLOBAL route context source (retrieval/router.py) — Phase-B ---
 # The GLOBAL route builds context from LLM-written community summaries. Those summaries are

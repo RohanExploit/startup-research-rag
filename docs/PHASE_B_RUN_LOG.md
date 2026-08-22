@@ -342,6 +342,37 @@ Registered before running:
   *robustness* argument about misrouting, not a claim that chunks answer LOCAL better.
   Those are different claims and this is the one that tests the second.
 
+## Result #3 — LOCAL: chunks win 15 and lose 3, and the 3 are the interesting ones
+
+Forced routing, `GLOBAL_CHUNK_FANOUT=1` in both arms, varying only LOCAL context:
+
+| pair | graph edges | chunk context | b | c | net | required | verdict |
+|---|---|---|---|---|---|---|---|
+| first | 30/54 | 42/54 | 15 | 3 | 12 | 11 | ACCEPT |
+| confirmatory | 31/54 | 42/54 | 14 | 3 | **11** | 11 | **fails by one** |
+
+One pass, one fail, both on the boundary — so the flag does **not** flip. But the diagnostic
+underneath is worth more than the verdict: **the three losses are identical in both pairs**
+(BL011, BL040, BL051), while the graph arm's own run-to-run noise falls on three *different*
+questions (BL020, BL035, BL041). The regressions are reproducible; the noise is not.
+
+All three are two-hop questions whose SECOND hop lives in a document the question's own
+wording does not retrieve:
+
+- **BL011** "how many faculty in the department that runs the Advanced Manufacturing
+  Laboratory" — needs lab→department, then department→faculty count. Chunks fetch the lab,
+  miss the handbook row, and the answer abstains. The graph walks straight through.
+- **BL051** lab→custodian, then custodian→committee. Abstains.
+- **BL040** gets the chair right and then pulls the *wrong* department row — answers
+  Information Technology where the gold is Civil Engineering.
+
+So the two context types fail in disjoint places: chunk retrieval carries prose but cannot
+follow a relation into a document that shares no vocabulary with the question, and graph
+edges carry the relation but discard the sentence. `LOCAL_CONTEXT_MODE=hybrid` supplies
+both (edges first, chunks filling the remaining budget), and is registered for measurement
+under the same rule: net gain over the GRAPH arm must exceed floor movement plus the table
+threshold, with FACT and GLOBAL guarded against regression.
+
 ## Escalated to the owner (not decided unattended)
 
 1. **Who may see student identities.** `PII_ROLE_GATE=1` is a one-line flip, but every
