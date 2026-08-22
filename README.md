@@ -1,20 +1,76 @@
 # Company Brain — Multi-Tenant RAG for Academic & Institutional Data
 
-> A privacy-first, offline-capable Retrieval-Augmented Generation (RAG) system that answers natural-language questions over student academic records, research documents, and institutional policy — with a deterministic query router that decides *how* to answer each question instead of throwing everything at an LLM.
+> Answers natural-language questions over student records, research documents and
+> institutional policy — **entirely on a 4 GB laptop GPU, with zero cloud calls** — using a
+> router that decides *how* to answer each question instead of throwing everything at an LLM.
 
 <p>
 <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-blue">
 <img alt="FastAPI" src="https://img.shields.io/badge/API-FastAPI-009688">
 <img alt="Next.js 16" src="https://img.shields.io/badge/dashboard-Next.js%2016-black">
-<img alt="LLM: Ollama (local)" src="https://img.shields.io/badge/LLM-Ollama%20local-000">
-<img alt="tests: 227 passing" src="https://img.shields.io/badge/tests-227%20passing-brightgreen">
-<img alt="eval baseline 60.87%" src="https://img.shields.io/badge/eval%20baseline-60.87%25-yellow">
+<img alt="LLM: Ollama local" src="https://img.shields.io/badge/LLM-Ollama%20local%204B-000">
+<img alt="tests 280 passing" src="https://img.shields.io/badge/tests-280%20passing-brightgreen">
+<img alt="bench 88.9%" src="https://img.shields.io/badge/bench-88.9%25%20(208q)-success">
+<img alt="cloud egress: off" src="https://img.shields.io/badge/cloud%20egress-OFF%20by%20default-informational">
 </p>
+
+---
+
+## The numbers
+
+Same corpus, same 4B local model, same 4 GB GPU, same frozen scorer — 208 questions:
+
+| Architecture | Overall | FACT (97) | GLOBAL (57) | LOCAL (54) |
+|---|---|---|---|---|
+| Naive RAG — top-3 chunks, no routing | 62.5% | 88 | 34 | **8** |
+| GraphRAG-style — community summaries + graph edges | 69.7% | 94 | 20 | 31 |
+| **This system** — routed, chunk fan-out + hybrid graph | **88.9%** | **95** | **46** | **44** |
+
+**+26.4 points over naive RAG.** On multi-hop relational questions, **8/54 → 44/54 (5.5×)**.
+
+| Also measured | |
+|---|---|
+| Abstains correctly on unanswerable questions | **20/20** — never invents an answer |
+| Tabular accuracy on the real corpus | **21/22 (95.5%)** — SQL, exact figures |
+| Median end-to-end latency | **1.85 s** on a 4 GB laptop GPU |
+| Artifact floor (content-free answer) | 19.2% — our score is **4.6×** that |
+| Automated tests | **280 passing**, 50 files |
+
+Every figure is reproducible from this repo. Full methodology, the rejected experiments,
+and an explicit list of what we have **not** measured: **[`docs/PITCH_METRICS.md`](docs/PITCH_METRICS.md)**.
+
+## Why it wins where it wins
+
+Three findings from our own measurement, each of which contradicted the obvious plan:
+
+1. **Community summaries are worse than useless for corpus-wide questions.** The classic
+   GraphRAG "global search" — summarise entity clusters, answer from summaries — scored
+   **35.1%**. Serving the same questions from a broad chunk fan-out scored **82.5%**. Those
+   summaries are generated from bare entity *names*, so they contain no figures, dates or
+   sources; one literally reads *"The entity '62' appears to be a single numerical value
+   without contextual information."*
+
+2. **Graph and vector retrieval fail in disjoint places, so we use both.** Chunks beat
+   graph edges 42/54 to 31/54 on relational questions, yet lost three questions
+   *reproducibly* — all two-hop questions whose second hop sits in a document the question's
+   own wording never retrieves. One answered with a confidently **wrong** department.
+   The hybrid (edges + chunks) scores **44/54** and loses none of them.
+
+3. **Fixing the router first would have made the product worse.** Route classification is
+   54.3%, an obvious target — but with the routes as originally built, *correct* routing
+   scored **66.8%** against 80.8% for the sloppy router, because misrouting was accidentally
+   rescuing questions. Repair the destinations first, and the same work becomes a gain.
+
+Anyone can report the number that flatters them. We publish the ones that didn't:
+**two of four candidate improvements were rejected by our own pre-registered gates**, and
+one was rejected after passing its first run and failing its replication.
 
 ---
 
 ## Table of Contents
 
+- [The numbers](#the-numbers)
+- [Why it wins where it wins](#why-it-wins-where-it-wins)
 - [What it is](#what-it-is)
 - [Key features](#key-features)
 - [Architecture](#architecture)
@@ -27,6 +83,7 @@
 - [The dashboard](#the-dashboard)
 - [Ingestion pipeline](#ingestion-pipeline)
 - [Testing & evaluation](#testing--evaluation)
+- [Reproducing the benchmark](#reproducing-the-benchmark)
 - [Enterprise audit suite](#enterprise-audit-suite)
 - [Security & privacy posture](#security--privacy-posture)
 - [Bots & scheduler](#bots--scheduler)
@@ -58,7 +115,9 @@ Everything runs **locally by default** — a local Ollama model, on-disk stores,
 - **Text-to-SQL guardrails** — table allowlist + auto-injected `LIMIT` on generated SQL.
 - **PII controls** — optional roll-number redaction before any cloud egress; a hard `ALLOW_EXTERNAL_LLM=0` kill switch.
 - **21-audit production gate** — integrity, hallucination, tenant isolation, prompt injection, RBAC and more, with a weighted scorecard and 5 deployment-blocking gates.
-- **Reproducible evaluation** — a 46-question hand-verified golden set scored at `temperature=0`.
+- **Reproducible evaluation** — a 208-question benchmark generated from a world model (so golds
+  cannot disagree with the corpus), plus a 46-question hand-verified set on the real corpus, all
+  scored at `temperature=0` with frozen answers so scoring is a free CPU replay.
 - **Full-stack** — FastAPI backend + Next.js 16 operator dashboard (query console, health, documents, review queue, upload, live audit stream).
 - **Green CI** — ruff + pytest (backend) and tsc + eslint (frontend) on every push.
 
@@ -117,8 +176,12 @@ Route behaviour:
 
 - **`TABULAR`** — try a parameterized SQL template (`retrieval/sql_templates.py`); else an intent classifier (`retrieval/intent.py`) picks a deterministic handler (`name_search`, `average_sgpa`, `count_failures`, `below_sgpa`, `record_by_roll`); else LLM text-to-SQL with a table allowlist + row cap. Verified against DuckDB (369 students).
 - **`FACT`** — vector search top-k=10, chunks packed into a ~5000-char context budget.
-- **`LOCAL`** — deterministic entity linker maps question entities to graph nodes, fetches the k=2 neighborhood; falls back to vector search if no entity matches.
-- **`GLOBAL`** — all Louvain community summaries fed to the LLM for a corpus-wide answer.
+- **`GLOBAL`** — broad chunk fan-out (`GLOBAL_CHUNK_FANOUT=1`, default). Community summaries
+  remain available behind the flag but measured **35.1% against 82.5%** for chunks: they are
+  generated from bare entity *names*, so they carry no figures, dates or sources.
+- **`LOCAL`** — **hybrid context** (`LOCAL_CONTEXT_MODE=hybrid`, default): graph edges *and*
+  retrieved chunk text. Measured 31/54 for edges alone, 42/54 for chunks alone, **44/54 for
+  both** — the two fail in disjoint places, so neither alone is sufficient.
 
 Grade semantics follow the **DBATU** scale (`models/grades.py`): `AB` counts as **pass** (8.5), only an `FF`-dominated result is an academic fail — a correctness fix that also drives the dashboard's PASS/FAIL badge colours.
 
@@ -156,7 +219,7 @@ Grade semantics follow the **DBATU** scale (`models/grades.py`): `AB` counts as 
 ├─ bots/                 # telegram_bot.py, whatsapp_bot.py
 ├─ scheduler/            # weekly_ingest.py (APScheduler cron)
 ├─ scripts/              # bootstrap, validation, benchmarking, diagnostics
-├─ tests/                # 42 modules, 227 passing; tests/eval/ golden set
+├─ tests/                # 50 modules, 280 passing; tests/eval/ golden sets + bench
 ├─ dashboard/            # Next.js 16 operator UI
 └─ data/tenants/<id>/    # raw · parsed · chunked · embeddings · graph · *.duckdb (gitignored)
 ```
@@ -212,7 +275,7 @@ Everything is centralized in `config.py` and overridable via environment / `.env
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama endpoint |
 | `REQUIRE_API_KEY` | `0` (off) | Turn ON the `X-API-Key` gate — **required before binding 0.0.0.0** |
 | `API_KEY` | — | Admin key value (constant-time compared) |
-| `ALLOW_EXTERNAL_LLM` | `1` | Set `0` to forbid **all** cloud LLM egress |
+| `ALLOW_EXTERNAL_LLM` | `0` | Cloud LLM egress is **off by default**; set `1` to opt in |
 | `LLM_PII_REDACTION` | `0` | Mask roll-number digit runs before egress |
 | `SQL_ALLOWED_TABLES` | `students,student_subjects,needs_review` | Text-to-SQL table allowlist |
 | `SQL_ROW_LIMIT` | `200` | Row cap injected when generated SQL has no `LIMIT` |
@@ -270,23 +333,83 @@ Safety: FAISS **drift detection** refuses to serve if `index.ntotal ≠ len(chun
 ## Testing & evaluation
 
 ```bash
-uv run pytest -q          # 227 passed, 1 skipped
+uv run pytest -q          # 280 passed, 1 skipped
 uv run ruff check .
 ```
 
-- **42 test modules / 171 test functions**, hermetic by default (monkeypatched router/generator via `tests/conftest.py`); live-service tests skip cleanly when Ollama/API are unavailable. The single skip is a manual PDF-parsing diagnostic.
-- **Golden evaluation set** — `tests/eval/golden_set.json`, 46 hand-verified questions across the four routes (22 TABULAR, 11 FACT, 6 LOCAL, 7 GLOBAL), scored at `temperature=0` with `contains` / `contains_any` / `insufficient` matchers via `tests/eval/run_eval.py`.
+- **50 test modules / 280 tests**, hermetic by default (monkeypatched router/generator via
+  `tests/conftest.py`); live-service tests skip cleanly when Ollama/API are unavailable.
+- **Three evaluation corpora**, never pooled:
 
-Measured baseline (`tests/eval/baseline.json`):
+| Set | n | Purpose |
+|---|---|---|
+| `golden_bench.json` | **208** | The instrument. Generated from a world model; GLOBAL 57 / LOCAL 54 / FACT 97 (incl. 20 unanswerable). |
+| `golden_bench_sql.json` | 15 | TABULAR. 840 result rows, golds computed by SQL over the queried rows. |
+| `golden_set.json` | 46 | The real corpus. Regression canary — small-n, so it gates nothing on its own. |
+
+**Current results, 208-question benchmark, live routing:**
 
 | Route | Accuracy |
-|-------|----------|
-| **Overall** | **60.87%** (28/46) |
-| Route classification | 84.78% |
-| TABULAR | 95.5% (21/22) |
-| GLOBAL | 42.9% (3/7) |
-| FACT | 27.3% (3/11) |
-| LOCAL | 16.7% (1/6) |
+|---|---|
+| **Overall** | **88.9% (185/208)** |
+| FACT | 97.9% (95/97) |
+| GLOBAL | 80.7% (46/57) |
+| LOCAL | 81.5% (44/54) |
+| Unanswerable (abstention correct) | **100% (20/20)** |
+| TABULAR *(real corpus, `golden_set.json`)* | **95.5% (21/22)** |
+
+**Known weak spot, stated plainly:** cross-document arithmetic is **14/24**. A 4B model
+quotes a table accurately and adds two of them together unreliably. Those questions are
+scored as a separate sub-metric rather than mixed into the headline, so the number cannot
+quietly flatter the retrieval work.
+
+### How we keep the evaluation honest
+
+| Guard | What it prevents |
+|---|---|
+| **Answers frozen before scoring** | A scorer written after seeing the numbers it judges |
+| **Artifact floor** (score each answer against the *next* question's gold) | Gains bought by verbosity rather than comprehension — flat at 19.2% across every configuration |
+| **Pre-registered accept/reject rules** | Deciding the threshold after seeing the result |
+| **Confirmatory pairs** | Accepting a one-run fluke — this rejected a change that passed its first run |
+| **`validate_bench.py`** | A benchmark that is wrong about its own corpus — it rejected 15 of our own questions |
+| **`test_eval_no_egress.py`** | The evaluation silently calling a cloud model |
+
+## Reproducing the benchmark
+
+Every headline number can be regenerated from a clean checkout. Nothing is hand-recorded.
+
+```bash
+# 1. build the benchmark corpus + questions from the world model
+python tests/eval/bench/render_corpus.py        # 30 documents
+python tests/eval/bench/render_questions.py     # 208 questions
+python tests/eval/derive_gold_v2.py     --kit "Dataset/bench_v1/golden" --corpus "Dataset/bench_v1/corpus"     --out tests/eval/golden_bench.json --tenant-id tenant_bench --version bench-1
+
+# 2. prove the benchmark is sound BEFORE measuring anything with it
+python tests/eval/bench/validate_bench.py
+#   checks every anchor exists in its cited documents, every multi-hop question
+#   spans documents, and no "unanswerable" question is accidentally answerable
+
+# 3. ingest it as its own tenant (never touches production data)
+python tests/eval/bench/ingest_bench.py all
+
+# 4. run + score  (answers are frozen to JSONL; scoring is a free CPU replay)
+python tests/eval/run_eval.py --golden tests/eval/golden_bench.json --answers run.jsonl
+python tests/eval/score_answers.py --answers run.jsonl --golden tests/eval/golden_bench.json
+
+# compare two configurations under the pre-registered statistical rule
+python tests/eval/score_answers.py --answers before.jsonl --compare after.jsonl     --golden tests/eval/golden_bench.json
+```
+
+**`--force-route`** serves each question on the route its gold declares, holding routing
+accuracy at 100%. Route *quality* and route *selection* are different failures with
+different fixes, and no number that is the product of both can separate them.
+
+**The TABULAR benchmark** is generated the same way — 840 result rows for 120 students,
+with every gold computed by SQL over exactly the rows the system queries:
+
+```bash
+python tests/eval/bench/build_tabular.py
+```
 
 ## Enterprise audit suite
 
@@ -332,13 +455,25 @@ docker compose up --build
 
 ## Current state & roadmap
 
-**Solid today:** the TABULAR route (95.5%), the full test gate (227 green), reproducible eval, tenant isolation, and the audit scorecard.
+**Solid today:** 88.9% on a 208-question benchmark, TABULAR at 95.5% on the real corpus,
+20/20 correct abstention, 280 green tests, provenance on every retrieval answer, tenant
+isolation, and an evaluation harness whose guards have rejected our own work twice.
 
-**Next levers** (from `PROJECT_STATE.md`):
+**Next levers, in evidence order:**
 
-1. Raise **FACT** to green — carry the k=10 + entity-link confidence gate to a measured win on the 11 FACT questions.
-2. Grow **LOCAL** graph coverage from 1/6 toward 3/6 via merge-swap ingest.
-3. Reduce **GLOBAL** churn — stop re-reading the graph per query; stabilize the 3/7 answers.
+1. **Abstention when the answer is present.** Of 23 remaining failures, 18 are the system
+   saying "I don't have enough information" — and in **13 of those the gold answer is
+   sitting in the retrieved context**. That is a prompt/generation problem, not a retrieval
+   one, and it is the largest single bucket left. Care is needed: abstention on genuinely
+   unanswerable questions is currently perfect (20/20) and must not be traded away.
+2. **Cross-document arithmetic** (14/24) — either a larger model or a compute step, rather
+   than asking a 4B model to add figures it has correctly quoted.
+3. **Router accuracy** is 54.3% — but now worth ~0 points. With both routes repaired,
+   forced-correct routing and live routing both score 88.9%, so route *choice* has stopped
+   mattering for accuracy. It still matters for latency and cost.
+4. **External validity.** One synthetic corpus, one small model, single-sample runs. The
+   next credible step is a second corpus with OCR noise and a confidence interval over
+   repeated runs.
 
 ## License
 
