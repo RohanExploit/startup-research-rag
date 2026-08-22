@@ -271,10 +271,15 @@ LOCAL_VECTOR_K = int(os.environ.get("LOCAL_VECTOR_K", "15"))
 # because entity linking walks the ego network across both documents.
 #
 # So the two context types are complementary rather than competing, and `hybrid` supplies
-# both: the linked entity's edges AND retrieved chunk text. Default stays `graph` until the
-# hybrid is measured under the same pre-registered rule.
-LOCAL_CONTEXT_MODE = os.environ.get(
-    "LOCAL_CONTEXT_MODE", "graph" if LOCAL_GRAPH_CONTEXT else "vector").strip().lower()
+# both: the linked entity's edges AND retrieved chunk text. Measured, forced routing:
+#   graph  31/54 and 33/54      vector 42/54      hybrid 43/54 and 44/54
+# Hybrid passed the pre-registered rule on both pairs (b=12 c=0 net 12 > 5; b=12 c=1
+# net 11 > 7), fixed all three questions the vector arm lost reproducibly, and regressed
+# FACT and GLOBAL by nothing (b=0 c=0 on each). Latency cost is real but small: LOCAL
+# median 1.21s -> 2.11s, max 6.95s -> 8.72s, against API_TIMEOUT=60.
+#
+# Default `hybrid`. Set graph or vector to get either half alone.
+LOCAL_CONTEXT_MODE = os.environ.get("LOCAL_CONTEXT_MODE", "hybrid").strip().lower()
 
 
 # --- GLOBAL route context source (retrieval/router.py) — Phase-B ---
