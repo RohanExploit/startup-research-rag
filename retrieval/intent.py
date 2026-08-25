@@ -16,10 +16,18 @@ class TabularIntent:
 # Words that signal a single-student record lookup (a marksheet/result/grades
 # for one named person), and aggregate markers that veto that interpretation
 # (a query counting/listing/averaging over many students is NOT a name lookup).
+# "cgpa"/"sgpa"/"gpa" are here because "What is the CGPA of <person>?" is a
+# single-student lookup, but carried none of the old keywords, so it fell to the
+# text-to-SQL generator — which emitted a per-subject SELECT without a GROUP BY
+# and crashed with a DuckDB binder error in front of the user. The aggregate
+# veto below is what keeps threshold questions ("students below 6 SGPA",
+# "how many scored above 8 SGPA") out of the name-lookup path.
 _LOOKUP_KW = ("result", "results", "record", "marksheet", "marks", "grade",
-              "grades", "score", "scores", "details")
+              "grades", "score", "scores", "details", "cgpa", "sgpa", "gpa")
 _AGG_KW = ("how many", "count", "number of", "list", "which", "average",
-           "percentage", "rate", "top ", "most", " all ", "every", "each")
+           "percentage", "rate", "top ", "most", " all ", "every", "each",
+           "below", "under", "above", "greater", "or more", "at least",
+           "atleast", "highest", "lowest", "bottom", "topper", "rank")
 
 
 def classify_tabular_intent(query: str) -> TabularIntent:

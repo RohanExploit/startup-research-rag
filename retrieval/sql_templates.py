@@ -152,6 +152,31 @@ def pass_percentage(tenant_id: str = None) -> dict:
             "debug_sql": sql, "template": "pass_percentage"}
 
 
+def fail_percentage(tenant_id: str = None) -> dict:
+    """Share of students whose overall result is FAIL.
+
+    Deliberately a template and not LLM text-to-SQL. Left to the generator this
+    question produced `... COUNT(*) FROM students WHERE result = 'FAIL'`, which
+    filters to the failing rows BEFORE aggregating, so the denominator equals the
+    numerator and the answer is always exactly 100%. The DISTINCT subquery below
+    counts each student once (exam_results holds one row per subject), so the
+    denominator is every student, not every exam record.
+    """
+    sql = (
+        "SELECT "
+        "  100.0 * COUNT(*) FILTER (WHERE result = 'FAIL') / NULLIF(COUNT(*), 0) AS fail_pct, "
+        "  COUNT(*) FILTER (WHERE result = 'FAIL') AS failed, "
+        "  COUNT(*) AS total "
+        "FROM (SELECT DISTINCT roll_no, result FROM exam_results)"
+    )
+    rows, _ = _rows(tenant_id, sql)
+    pct, failed, total = rows[0]
+    if pct is None:
+        return {"answer": "No result data available.", "debug_sql": sql, "template": "fail_percentage"}
+    return {"answer": f"Fail percentage: {pct:.1f}% ({failed} of {total} students failed).",
+            "debug_sql": sql, "template": "fail_percentage"}
+
+
 def toppers_by_sgpa(limit: int = 10, tenant_id: str = None, redact: bool = False) -> dict:
     sql = (
         "SELECT DISTINCT roll_no, name, sgpa FROM exam_results "
@@ -245,9 +270,27 @@ def supplementary_count(tenant_id: str = None) -> dict:
 # Matcher
 # --------------------------------------------------------------------------
 
-_AT_LEAST_N = re.compile(r"(?:at\s*least|atleast|>=|minimum(?:\s+of)?|min)\s*(\d+)", re.I)
-_N_OR_MORE = re.compile(r"(\d+)\s*(?:or\s+more|\+)\s*subject", re.I)
-_MORE_THAN_ONE = re.compile(r"(?:more\s+than|greater\s+than|>)\s*(?:one|\+?1|one\s+subject)", re.I)
+# Counts in these questions are written as words at least as often as digits
+# ("failed two or more subjects"). Left as digits-only, every worded phrasing
+# missed every template below and fell through to LLM text-to-SQL, which
+# answered "how many failed two or more subjects" with the count of ALL failing
+# students (35 instead of 16) — a wrong answer to a question the DB can answer
+# exactly. _num() maps either spelling to an int.
+_WORD_NUM = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+             "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+_NUM_RE = r"(\d+|" + "|".join(_WORD_NUM) + r")"
+
+
+def _num(tok: str) -> int:
+    tok = tok.strip().lower()
+    return int(tok) if tok.isdigit() else _WORD_NUM[tok]
+
+
+_AT_LEAST_N = re.compile(
+    r"(?:at\s*least|atleast|>=|minimum(?:\s+of)?|min)\s*" + _NUM_RE, re.I)
+_N_OR_MORE = re.compile(_NUM_RE + r"\s*(?:or\s+more|\+)\s*subject", re.I)
+# "more than one subject" / "more than 1 backlog" means >= 2, not >= 1.
+_MORE_THAN_N = re.compile(r"(?:more\s+than|greater\s+than|over|>)\s*" + _NUM_RE, re.I)
 _TOP_N = re.compile(r"top\s+(\d+)", re.I)
 _BOTTOM_N = re.compile(r"(?:bottom|lowest|worst)\s+(\d+)", re.I)
 # Anchor an SGPA threshold to its keyword so a semester/year number elsewhere in
@@ -276,18 +319,25 @@ def match_template(query: str):
     if not subject_asks_first and ("fail" in q or "backlog" in q) and ("most" in q or "highest number" in q or "maximum" in q):
         return students_failed_most, {}
 
-    # failed at least N subjects  (also "N or more subjects" or "more than 1 subject")
+    # failed at least N subjects  (also "N or more subjects", "more than N")
     if "fail" in q or "backlog" in q:
         m = _AT_LEAST_N.search(q) or _N_OR_MORE.search(q)
         if m:
-            return students_failed_at_least, {"n": int(m.group(1))}
-        # fallback: "failed two subjects", "failed more than one subject", etc. → dynamic SQL
-        if _MORE_THAN_ONE.search(q) or ("fail" in q and ("two" in q or "multiple" in q)):
-            return None  # fall through to dynamic SQL, not result_count
+            return students_failed_at_least, {"n": _num(m.group(1))}
+        m = _MORE_THAN_N.search(q)
+        if m:
+            # strictly-greater-than N is at-least N+1
+            return students_failed_at_least, {"n": _num(m.group(1)) + 1}
+        if "multiple" in q:
+            return students_failed_at_least, {"n": 2}
 
-    # pass percentage / rate
-    if ("pass" in q and ("percent" in q or "percentage" in q or "%" in q or "rate" in q)):
+    # pass / fail percentage or rate. Checked before the generic fail-count
+    # branch below, which would otherwise swallow "what is the fail percentage".
+    _pct = ("percent" in q or "percentage" in q or "%" in q or "rate" in q)
+    if "pass" in q and _pct:
         return pass_percentage, {}
+    if ("fail" in q or "failure" in q) and _pct and not named_subjects:
+        return fail_percentage, {}
 
     # toppers / top N by sgpa
     if "topper" in q or ("top" in q and "sgpa" in q) or ("highest" in q and "sgpa" in q):
