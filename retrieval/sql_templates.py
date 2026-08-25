@@ -247,6 +247,7 @@ def supplementary_count(tenant_id: str = None) -> dict:
 
 _AT_LEAST_N = re.compile(r"(?:at\s*least|atleast|>=|minimum(?:\s+of)?|min)\s*(\d+)", re.I)
 _N_OR_MORE = re.compile(r"(\d+)\s*(?:or\s+more|\+)\s*subject", re.I)
+_MORE_THAN_ONE = re.compile(r"(?:more\s+than|greater\s+than|>)\s*(?:one|\+?1|one\s+subject)", re.I)
 _TOP_N = re.compile(r"top\s+(\d+)", re.I)
 _BOTTOM_N = re.compile(r"(?:bottom|lowest|worst)\s+(\d+)", re.I)
 # Anchor an SGPA threshold to its keyword so a semester/year number elsewhere in
@@ -275,11 +276,14 @@ def match_template(query: str):
     if not subject_asks_first and ("fail" in q or "backlog" in q) and ("most" in q or "highest number" in q or "maximum" in q):
         return students_failed_most, {}
 
-    # failed at least N subjects  (also "N or more subjects")
+    # failed at least N subjects  (also "N or more subjects" or "more than 1 subject")
     if "fail" in q or "backlog" in q:
         m = _AT_LEAST_N.search(q) or _N_OR_MORE.search(q)
         if m:
             return students_failed_at_least, {"n": int(m.group(1))}
+        # fallback: "failed two subjects", "failed more than one subject", etc. → dynamic SQL
+        if _MORE_THAN_ONE.search(q) or ("fail" in q and ("two" in q or "multiple" in q)):
+            return None  # fall through to dynamic SQL, not result_count
 
     # pass percentage / rate
     if ("pass" in q and ("percent" in q or "percentage" in q or "%" in q or "rate" in q)):
