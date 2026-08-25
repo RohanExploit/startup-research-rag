@@ -44,10 +44,17 @@ benchmark_*.txt
 .gstack/
 .playwright-mcp/
 
-# eval run artifacts (contain answer text w/ student names — PII)
+# eval run artifacts (contain answer text w/ student names — PII).
+# The globs are recursive on purpose: `tests/eval/*.jsonl` does NOT match a
+# nested path, so a runner writing to tests/eval/runs/ produced an untracked-
+# but-not-ignored file full of real student names, one `git add -A` away from
+# entering history. Keep these as **/ patterns.
+tests/eval/**/*_results.json
 tests/eval/*_results.json
+tests/eval/**/*.jsonl
 tests/eval/*.jsonl
 tests/eval/bench_runs/
+tests/eval/runs/
 node_modules/
 
 # Office lock/residue files
