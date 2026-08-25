@@ -277,7 +277,9 @@ function ResultSkeleton() {
 
 // ─── Main page ───────────────────────────────────────────────────
 
-const TENANTS = ["tenant_1"];  // registered tenants from allowlist
+// tenant_1 = real institutional data (369 students, DuckDB) — the TABULAR route.
+// tenant_bench = the 30-document benchmark corpus the 88.9% was measured on.
+const TENANTS = ["tenant_1", "tenant_bench"];
 
 export default function QueryConsolePage() {
   const [query, setQuery] = useState("");

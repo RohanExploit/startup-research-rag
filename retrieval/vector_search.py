@@ -1,5 +1,7 @@
 import sys
 import logging
+import threading
+
 import faiss
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
@@ -11,6 +13,15 @@ from utils.safe_store import load_chunks
 # Load the SentenceTransformer once per process and share across tenants/instances
 # (P4.14). Previously every VectorSearch() reloaded the model (~seconds each).
 _MODEL_CACHE = {}
+
+# The shared model and the FAISS index are NOT thread-safe, and FastAPI runs sync
+# handlers in a threadpool — so two overlapping /query requests can enter
+# model.encode() (or index.search()) at once. Observed result on Windows: a hard
+# SIGSEGV that takes the whole server down mid-request, with nothing in the log but
+# a truncated progress bar. Reproduced by four concurrent clients against one
+# uvicorn worker. Encoding is milliseconds, so serialising it costs nothing next to
+# the generation call that follows, and it turns a crash into a short wait.
+_ENCODE_LOCK = threading.Lock()
 
 
 def _get_model(name: str = "all-MiniLM-L6-v2"):
@@ -68,11 +79,13 @@ class VectorSearch:
         # Cache the query embedding so repeated identical queries skip encoding (P4.14)
         query_vec = self._query_cache.get(query)
         if query_vec is None:
-            query_vec = self.model.encode([query])
-            faiss.normalize_L2(query_vec)
+            with _ENCODE_LOCK:
+                query_vec = self.model.encode([query])
+                faiss.normalize_L2(query_vec)
             self._query_cache[query] = query_vec
 
-        distances, indices = self.index.search(query_vec, top_k)
+        with _ENCODE_LOCK:
+            distances, indices = self.index.search(query_vec, top_k)
 
         results = []
         for i, idx in enumerate(indices[0]):
