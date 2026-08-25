@@ -282,6 +282,14 @@ class QueryResponse(BaseModel):
 
 @app.post("/query", response_model=QueryResponse)
 async def query_documents(req: QueryRequest, request: Request):
+    # An empty or whitespace-only query used to reach the router, which classified it
+    # TABULAR (no keyword matched a FACT/LOCAL/GLOBAL pattern, and the aggregate branch is
+    # the fallthrough) and answered it with an unfiltered roster — roughly seventy real
+    # student names returned for pressing Enter on an empty box. Reject it here, before
+    # any routing or retrieval happens.
+    if not req.query or not req.query.strip():
+        raise HTTPException(status_code=400, detail="Query must not be empty.")
+
     # Validate tenant_id first (clean 400); authorize; then load its data (500 on load failure).
     tenant_id = _require_tenant(req.tenant_id)
     _authorize_tenant(request, tenant_id)

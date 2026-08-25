@@ -49,3 +49,7 @@ tests/eval/*_results.json
 tests/eval/*.jsonl
 tests/eval/bench_runs/
 node_modules/
+
+# Office lock/residue files
+~$*
+**/~$*
