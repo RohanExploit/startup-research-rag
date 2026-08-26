@@ -28,12 +28,23 @@
 }
 
 /* ─── Scorecard Row ───────────────────────────────────────────────── */
+/* The first column was a hard 200px, but its contents are an 88px ring + a 16px
+   gap + 40px of padding + the "Overall Score" label — about 240px that had
+   nowhere to go, so the label ran under the card edge. Give the column a floor
+   wide enough for its own contents and let it grow a little on wide screens. */
 .scorecardRow {
   display: grid;
-  grid-template-columns: 200px 280px 1fr;
+  grid-template-columns: minmax(236px, 0.85fr) minmax(250px, 1fr) minmax(320px, 2fr);
   gap: 16px;
+  align-items: stretch;
 }
-@media (max-width: 900px) {
+/* Below ~1180px three cards on one row leaves the category bars too narrow to
+   read, so drop to two (ring + gate) with the category scores spanning under. */
+@media (max-width: 1180px) {
+  .scorecardRow { grid-template-columns: minmax(236px, 1fr) minmax(250px, 1fr); }
+  .categoryCard { grid-column: 1 / -1; }
+}
+@media (max-width: 720px) {
   .scorecardRow { grid-template-columns: 1fr; }
 }
 
@@ -47,7 +58,9 @@
   align-items: center;
   gap: 16px;
   padding: 20px;
+  min-width: 0;
 }
+.overallInner > div { min-width: 0; }
 .overallLabel {
   font-size: var(--text-sm);
   font-weight: 600;
@@ -88,7 +101,31 @@
 .catScoreRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+/* Fixed 90px truncated "Observability" at some zoom levels; the bar takes the
+   slack instead, so the label column sizes to the longest label and stops. */
+.catLabel {
+  font-size: var(--text-xs);
+  flex: 0 0 96px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.catPct {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  flex: 0 0 32px;
+  text-align: right;
+}
+.catWeight {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--color-muted);
+  opacity: 0.55;
+  flex: 0 0 26px;
+  text-align: right;
+  letter-spacing: 0.02em;
 }
 .catBar {
   flex: 1;
@@ -160,11 +197,16 @@
 /* Column widths */
 .colId       { width: 42px; }
 .colName     { min-width: 220px; }
-.colCategory { width: 130px; }
+/* 130px could not hold "OBSERVABILITY" as one line at 10px + 0.06em tracking. */
+.colCategory { width: 152px; }
 .colStatus   { width: 80px; }
 .colChecks   { width: 140px; }
 .colDuration { width: 80px; }
 .colExpand   { width: 28px; text-align: center; }
+
+/* Every row now holds a single-line tag, so pin the height and stop a stray
+   long value in any one cell from making one row taller than the rest. */
+.auditRow td { height: 44px; }
 
 .auditName {
   display: flex;
@@ -174,15 +216,24 @@
   color: var(--color-text);
 }
 
+/* Two bugs lived here. "DATA INTEGRITY" and "OBSERVABILITY" wrapped to a second
+   line inside the tag, which pushed those table rows taller than their
+   neighbours and broke the vertical rhythm of the whole table. And letter-spacing
+   applies to the LAST character too, so "DECISION AI" rendered its trailing
+   space past the tag's right edge and the I was visually clipped — the tag read
+   "DECISION AE". nowrap fixes the first; the extra right padding absorbs the
+   trailing letter-space and fixes the second. */
 .categoryTag {
   display: inline-block;
-  padding: 2px 7px;
+  padding: 2px 6px 2px 7px;
+  padding-right: calc(7px + 0.06em);
   border-radius: 4px;
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   border: 1px solid;
+  white-space: nowrap;
 }
 
 /* Gate badge */
@@ -268,6 +319,21 @@
   font-family: var(--font-mono);
   flex: 1;
 }
+
+/* ─── Weighted scorecard spec table ───────────────────────────────── */
+.specTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+/* The card body has zero padding so the table can go edge to edge, which left
+   the final row's 1px bottom border sitting directly on the card's own border —
+   a doubled hairline that read as a clipped row. */
+.specTable tbody tr:last-child { border-bottom: none !important; }
+.specTable tbody tr:last-child td { padding-bottom: 14px; }
+/* Score and Gate? hold "—" until a run happens; right-aligning them keeps the
+   placeholder column from looking like an unfinished cell. */
+.specTable th:nth-child(2),
+.specTable td:nth-child(2) { white-space: nowrap; }
 
 /* ─── Category filter pills ───────────────────────────────────────── */
 .catFilter {

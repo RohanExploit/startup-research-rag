@@ -107,10 +107,15 @@ function ScoreRing({ pct, size = 80, gate }: { pct: number; size?: number; gate?
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={5} />
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={5}
-        strokeDasharray={`${dash} ${circ - dash}`}
-        strokeDashoffset={circ / 4} strokeLinecap="round"
-        style={{ transition: "stroke-dasharray 0.8s ease" }} />
+      {/* At 0% the dash length is 0, and a round linecap on a zero-length dash
+          still paints both caps — so an unrun suite showed a stray coloured dot
+          at 12 o'clock that read as a rendering fault. Draw no arc at all. */}
+      {pct > 0 && (
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={5}
+          strokeDasharray={`${dash} ${circ - dash}`}
+          strokeDashoffset={circ / 4} strokeLinecap="round"
+          style={{ transition: "stroke-dasharray 0.8s ease" }} />
+      )}
       <text x={size/2} y={size/2 + 1} textAnchor="middle" dominantBaseline="middle"
         fill={color} fontSize={size < 80 ? 11 : 15} fontWeight={700} fontFamily="JetBrains Mono, monospace">
         {pct}%
@@ -393,17 +398,18 @@ export default function AuditPage() {
                 const pct = score?.pct ?? (catTotal > 0 ? Math.round(catPass / catTotal * 100) : 0);
                 return (
                   <div key={cat} className={styles.catScoreRow}>
-                    <span style={{ fontSize: "var(--text-xs)", color: meta.color, width: 90 }}>{meta.label}</span>
+                    <span className={styles.catLabel} style={{ color: meta.color }}>{meta.label}</span>
                     <div className={styles.catBar}>
                       <div
                         className={styles.catBarFill}
                         style={{ width: `${pct}%`, background: meta.color + "99" }}
                       />
                     </div>
-                    <span className="font-data" style={{ fontSize: "var(--text-xs)", color: "var(--color-muted)", width: 28, textAlign: "right" }}>
-                      {pct}%
-                    </span>
-                    <span style={{ fontSize: 9, color: "var(--color-border)", width: 28, textAlign: "right" }}>
+                    <span className={`font-data ${styles.catPct}`}>{pct}%</span>
+                    {/* Was var(--color-border) — so close to the background it read as
+                        a smudge rather than a number, and at width 28 it sat flush
+                        against the card's right padding. */}
+                    <span className={styles.catWeight} title="Scorecard weight">
                       {WEIGHT_MAP[cat] ?? ""}
                     </span>
                   </div>
@@ -474,7 +480,7 @@ export default function AuditPage() {
         <div className="card">
           <div className="card-header"><span className="card-title">Production Scorecard Weights</span></div>
           <div className="card-body" style={{ padding: 0 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table className={styles.specTable}>
               <thead>
                 <tr>
                   {["Category", "Weight", "Audits", "Score", "Gate?"].map(h => (
