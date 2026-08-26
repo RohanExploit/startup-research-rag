@@ -591,6 +591,23 @@ async def generate_and_run_sql(raw_query: str, tenant_id: str = None) -> dict:
     if not results:
         return {"answer": "Query returned no results.", "debug_sql": sql}
 
+    # A question the schema cannot answer ("What NIRF rank did the college get?")
+    # makes the model emit a literal SELECT — `SELECT NULL AS NIRF_RANK` — which
+    # DuckDB runs happily and returns as ONE row of all-NULL. That is truthy, so it
+    # sailed past the check above and rendered as `| NIRF_RANK | NULL |`: an invented
+    # column name presented to the user in the shape of a record. Abstention is the
+    # headline safety property here, and this was the hole in it.
+    #
+    # Genuinely-empty results (0 rows) are a real answer and keep their message
+    # above; only a result whose every cell is NULL is treated as no answer at all.
+    # Returning "" hands the question to the TABULAR->FACT fallback in
+    # retrieval/router.py, which either finds real evidence or says it cannot.
+    if all(cell is None for row in results for cell in row):
+        logger.info(
+            "generate_and_run_sql: all-NULL result from %r — treating as no answer "
+            "(schema cannot answer this question)", sql)
+        return {"answer": "", "debug_sql": sql}
+
     # Format as markdown table (capped at 200 rows — already enforced by LIMIT above)
     header = "| " + " | ".join(columns) + " |"
     separator = "|" + "|".join(["---"] * len(columns)) + "|"

@@ -78,3 +78,50 @@ class TestSingleStudentGpaLookup:
     ])
     def test_aggregate_gpa_queries_are_not_name_lookups(self, q, kind):
         assert classify_tabular_intent(q).kind == kind
+
+
+class TestNoFabricatedColumns:
+    """A question the schema cannot answer must not come back shaped like a record."""
+
+    def test_all_null_result_is_not_an_answer(self):
+        """`SELECT NULL AS NIRF_RANK` returns [(None,)] — truthy, so the old
+        `if not results` guard passed it through and rendered `| NIRF_RANK | NULL |`.
+        An all-NULL result must return empty so the router falls back to FACT."""
+        from retrieval import tabular_queries
+        import inspect
+        src = inspect.getsource(tabular_queries.generate_and_run_sql)
+        assert "all(cell is None for row in results for cell in row)" in src, \
+            "the all-NULL fabrication guard is missing"
+
+    def test_genuine_empty_result_still_reports_no_results(self):
+        from retrieval import tabular_queries
+        import inspect
+        src = inspect.getsource(tabular_queries.generate_and_run_sql)
+        assert '"Query returned no results."' in src, \
+            "0-row results are a real answer and must keep their own message"
+
+
+class TestKnowledgeTierPrompt:
+    """Institution-specific facts must still refuse; concepts may be explained."""
+
+    def test_prompt_forbids_guessing_institution_facts(self):
+        from generation import answer
+        import inspect
+        src = inspect.getsource(answer.generate_answer)
+        assert "Never estimate, guess, or supply a typical value" in src
+
+    def test_prompt_labels_general_knowledge(self):
+        from generation import answer
+        import inspect
+        src = inspect.getsource(answer.generate_answer)
+        assert "General knowledge (not from your institution's records)" in src
+
+    def test_general_knowledge_reply_still_scores_as_abstention(self):
+        """The labelled reply opens with the abstention phrase, so the eval's
+        `insufficient` mode still recognises it and historical numbers stay
+        comparable."""
+        from tests.eval.run_eval import score
+        reply = ("I don't have enough information to answer that from your documents.\n\n"
+                 "General knowledge (not from your institution's records): NIRF stands for "
+                 "National Institutional Ranking Framework.")
+        assert score(reply, {"mode": "insufficient", "expect": []}) is True
