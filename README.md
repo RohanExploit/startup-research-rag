@@ -8,10 +8,9 @@ four different retrievers: **SQL for numbers, vector search for facts, a graph f
 relationships, corpus-wide fan-out for overall questions.**
 
 > **The engine is built, benchmarked, and beats two rival architectures on the same hardware.
-> The 30 hours puts it on the phone's silicon.**
+> The phone build puts it on the device's own silicon.**
 
-Submitted to the **iQOO Hackathon — Smart Education** track.
-Long-form submission narrative: **[`docs/IQOO_SUBMISSION.md`](docs/IQOO_SUBMISSION.md)**.
+Problem, approach and measured results: **[`docs/OVERVIEW.md`](docs/OVERVIEW.md)**.
 
 <p>
 <img alt="bench 88.9%" src="https://img.shields.io/badge/bench-88.9%25%20(208q)-success">
@@ -74,10 +73,10 @@ own gates rejected, and the exact boundary of what we have measured:
 
 ---
 
-## Shipped · Next 30 hours
+## Shipped · Next: the phone build
 
-Two columns of achievement. The left one is measured today; the right one is what the
-hackathon puts on the device.
+Two columns. The left one is measured today; the right one is what the phone build puts
+on the device.
 
 ### Shipped and measured
 
@@ -92,18 +91,18 @@ hackathon puts on the device.
 | Telegram + WhatsApp delivery against the same API | `bots/` |
 | Automated tests | **280 passing**, 50 files |
 
-### Next 30 hours
+### Next: the phone build
 
 | Component | Delivered as |
 |---|---|
-| **Android client on the iQOO** | Ask screen with the mic as the primary control, answer with its source document |
-| **On-device generation** (Snapdragon NPU; llama.cpp / MediaPipe LLM Inference) | An adapter behind the generation interface that already exists |
+| **Android client** | Ask screen with the mic as the primary control, answer with its source document |
+| **On-device generation** (llama.cpp / MediaPipe LLM Inference) | An adapter behind the generation interface that already exists |
 | **Marathi / Hindi voice input**, answered on-device | Spoken question in, answer back in the language asked, aeroplane mode on |
 | **On-device accuracy** | The same 208-question benchmark, same frozen scorer, re-run on the phone |
 | **Device performance** | Tokens/sec, cold start, battery per 100 queries, peak RAM — measured and published |
-| **Vivo Office Kit share-sheet ingest** | Designed; stretch goal past the 30-hour critical path |
+| **Share-sheet ingest** | Designed; stretch goal past the critical path |
 
-### Why 30 hours is enough for the phone
+### Why the phone port is adapter work, not a rewrite
 
 We built to the phone's constraint first, so the port is adapter work:
 
@@ -122,8 +121,7 @@ Project Admin across three mentorship programmes.
 
 We publish the measured device numbers — tokens/sec, cold start, battery per 100 queries —
 and re-run **the same 208-question benchmark with the same frozen scorer on the phone**, so the
-on-device accuracy is directly comparable to the 88.9% above. Block-by-block plan, with owners,
-definitions of done and pre-decided fallbacks: **[`docs/30_HOUR_PLAN.md`](docs/30_HOUR_PLAN.md)**.
+on-device accuracy is directly comparable to the 88.9% above.
 
 ---
 
@@ -388,7 +386,7 @@ buys you.
   the same corpus, model and scorer — not Microsoft GraphRAG, LangChain, LlamaIndex or any
   commercial platform. The harness is in the repo; adding a competitor takes about twenty minutes.
 - Device figures — tokens/sec, cold start, battery, on-device accuracy — are measured during the
-  30-hour build and published then.
+  phone build and published then.
 
 ---
 
@@ -492,7 +490,7 @@ no-op when `REQUIRE_API_KEY=0`).
 ├─ scheduler/            # weekly_ingest.py (APScheduler cron)
 ├─ tests/                # 50 modules, 280 passing; tests/eval/ golden sets + bench harness
 ├─ dashboard/            # Next.js 16 operator UI
-├─ docs/                 # IQOO_SUBMISSION.md, 30_HOUR_PLAN.md, PITCH_METRICS.md, pitch.md
+├─ docs/                 # OVERVIEW.md, PITCH_METRICS.md, pitch.md, DEMO_RUNBOOK.md
 └─ data/tenants/<id>/    # raw · parsed · chunked · embeddings · graph · *.duckdb (gitignored)
 ```
 
@@ -544,11 +542,6 @@ discipline behind every number above.
   [linkedin.com/in/rohanvijaygaikwad](https://linkedin.com/in/rohanvijaygaikwad) ·
   itzrohan007@gmail.com
 
-**Priyanka Jadhav — Domain & Evaluation.** Academic topper, YSPM's Yashoda Technical Campus;
-Avishkar Innovation Program Zonal Qualifier. Owns the question set, the ground truth, and the
-student-side problem definition — the person who builds the retriever does not get to decide
-alone what counts as a correct answer.
-
 ## License
 
 No license file is currently included — this repository is **private / all rights reserved**
@@ -557,4 +550,4 @@ pending a license decision. Do not redistribute without permission.
 ---
 
 <sub>Model, eval numbers and grade scale reflect the DBATU academic context the system was
-validated against. Numbers current as of the iQOO Hackathon first-round submission.</sub>
+validated against.</sub>

@@ -1,8 +1,8 @@
-// Build docs/pitch_iqoo.pptx — iQOO Hackathon, round-one online submission.
+// Build docs/pitch_deck.pptx — Company Brain pitch deck.
 // Track: Smart Education.  Product: Company Brain.
 //
 // Positioning, held on every slide: the engine is built, benchmarked, and ahead of two
-// rival architectures on identical hardware; the 30 hours puts it on the phone's silicon.
+// rival architectures on identical hardware; the phone build puts it on the device's silicon.
 // The phone work is the next milestone, never a gap.  Nothing here is a projection —
 // every figure traces to a run recorded in docs/PITCH_METRICS.md, and anything not
 // yet measured is labelled "to be measured on device".
@@ -15,11 +15,11 @@ const pres = new pptxgen();
 pres.layout = "LAYOUT_WIDE";               // 13.3 x 7.5 — set BEFORE any slide
 pres.author = "Rohan Gaikwad";
 pres.company = "Company Brain";
-pres.title = "Company Brain — iQOO Hackathon, Smart Education";
+pres.title = "Company Brain — Smart Education";
 
 // ── palette ─────────────────────────────────────────────────────────────────
 // Deep navy ground (an offline, on-premise system). GREEN is reserved for things
-// we have MEASURED. CYAN is reserved for the phone / on-device lane — the 30 hours.
+// we have MEASURED. CYAN is reserved for the phone / on-device lane.
 const NAVY = "121C33";      // dark ground
 const NAVY2 = "1E2761";     // panel navy
 const NAVY3 = "17224A";     // deeper panel
@@ -162,7 +162,7 @@ function flowBox(s, x, y, w, h, title, sub, fill, txt, borderCol) {
   s.addShape(pres.ShapeType.ellipse, {
     x: 11.3, y: 4.35, w: 3.3, h: 3.3, fill: { color: NAVY3 }, line: { color: NAVY3 },
   });
-  s.addText("iQOO HACKATHON  ·  SMART EDUCATION", {
+  s.addText("SMART EDUCATION  ·  LOCAL-FIRST RAG", {
     x: 0.85, y: 1.12, w: 9, h: 0.34, fontFace: B, fontSize: 12.5, bold: true,
     color: GREEN, charSpacing: 3, margin: 0,
   });
@@ -182,23 +182,23 @@ function flowBox(s, x, y, w, h, title, sub, fill, txt, borderCol) {
   [["88.9%", "on 208 questions", GREEN], ["5.5×", "on multi-hop", GREEN],
    ["4 GB", "VRAM budget", CYAN], ["0", "cloud calls", CYAN]]
     .forEach(([v, l, c], i) => darkStat(s, 0.85 + i * 2.45, 4.62, 2.3, v, l, c, 30));
-  s.addText("Rohan Gaikwad  ·  Priyanka Jadhav", {
+  s.addText("Rohan Gaikwad", {
     x: 0.85, y: 6.18, w: 8, h: 0.34, fontFace: B, fontSize: 14, bold: true, color: WHITE, margin: 0,
   });
   s.addText("github.com/RohanExploit/startup-research-rag  ·  itzrohan007@gmail.com", {
     x: 0.85, y: 6.56, w: 9.5, h: 0.32, fontFace: B, fontSize: 11.5, color: MUTED, margin: 0,
   });
-  NOTE(s, "Company Brain: a student asks their college a question in their own words and gets the answer off their own phone. The engine is built and benchmarked at 88.9% on 208 questions — ahead of naive RAG and a GraphRAG-style design on identical hardware, entirely offline on a 4 GB laptop GPU. The 30 hours puts it on the iQOO's silicon.");
+  NOTE(s, "Company Brain: a student asks their college a question in their own words and gets the answer off their own phone. The engine is built and benchmarked at 88.9% on 208 questions — ahead of naive RAG and a GraphRAG-style design on identical hardware, entirely offline on a 4 GB laptop GPU. The phone build puts it on the device's own silicon.");
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 2. THE THESIS — what is built, what the 30 hours buys
+// 2. THE THESIS — what is built, what the phone build buys
 // ════════════════════════════════════════════════════════════════════════════
 {
-  const s = darkTitled("Shipped, and what the next 30 hours adds", "Where we are");
+  const s = darkTitled("Shipped, and what the phone build adds", "Where we are");
   s.addText(
     "“The engine is built, benchmarked, and beats two rival architectures on the same " +
-    "hardware. The 30 hours puts it on the phone's silicon.”",
+    "hardware. The phone build puts it on the device's silicon.”",
     { x: 0.7, y: 1.72, w: 11.9, h: 0.95, fontFace: H, fontSize: 21, italic: true,
       color: ICE, lineSpacing: 28, margin: 0 }
   );
@@ -230,18 +230,18 @@ function flowBox(s, x, y, w, h, title, sub, fill, txt, borderCol) {
     "280 automated tests; zero cloud calls, enforced by a test",
     "Runs inside a 4 GB VRAM budget — a phone-sized budget, by design",
   ]);
-  panel(6.75, "On the phone's silicon", "Next 30 hours", CYAN, [
-    "Move the model onto the iQOO — Snapdragon NPU, 2–4B quantized",
+  panel(6.75, "On the phone's silicon", "Next: the phone build", CYAN, [
+    "Move the model onto the phone — mobile NPU, 2–4B quantized",
     "MiniLM + FAISS index shipped inside the app's assets",
     "Voice in Marathi and Hindi, recognised on the device",
     "Publish measured tokens/sec, cold start and battery per 100 queries",
   ]);
   s.addText(
-    "Retrieval quality sinks most hackathon RAG demos. We finished it first, scored it, and beat two rival architectures on identical hardware.",
+    "Retrieval quality sinks most RAG demos. We finished it first, scored it, and beat two rival architectures on identical hardware.",
     { x: 0.7, y: 6.78, w: 11.9, h: 0.4, fontFace: B, fontSize: 12.5, italic: true,
       color: ICE, margin: 0 }
   );
-  NOTE(s, "Read the quote aloud. Left column is shipped and scored; right column is the next milestone. Both are achievements — the 30 hours puts a proven engine on the silicon a phone-maker's hackathon exists to show off.");
+  NOTE(s, "Read the quote aloud. Left column is shipped and scored; right column is the next milestone. Both are achievements — the phone build puts a proven engine on the device's own silicon.");
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -334,7 +334,7 @@ function flowBox(s, x, y, w, h, title, sub, fill, txt, borderCol) {
   arrowH(s, 8.65, 4.2, 0.5, "8FA0C0", 1.75);
   s.addText(
     "So the constraint everybody treats as the blocker is the thing that picks the architecture. " +
-    "On-device is not a feature we bolted on for a phone hackathon — it is the only shape this " +
+    "On-device is not a feature bolted on after the fact — it is the only shape this " +
     "product can legally take.",
     { x: 9.3, y: 2.45, w: 3.4, h: 2.35, fontFace: B, fontSize: 12.5, color: INK,
       lineSpacing: 18, margin: 0 }
@@ -515,8 +515,8 @@ function flowBox(s, x, y, w, h, title, sub, fill, txt, borderCol) {
     if (i < 3) arrowH(s, x + w, 2.48, 0.8, MUTED, 1.75);
   });
 
-  // Lane B — in the 30 hours
-  s.addText("IN THE 30 HOURS  ·  THE PHONE IS THE WHOLE SYSTEM", {
+  // Lane B — the phone build
+  s.addText("THE PHONE BUILD  ·  THE PHONE IS THE WHOLE SYSTEM", {
     x: 0.7, y: 3.42, w: 9.5, h: 0.28, fontFace: B, fontSize: 10.5, bold: true,
     color: CYAN, charSpacing: 1.5, margin: 0,
   });
@@ -524,7 +524,7 @@ function flowBox(s, x, y, w, h, title, sub, fill, txt, borderCol) {
     x: 0.7, y: 3.76, w: 12.0, h: 2.55, rectRadius: 0.12,
     fill: { color: NAVY3 }, line: { color: CYAN, width: 1.5 },
   });
-  s.addText("iQOO  ·  Snapdragon NPU  ·  12–16 GB RAM  ·  airplane mode on", {
+  s.addText("Flagship Android  ·  mobile NPU  ·  12–16 GB RAM  ·  airplane mode on", {
     x: 1.05, y: 3.92, w: 11.3, h: 0.3, fontFace: B, fontSize: 11.5, bold: true,
     color: CYAN, charSpacing: 1, margin: 0,
   });
@@ -550,13 +550,13 @@ function flowBox(s, x, y, w, h, title, sub, fill, txt, borderCol) {
   });
   s.addText(
     [
-      { text: "Vivo Office Kit:  ", options: { bold: true, color: WHITE } },
+      { text: "Share sheet:  ", options: { bold: true, color: WHITE } },
       { text: "a clerk shares a results PDF or a fee sheet into the app. Campus data enters the " +
               "brain without ever touching a server.", options: { color: ICE } },
     ],
     { x: 1.05, y: 6.64, w: 11.3, h: 0.5, fontFace: B, fontSize: 12, margin: 0 }
   );
-  NOTE(s, "Top lane is what a judge can open today: a phone client against the same backend. Bottom lane is the 30 hours: the model, the embeddings and the index all move inside the app, and the question is spoken instead of typed.");
+  NOTE(s, "Top lane is what a judge can open today: a phone client against the same backend. Bottom lane is the phone build: the model, the embeddings and the index all move inside the app, and the question is spoken instead of typed.");
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -594,7 +594,7 @@ function flowBox(s, x, y, w, h, title, sub, fill, txt, borderCol) {
     x: 0.6, y: 6.32, w: 12.1, h: 0.95, rectRadius: 0.08,
     fill: { color: NAVY2 }, line: { color: NAVY2 },
   });
-  s.addText("What we publish from the iQOO itself", {
+  s.addText("What we publish from the device itself", {
     x: 1.0, y: 6.44, w: 5.1, h: 0.3, fontFace: B, fontSize: 13, bold: true, color: WHITE, margin: 0,
   });
   s.addText("Measured on the device, reported like every other number here.", {
@@ -615,7 +615,7 @@ function flowBox(s, x, y, w, h, title, sub, fill, txt, borderCol) {
       fontFace: B, fontSize: 9.5, italic: true, color: CYAN, margin: 0,
     });
   });
-  NOTE(s, "Four concrete facts make the port routine: one generation call site, embeddings and an index that already fit an app, a 4 GB budget held since day one, and a lead who has already shipped a Flutter/Android app. The device figures get measured on the iQOO and published like everything else.");
+  NOTE(s, "Four concrete facts make the port routine: one generation call site, embeddings and an index that already fit an app, a 4 GB budget held since day one, and a lead who has already shipped a Flutter/Android app. The device figures get measured on the device and published like everything else.");
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -900,22 +900,22 @@ function flowBox(s, x, y, w, h, title, sub, fill, txt, borderCol) {
 // 15. THE 30-HOUR BUILD PLAN
 // ════════════════════════════════════════════════════════════════════════════
 {
-  const s = lightSlide("Thirty hours, hour-blocked", "What we ship at the hackathon");
+  const s = lightSlide("The phone build, block by block", "What ships on the device");
   s.addText(
     "Every block below is an adapter swap or an asset move against code that already exists and is already benchmarked.",
     { x: 0.6, y: 1.70, w: 12.1, h: 0.36, fontFace: B, fontSize: 14, color: BODY, margin: 0 }
   );
   const blocks = [
     ["H0 – 6", "Model onto the device",
-     "Swap the generation adapter behind generate_answer() to llama.cpp / MediaPipe LLM Inference. A 2–4B quantized model answering on the iQOO's NPU.", CYAN_D],
+     "Swap the generation adapter behind generate_answer() to llama.cpp / MediaPipe LLM Inference. A 2–4B quantized model answering on the phone's NPU.", CYAN_D],
     ["H6 – 12", "Retrieval into app assets",
      "MiniLM (~90 MB) and the FAISS-flat index ship inside the app. Re-run the 208-question harness with the network off.", CYAN_D],
     ["H12 – 18", "Voice, in Marathi and Hindi",
      "Mic → on-device ASR → the same router. The student speaks the question instead of typing it.", NAVY2],
     ["H18 – 24", "Share-sheet ingest",
-     "Vivo Office Kit: a results PDF or fee sheet enters the brain from the phone's share sheet. No server in the path.", NAVY2],
+     "Share sheet: a results PDF or fee sheet enters the brain from the phone's share sheet. No server in the path.", NAVY2],
     ["H24 – 28", "Device measurement pass",
-     "tokens/sec, cold-start time and battery per 100 queries, on the iQOO. Measured, then published — like every other number in this deck.", GREEN],
+     "tokens/sec, cold-start time and battery per 100 queries, on the device. Measured, then published — like every other number in this deck.", GREEN],
     ["H28 – 30", "Demo hardening",
      "The student walkthrough: backlog, scholarship eligibility, attendance rule — asked by voice, answered in airplane mode.", GREEN],
   ];
@@ -956,7 +956,7 @@ function flowBox(s, x, y, w, h, title, sub, fill, txt, borderCol) {
 // 16. TEAM + SUPPORTING LINKS
 // ════════════════════════════════════════════════════════════════════════════
 {
-  const s = darkTitled("Two people, one measured system", "Team & supporting links");
+  const s = darkTitled("One builder, one measured system", "Team & supporting links");
   const person = (x, initials, name, role, creds, contact, accent) => {
     s.addShape(pres.ShapeType.roundRect, {
       x, y: 1.75, w: 5.85, h: 3.85, rectRadius: 0.1,
@@ -981,7 +981,7 @@ function flowBox(s, x, y, w, h, title, sub, fill, txt, borderCol) {
       x: x + 0.42, y: 5.05, w: 5.0, h: 0.5, fontFace: B, fontSize: 10.5, color: accent, margin: 0,
     });
   };
-  person(0.7, "RG", "Rohan Gaikwad",
+  person(3.72, "RG", "Rohan Gaikwad",
     "Lead \u2014 retrieval engine, benchmark harness, measurement discipline",
     ["Claude Hackathon \u2014 National Winner (Rank 1), Claude Impact Labs, Mumbai",
      "Claude for Startups \u00b7 NASA OSDR contributor \u00b7 GitHub Developer Program",
@@ -989,14 +989,6 @@ function flowBox(s, x, y, w, h, title, sub, fill, txt, borderCol) {
      "VishwaGuru \u2014 open civic-tech platform, 41 forks, AGPL \u00b7 FixingNation \u2014 Flutter/Android grievance app",
      "66 public repositories \u00b7 3,044 contributions in the last year"],
     "github.com/RohanExploit  \u00b7  linkedin.com/in/rohanvijaygaikwad\nitzrohan007@gmail.com", GREEN);
-  person(6.75, "PJ", "Priyanka Jadhav",
-    "Domain & Evaluation \u2014 ground truth and the student's question set",
-    ["Academic topper, YSPM's Yashoda Technical Campus",
-     "Avishkar Innovation Program \u2014 Zonal Qualifier",
-     "Owns the 208-question benchmark set and its ground truth",
-     "Ran the reject list: 15 of our own questions cut before they shipped",
-     "Defines the student-side problem \u2014 the questions students actually ask"],
-    "Ground-truth owner for every number in this deck", CYAN);
 
   s.addShape(pres.ShapeType.roundRect, {
     x: 0.7, y: 5.75, w: 11.95, h: 0.8, rectRadius: 0.08,
@@ -1013,11 +1005,11 @@ function flowBox(s, x, y, w, h, title, sub, fill, txt, borderCol) {
     { x: 1.05, y: 6.18, w: 11.3, h: 0.3, fontFace: B, fontSize: 11, color: MUTED, margin: 0 }
   );
   s.addText(
-    "The engine is built, benchmarked, and beats two rival architectures on the same hardware. The 30 hours puts it on the phone's silicon.",
+    "The engine is built, benchmarked, and beats two rival architectures on the same hardware. The phone build puts it on the device's silicon.",
     { x: 0.7, y: 6.70, w: 11.95, h: 0.62, fontFace: H, fontSize: 15, bold: true, italic: true,
       color: CYAN, lineSpacing: 20, margin: 0 }
   );
   NOTE(s, "Close on the thesis. Everything claimed in this deck is reproducible from a clean checkout of the linked repository, including the experiments we rejected. The lead has shipped Android before, so the port is inside demonstrated ability.");
 }
 
-pres.writeFile({ fileName: "docs/pitch_iqoo.pptx" }).then((f) => console.log("wrote", f));
+pres.writeFile({ fileName: "docs/pitch_deck.pptx" }).then((f) => console.log("wrote", f));
