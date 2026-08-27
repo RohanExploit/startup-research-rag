@@ -174,8 +174,32 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Create Android project files
-        run: flutter create --platforms=android --project-name company_brain --org com.companybrain .
+      # Generate the android/ tree ONLY if it is not already committed.
+      #
+      # This guard is load-bearing. Task 7 commits an AndroidManifest.xml
+      # carrying the INTERNET/RECORD_AUDIO/CAMERA permissions and the
+      # networkSecurityConfig reference. Regenerating unconditionally would
+      # overwrite it on every run, and the APK would build green, install
+      # fine, and then fail every request on device with cleartext blocked
+      # and no permissions granted.
+      - name: Create Android project files (first run only)
+        run: |
+          if [ ! -d android ]; then
+            flutter create --platforms=android --project-name company_brain --org com.companybrain .
+          else
+            echo "android/ is committed; skipping generation"
+          fi
+
+      # First run only: lets the generated tree be downloaded and committed.
+      # Harmless afterwards.
+      - name: Upload generated android tree
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-android-tree
+          path: mobile/android
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Resolve dependencies
         run: flutter pub get
@@ -218,7 +242,33 @@ gh run watch
 
 Expected: green, with a `company-brain-apk` artifact. If `flutter create` conflicts with the existing `pubspec.yaml`, it regenerates only the missing `android/` tree and leaves `pubspec.yaml` alone — that is intended.
 
-- [ ] **Step 6: Confirm nothing else moved**
+- [ ] **Step 6: Commit the generated `android/` tree**
+
+This step is mandatory and is the whole reason the guard above exists. Download
+the `generated-android-tree` artifact from the run, unzip it to
+`mobile/android/`, and commit it.
+
+```bash
+# after unzipping the artifact into mobile/android/
+git add mobile/android
+git commit -m "build(mobile): commit the generated android tree
+
+Generated once on the runner and committed so it is version-controlled rather
+than regenerated per build. Task 7 adds permissions and a network security
+config to AndroidManifest.xml; if this tree were regenerated each run those
+edits would be overwritten and the APK would build green, install fine, and
+fail every request on device."
+git push origin main
+gh run watch
+```
+
+Expected: the run now prints `android/ is committed; skipping generation` and
+still produces the APK.
+
+**Do not proceed to Task 2 until that line appears.** If the tree is not
+committed, every manifest change in Task 7 is silently discarded.
+
+- [ ] **Step 7: Confirm nothing else moved**
 
 ```bash
 git status --short
