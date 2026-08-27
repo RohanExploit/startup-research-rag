@@ -117,8 +117,13 @@ cost so little: the entire downstream path is the one that already works.
 
 `.github/workflows/android.yml` is a **new** workflow file. It does not modify
 the existing Python CI job, and it is scoped with `paths: ['mobile/**']` so a
-backend commit never triggers an Android build and an Android commit never
-triggers the Python suite.
+backend commit never triggers an Android build.
+
+The reverse is not true and is left alone deliberately: `ci.yml` triggers on
+every push with no path filter, so a mobile-only commit still runs the Python
+suite. Adding a `paths-ignore` there would mean editing an existing file, which
+this design forbids. The cost is a few wasted CI minutes; the benefit is that
+the additive constraint stays literally true.
 
 Each file has one responsibility, and the two services (`speech`, `ocr`) share
 no state with each other — both simply return a `String` to the composer. That
