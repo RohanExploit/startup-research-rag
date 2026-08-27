@@ -111,8 +111,14 @@ cost so little: the entire downstream path is the one that already works.
 | `mobile/lib/widgets/mic_button.dart` | Voice control, listening state |
 | `mobile/lib/services/speech_service.dart` | `speech_to_text` wrapper, permission handling |
 | `mobile/lib/services/ocr_service.dart` | Camera capture + ML Kit text recognition |
+| `mobile/android/app/src/main/res/xml/network_security_config.xml` | Permits cleartext HTTP to private ranges only |
 | `mobile/test/` | Unit and widget tests, run in CI |
 | `.github/workflows/android.yml` | Builds a debug APK on push, uploads as an artifact |
+
+`.github/workflows/android.yml` is a **new** workflow file. It does not modify
+the existing Python CI job, and it is scoped with `paths: ['mobile/**']` so a
+backend commit never triggers an Android build and an Android commit never
+triggers the Python suite.
 
 Each file has one responsibility, and the two services (`speech`, `ocr`) share
 no state with each other — both simply return a `String` to the composer. That
@@ -154,6 +160,84 @@ event:
 The app supports all four identically because the server address is editable
 and persisted — switching networks is a settings edit and a connection test,
 not a rebuild.
+
+## Android platform requirements
+
+These are the things that make the app work on a device rather than only in a
+build log. Each was a gap found in review, and the first one is fatal if missed.
+
+**Cleartext HTTP must be permitted, scoped to private ranges.** Since Android 9
+(API 28) cleartext HTTP is blocked by default. This app's entire connection
+model is plain HTTP to a LAN address, so without this it builds, installs, and
+then fails every request on device with `CLEARTEXT communication not
+permitted`. `res/xml/network_security_config.xml` permits cleartext for private
+address ranges only — not `*` — so the app cannot be pointed at a plaintext
+public host:
+
+```xml
+<network-security-config>
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="true">192.168.0.0</domain>
+    <domain includeSubdomains="true">10.0.0.0</domain>
+    <domain includeSubdomains="true">172.16.0.0</domain>
+    <domain includeSubdomains="true">localhost</domain>
+  </domain-config>
+</network-security-config>
+```
+
+referenced from `AndroidManifest.xml` via
+`android:networkSecurityConfig="@xml/network_security_config"`.
+
+**Manifest permissions:** `INTERNET`, `RECORD_AUDIO`, `CAMERA`. `RECORD_AUDIO`
+and `CAMERA` are runtime permissions and must be requested at first use, not at
+launch — a permission dialog before the user has seen the app is the most
+common reason a demo install gets denied and then silently half-works.
+
+**`minSdk` 21**, required by ML Kit text recognition and `speech_to_text`.
+`targetSdk` 34.
+
+**Application id:** `com.companybrain.mobile`.
+
+**Pinned dependencies**, so a CI build a week from now produces the same APK:
+`http`, `speech_to_text`, `google_mlkit_text_recognition`, `image_picker`,
+`shared_preferences`, `permission_handler` — each pinned to an exact version in
+`pubspec.yaml`, and the Flutter SDK version pinned in the workflow.
+
+## Tenant selection
+
+The request requires a `tenant_id`, so the app must choose one. It is a
+dropdown on the ask screen, populated from `GET /tenants` on first successful
+connection and cached, falling back to `tenant_1` when that call fails.
+
+`GET /tenants` is already scoped by the presented key — a tenant-scoped key
+returns only its own row — so the dropdown shows exactly what the key is
+allowed to reach, with no client-side filtering to get wrong.
+
+Defaulting to `tenant_1` rather than an empty selection matters for the demo:
+it is the corpus with 161 documents and 369 student records, and it is what
+every rehearsed question expects.
+
+## Voice language
+
+`speech_to_text` exposes the device's locale list. The mic control offers
+English, Marathi and Hindi, defaulting to the device locale when it is one of
+those and English otherwise.
+
+This is deliberate rather than decorative: the phone-use score names voice
+explicitly, and a student asking about their own result in Marathi is the
+demonstration that this product is for tier-2 and tier-3 colleges rather than
+an English-language pilot. Recognition is Android's own, so it costs a locale
+parameter and no new dependency.
+
+## What is shown from the response
+
+`query_type` becomes the route badge. `answer` is the body. `metadata.sources`
+becomes the source list.
+
+`context_used` is **not** displayed. The desktop console shows it because an
+operator debugging retrieval needs it; on a phone it is a wall of raw chunk
+text that buries the answer. It is parsed and retained in the model so a later
+"show the evidence" affordance costs nothing, but it does not render in v1.
 
 ## Error handling
 
