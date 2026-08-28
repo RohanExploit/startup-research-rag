@@ -47,6 +47,32 @@ learned once — work that a disconnected drive takes with it.
 
 ---
 
+## Who is working on what
+
+Before starting anything:
+
+```powershell
+powershell -File scripts\claim.ps1 -Show
+```
+
+Prints every machine's claim and the last five pushes. Then claim your lane:
+
+```powershell
+powershell -File scripts\claim.ps1 -Lane mobile -Task "Android Task 2 — Answer model"
+powershell -File scripts\claim.ps1 -Release     # when you stop
+```
+
+Claims live in `.claims/`, one file per machine. That is deliberate: a single
+shared file would conflict every time two machines updated it at once, which is
+the exact situation it exists to prevent. The script commits only your own claim
+file and rebases before pushing, so it can never carry unrelated work or clobber
+anyone.
+
+Claims are advisory, not locks. Nothing enforces them. If one looks stale, ask
+before assuming, then take the lane and update your own file.
+
+---
+
 ## Lanes: how to avoid conflicts instead of resolving them
 
 Two people editing different directories never conflict. Two people editing the
