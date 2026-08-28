@@ -1,83 +1,121 @@
-# CHECKPOINT — Start up V2
+# CHECKPOINT — Company Brain
 
-Snapshot to resume work. Last updated: **2026-08-15**. Prior overnight trail: `OVERNIGHT_LOG.md`; measured status: `PROJECT_STATE.md`.
+Snapshot to resume work from a cold start. Last updated **2026-08-28**.
 
----
-
-## Current state (end of session 2026-08-15)
-- **Branch:** `phase-1-routing` (active; carries all of today's close-out work).
-- **Remote:** `origin` = **https://github.com/RohanExploit/startup-research-rag** (PRIVATE). First push done this session — all 4 branches pushed (`main`, `phase-1-routing`, `phase-1-retrieval-eval`, `upgrade-phase-0`).
-- **Tests:** **227 passed, 1 skipped, 0 failed** (full `pytest -q`, ~34s warm). Hermetic, no live services required. (The 1 skip is a manual PDF-parsing diagnostic.)
-- **Eval baseline (`tests/eval/baseline.json`, 46-Q golden set):** overall answer **60.87%**, route classification **84.78%**. Per-route: TABULAR 95.5% (21/22), GLOBAL 42.9% (3/7), FACT 27.3% (3/11), LOCAL 16.7% (1/6).
-- **Data (tenant_1):** 369 students; 334 pass / 35 fail; pass rate 90.5%; min SGPA 5.18; failed ≥4 subjects = 7.
-- **Model rules (unchanged):** `qwen3:4b-instruct-2507-q4_K_M`, `num_ctx 2048`, `temperature 0`. Backend `api.main:app` on :8000; dashboard = Next.js.
-- **PII:** student-PII spreadsheet fully removed from git (tracking + history); file kept on disk under retention hold. Details below.
+Working agreement for parallel work: `TEAMWORK.md`.
+Measured status: `PROJECT_STATE.md`. Older trail: `OVERNIGHT_LOG.md`.
 
 ---
 
-## THIS SESSION — what we did
+## Where things stand
 
-### Task A — Swarm close-out & first push to remote
+- **Branch:** `main`. All work is on `main`; there are no live feature branches.
+- **Remote:** https://github.com/RohanExploit/startup-research-rag — **public**.
+- **Tests:** **310 passed, 1 skipped** (`pytest -q`, ~40s warm, hermetic).
+- **Benchmark:** **88.9% (185/208)** on the golden set — FACT 96.9%, GLOBAL 84.2%, LOCAL 79.6%. Route classification 54.3% (see *Known defects*). Latency 1.8s median.
+- **Paraphrase stability:** 60% — the share of questions answered identically across every phrasing a user might type. A harder number than accuracy and the more honest one.
+- **tenant_1 corpus:** 161 documents · 369 students · 2,952 exam records · 12 policy documents.
+- **Model:** `qwen3:4b-instruct-2507-q4_K_M`, `num_ctx 2048`, `temperature 0`, on a 4 GB RTX 2050. Cloud egress off by default and test-enforced.
 
-**Phase 1 (4 parallel read-only verification agents):**
-1. **Demo path** — ran the 5 headline queries against the live backend. **All 5 PASS**, all route TABULAR via deterministic SQL templates, cross-checked against DuckDB:
-   - "gaikwad rohan result" → GAIKWAD ROHAN VIJAY, roll 23067571242048, FAIL, 8 subjects.
-   - "students who failed at least 4 subjects" → 7 students.
-   - "overall pass percentage" → 90.5% (334/369).
-   - "which subject has the most failures" → BTCOC502 (16 failures).
-   - "top 5 students by SGPA" → DHUMAL ANUSHKA 8.82, NADAF YASHARA 8.80, TIRTH VAISHNAVI 8.68, BHAIRAMADAGI 8.66, BHANGE 8.64.
-   - Note: OVERNIGHT_LOG's old "failed≥4 = 10 / ≥2 = 77" figures were stale (pre re-ingest); current DB truth is 7 / 16. Data change, not a bug.
-2. **Test gate** — 227 passed / 1 skipped / 0 failed. Produced ordered commit plan.
-3. **Secret scan (BLOCKING)** — found `SESSION-STUDENT-DETAILS-2.xlsx` tracked, containing raw student PII (names, DOB, parents, gender, **caste**, **12-digit Aadhaar**, mobile, email) — DPDP-sensitive. No other secrets tracked. `.gitignore` otherwise good. Noted user's own phone in `auth/allowlist.json` and email in `tests/eval/*.json` (own data, left as-is).
-4. **PROJECT_STATE draft** — measured status snapshot.
+### Read this before anything else
 
-**Phase 2 (sequential committer):**
-- Untracked the PII xlsx (`git rm --cached`, file kept on disk), hardened `.gitignore` (`*.xlsx`/`*.csv`, `.env.*` + `!.env.example`).
-- Landed 5 commits (see trail below), re-verified gate green.
-- Added `PROJECT_STATE.md`.
-- **PII history scrub:** made a safety backup bundle, then `git filter-branch --index-filter` rewrote **all 67 commits** to purge the xlsx blob from every commit. Verified gone from every object + off the remote tree. All commit hashes after `a14d255` changed.
-- Created the private remote and pushed all branches; confirmed remote is PII-clean.
+**The corpus exists in exactly one place.** `data/` is gitignored, `git ls-files data` returns zero files, and `data/tenants/tenant_1/` took hours of exclusive GPU time to build. It currently lives on a single external drive. That drive disconnected mid-session on 2026-08-27, which cost nothing only because everything tracked was already pushed.
 
-**Commit trail (post-scrub hashes, `phase-1-routing`):**
-```
-a7c15d1 docs: add PROJECT_STATE.md close-out snapshot
-ac8fa4b refactor(dashboard): restyle UI with drawn icon set and shared table styling; fix grade badge colours
-bdd3192 chore(eval): add Gate-1 ingestion validation log
-89435a7 fix(retrieval): resolve student lookups by name/roll regardless of word order
-ebb2139 security: stop tracking raw student PII spreadsheet
-1cca0d6 feat(retrieval): FACT depth k=10, entity-link confidence gate, attribute routing  (prior HEAD)
+Backing it up is Task 1 of the Phase 4 plan and it has not been done yet.
+
+---
+
+## Bring it up
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\demo_up.ps1
 ```
 
-### Task B — Elaborate real-world test plan (IN PROGRESS, planning done)
-- Ran `/plan` in plan mode; 2 Explore agents mapped the existing test infra + full product surface.
-- Scope decided with user: cover **(1) adversarial & messy input, (2) dashboard UI e2e, (3) weak-route + load stress**; deliverable = **automated tests + demo runbook**; structure = **two-tier** (hermetic CI + live manual gate).
-- Plan approved and saved: `C:\Users\ACER\.claude\plans\purrfect-petting-lighthouse.md`.
-- Build order: (1) hermetic tier `tests/scenarios/` + config, (2) demo runbook `docs/DEMO_RUNBOOK.md`, (3) adversarial eval set `tests/eval/adversarial_set.json`, (4) Playwright e2e `dashboard/e2e/`, (5) live gate `tests/live/`.
-- **Status: nothing written yet** — was reading source files (`conftest.py`, `retrieval/intent.py`, `entity_link.py`, `run_eval.py`) to bind tests to real signatures when this checkpoint was requested. Locked `golden_set.json` will NOT be mutated (contamination guard); weak routes treated as diagnostic, not gating.
+Starts Ollama, the API and a production build of the dashboard, waits for each to answer, then fires a real query and prints the result. Cold start is ~90s, almost all of it loading the model into 4 GB of VRAM. Stop with `scripts\demo_down.ps1`.
+
+| | |
+|---|---|
+| Dashboard | http://localhost:3000 |
+| Phone view | http://localhost:3000/m |
+| API health | http://127.0.0.1:8000/health |
+
+Demo runbook with the four-question walkthrough: `docs/DEMO_RUNBOOK.md`.
 
 ---
 
-## Results this session (headline numbers)
-- Tests: **227 / 1 skip / 0 fail** (green before and after all commits).
-- Eval: **60.87%** answer, **84.78%** route (unchanged baseline; no eval work done this session).
-- Demo: **5/5** headline queries pass, live, DB-verified.
-- Security: **1 PII file** scrubbed from all history; **0** secrets/tokens on remote; remote verified clean.
-- Git: repo pushed to its **first remote** (private).
+## Work in flight
+
+### Android phone client — Task 1 of 10 done
+
+Plan: `docs/superpowers/plans/2026-08-26-android-client.md`
+Spec: `docs/superpowers/specs/2026-08-26-android-client-design.md`
+
+A Flutter client in `mobile/` that asks the existing engine a question — typed, spoken or photographed — and shows the answer with its sources. Purely additive: it calls the `/query` endpoint that already exists and needs no backend change.
+
+- **Done:** Task 1 — Flutter scaffold, pinned dependencies, CI workflow producing a debug APK, and the generated `android/` tree committed.
+- **Next:** Task 2 (Answer model) through Task 10 (runbook). Task 7 is the first installable working app; Tasks 8 (voice) and 9 (camera OCR) are additive and droppable.
+- **No Android toolchain exists on the build machine** — no Flutter SDK, no Android SDK, no Gradle, and the local JDK is 23 while the Android Gradle Plugin needs 17. **CI is the compiler, not a check on it.** Verify by pushing and reading the Android workflow run.
+- `android/` is committed on purpose. The workflow only runs `flutter create` when it is absent. Regenerating it per build would silently discard the manifest permissions and the cleartext-HTTP config, producing an APK that builds green and then fails every request on device.
+
+### Phase 4 — designed, not started
+
+Plan: `docs/superpowers/plans/2026-08-26-phase4-contact-with-reality.md`
+Spec: `docs/superpowers/specs/2026-08-26-phase4-design.md`
+
+Thirteen tasks, ~14 days. Back up the corpus and freeze the demo as a test, kill the confidently-wrong answers, open an investor tunnel safely, find out whether the tabular parser generalises to a second college, repair ingestion, then get 100 real questions from people outside the team.
+
+Twelve rejected proposals are recorded in the spec with the objection that killed each — including a CI accuracy gate, which cannot work because CI has no corpus and replaying frozen answers is invariant to source changes.
 
 ---
 
-## Pending / next
-1. **Execute the test plan** (Task B) — start with the hermetic `tests/scenarios/` tier + `pyproject.toml` marker registration, then the runbook. Plan file has the full breakdown.
-2. **Optional history hygiene** — user's own phone (`auth/allowlist.json`) and email (`tests/eval/*.json`) are on the private remote; move to untracked config if the repo ever goes public.
-3. **Weak routes** (from PROJECT_STATE): FACT 27.3%, LOCAL 1/6, GLOBAL churn — the "next 3 levers" if resumed.
-4. The on-disk `SESSION-STUDENT-DETAILS-2.xlsx` remains under retention hold, gitignored — do not delete.
+## Known defects
 
-## Resume commands
-```bash
-cd "R:/Startup research/Start up V2"
-git log --oneline -8                                   # review this session's commits
-.venv312/Scripts/python.exe -m pytest -q               # full gate (expect 227 passed, 1 skipped)
-.venv312/Scripts/python.exe -m pytest tests/scenarios -q   # (once Task B hermetic tier exists)
-python tests/eval/run_eval.py --limit 5                # eval smoke (needs Ollama + tenant_1)
-git remote -v                                          # origin = RohanExploit/startup-research-rag (private)
+Documented rather than hidden. Each has a task in the Phase 4 plan.
+
+1. **Negation inverts the answer.** *"How many students did not pass?"* matches the keyword `pass` and answers *"334 students passed"* — confidently, on the one code path that bypasses every abstention safeguard, because `api/main.py` returns TABULAR answers without calling the generator. Highest-severity live-demo risk.
+2. **Synonym gaps.** *"paper"* does not reach the subject regex, so a subject-scoped question answers with the global failure count. *"scoring 8 or higher"* routes to a search over student **names**.
+3. **One GLOBAL phrasing landmine.** *"Summarize the overall academic performance of the institute"* abstains while three near-identical phrasings answer fine. Avoid it in demos.
+4. **Route classification reads 54.3%** against 88.9% answer accuracy. Largely a measurement artifact: the scorer compares against a route the router already reassigned to FACT, so every successful rescue scores as a routing failure. Do not "fix" it by suppressing the fallback that is rescuing answers.
+5. **Both documented ingestion paths are broken.** `pipeline.py` expects a manifest schema `ingestion/parse.py` does not write, so it raises `OperationalError` on every tenant on disk.
+
+---
+
+## Recent trail
+
 ```
+59dac38  docs: working agreement for parallel work on an unprotected main
+737ce17  build(mobile): commit the generated android tree
+4e0890d  fix(mobile): add widget test matching CompanyBrainApp
+49d148a  build(mobile): Flutter scaffold and CI that produces an APK
+02882bf  fix(plan): commit the generated android tree instead of regenerating it
+78bdc22  docs(plan): Android client implementation plan, 10 tasks
+80424ab  docs(spec): Android client design
+2a56534  docs(plan): Phase 4 implementation plan, 13 tasks
+2a43260  chore(repo): remove hackathon-specific framing and a personal name
+2e345e4  docs(spec): Phase 4 design — Contact With Reality
+19426cf  fix(audit): six layout defects on the Enterprise Audit Suite page
+3c5430e  feat(demo): one-command bring-up and a runbook for live demos
+```
+
+---
+
+## Setting up a second machine
+
+`git clone` alone will not run. See `TEAMWORK.md` for the full list; the short version:
+
+| Missing | How to get it |
+|---|---|
+| `data/tenants/**` | Copy from the machine that has it. There is no other source. |
+| `.env` | Copy `.env.example`, fill it in |
+| `.encryption_key` | Copy from the original machine — regenerating it makes existing encrypted data unreadable |
+| `.venv312/` | `python -m venv .venv312 && .venv312\Scripts\pip install -r requirements.txt` |
+| `dashboard/node_modules/` | `cd dashboard && npm install` |
+
+---
+
+## Standing rules
+
+- **Push only after the suite is green.** `pytest -q` must read 310 passed, 1 skipped.
+- **Never force-push `main`.** See `TEAMWORK.md`.
+- Nothing derived from student data gets deleted.
+- Measure before and after any change that claims an accuracy effect, using the frozen RUN/SCORE split — answers written to disk before scoring, so no scorer can be written after seeing the numbers it judges.
