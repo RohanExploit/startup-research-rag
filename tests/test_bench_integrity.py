@@ -25,6 +25,16 @@ from tests.eval.bench.world import (  # noqa: E402
 CORPUS = PROJECT_ROOT / "Dataset" / "bench_v1" / "corpus"
 GOLD = PROJECT_ROOT / "tests" / "eval" / "golden_bench.json"
 
+# The rendered corpus lives under Dataset/, which is gitignored because it is a
+# generated artifact rather than source. The two tests below read the rendered
+# .md files, so on a clean checkout they have nothing to read and previously
+# failed with an empty-list assertion that looked like a real regression. They
+# skip instead. Regenerate the corpus locally with tests/eval/bench/render_corpus.py.
+requires_rendered_corpus = pytest.mark.skipif(
+    not CORPUS.exists(),
+    reason="Dataset/bench_v1/corpus is gitignored; render it with tests/eval/bench/render_corpus.py",
+)
+
 
 # ── the world model ──────────────────────────────────────────────────────────
 
@@ -75,6 +85,7 @@ def test_department_profiles_do_not_name_their_laboratories():
             )
 
 
+@requires_rendered_corpus
 def test_lab_to_department_mapping_lives_in_exactly_one_document():
     docs = {p.name: p.read_text(encoding="utf-8") for p in CORPUS.glob("*.md")}
     for lab, code, *_ in LABS:
@@ -85,6 +96,7 @@ def test_lab_to_department_mapping_lives_in_exactly_one_document():
         )
 
 
+@requires_rendered_corpus
 def test_corpus_is_large_enough_that_top_k_is_not_the_whole_corpus():
     """At 27 chunks a k=10 retrieval returned a third of everything and precision was
     untestable. Keep the corpus above the size where retrieval has to choose."""
