@@ -223,6 +223,53 @@ PEOPLE = {
         "phone": "+91 90000 10022", "office": "EXTC Block, Room EC-108",
         "hours": "Monday-Friday 13:00-14:00",
     },
+    # The six SPOCs below back the notices/handbook/events/attendance/deadline-tracker
+    # documents in corpus/render_notices.py — general administrative functions (fees, ID
+    # cards, hostel, transport, student activities, NSS) that the first rendering pass had
+    # no notice category needing yet.
+    "accounts_spoc": {
+        "name": "Mr. Santosh Rane", "designation": "Section Officer, Accounts",
+        "department": None, "role": "Fee and Accounts SPOC",
+        "email": "accounts@kriet.ac.in", "phone": "+91 90000 10023",
+        "office": "Admin Building, Room 105 (Accounts Section)",
+        "hours": "Monday-Saturday 10:30-16:30",
+    },
+    "student_section_spoc": {
+        "name": "Mrs. Vaishali Naik", "designation": "Section Officer, Student Section",
+        "department": None,
+        "role": "Student Section SPOC (ID cards, certificates, semester registration)",
+        "email": "studentsection@kriet.ac.in", "phone": "+91 90000 10024",
+        "office": "Admin Building, Room 107 (Student Section)",
+        "hours": "Monday-Saturday 10:00-16:00",
+    },
+    "hostel_warden": {
+        "name": "Dr. Prakash Bhide", "designation": "Chief Hostel Warden",
+        "department": None, "role": "Hostel Warden",
+        "email": "hostel@kriet.ac.in", "phone": "+91 90000 10025",
+        "office": "Hostel Administration Office, Block E",
+        "hours": "Monday-Saturday 17:00-19:00 (hostel office hours)",
+    },
+    "transport_incharge": {
+        "name": "Mr. Dilip Kadave", "designation": "Transport In-Charge",
+        "department": None, "role": "Bus Transport SPOC",
+        "email": "transport@kriet.ac.in", "phone": "+91 90000 10026",
+        "office": "Transport Office, near Main Gate",
+        "hours": "Monday-Saturday 08:00-16:00",
+    },
+    "student_activities_officer": {
+        "name": "Prof. Kavita Wagh", "designation": "Dean, Student Activities",
+        "department": None, "role": "Student Activities and Events SPOC",
+        "email": "activities@kriet.ac.in", "phone": "+91 90000 10027",
+        "office": "Student Activities Cell, Admin Building Ground Floor",
+        "hours": "Monday-Friday 15:00-16:30",
+    },
+    "nss_officer": {
+        "name": "Dr. Sanjay Parab", "designation": "NSS Programme Officer",
+        "department": None, "role": "NSS Coordinator",
+        "email": "nss@kriet.ac.in", "phone": "+91 90000 10028",
+        "office": "NSS Cell, Admin Building Ground Floor",
+        "hours": "Monday-Friday 14:00-15:00",
+    },
 }
 
 
@@ -383,13 +430,46 @@ NOTICE_LOG = {
     "scholarship_shahu_merit": "KRIET/SCHOLAR/2026-27/003",
     "scholarship_shahu_ebc": "KRIET/SCHOLAR/2026-27/004",
     "scholarship_alumni_grant": "KRIET/SCHOLAR/2026-27/005",
+    "scholarship_eligibility_matrix": "KRIET/SCHOLAR/2026-27/006",
     "scholarship_sports": "KRIET/SPORTS/2026-27/002",
+    "sports_cultural_benefits": "KRIET/SPORTS/2026-27/003",
     "placement_ratnagiri_softworks": "KRIET/TPO/2026-27/006",
     "placement_sindhu_cloud": "KRIET/TPO/2026-27/011",
+    "placement_policy": "KRIET/TPO/2026-27/012",
+    "placement_konkangiri_analytics": "KRIET/TPO/2026-27/013",
+    "placement_malvan_robotics": "KRIET/TPO/2026-27/014",
+    "placement_vishalgad_power": "KRIET/TPO/2026-27/015",
+    "placement_devbaug_structall": "KRIET/TPO/2026-27/016",
     "training_aws_bootcamp": "KRIET/TRAIN/2026-27/002",
+    "training_programmes": "KRIET/TRAIN/2026-27/003",
     "incubation_cohort5": "KRIET/INCUB/2026-27/002",
     "library_fine_waiver": "KRIET/LIB/2026-27/001",
     "grievance_affidavit": "KRIET/GRIEV/2026-27/001",
+    "spoc_directory": "KRIET/ADMIN/2026-27/001",
+    # Below: notice board, handbook, events/holidays, attendance and deadline-tracker
+    # documents rendered by corpus/render_notices.py.
+    "fee_payment_odd": "KRIET/ACCT/2026-27/001",
+    "id_card_reissue": "KRIET/GEN/2026-27/001",
+    "bonafide_certificate": "KRIET/GEN/2026-27/002",
+    "semester_registration_even": "KRIET/GEN/2026-27/003",
+    "dress_code_reminder": "KRIET/GEN/2026-27/004",
+    "hostel_allotment": "KRIET/HOSTEL/2026-27/001",
+    "bus_pass_renewal": "KRIET/TRANS/2026-27/001",
+    "convocation_registration": "KRIET/ACAD/2026-27/002",
+    "student_handbook": "KRIET/HB/2026-27/001",
+    "holiday_list": "KRIET/CAL/2026-27/001",
+    "event_tech_fest": "KRIET/EVENT/2026-27/001",
+    "event_cultural_fest": "KRIET/EVENT/2026-27/002",
+    "event_sports_meet": "KRIET/EVENT/2026-27/003",
+    "event_industry_visit": "KRIET/EVENT/2026-27/004",
+    "event_guest_lecture": "KRIET/EVENT/2026-27/005",
+    "event_alumni_meet": "KRIET/EVENT/2026-27/006",
+    "event_nss_camp": "KRIET/EVENT/2026-27/007",
+    "attendance_policy": "KRIET/ATT/2026-27/001",
+    "attendance_defaulter_procedure": "KRIET/ATT/2026-27/002",
+    "attendance_condonation": "KRIET/ATT/2026-27/003",
+    "attendance_specimen_statement": "KRIET/ATT/2026-27/004",
+    "deadline_tracker": "KRIET/DEADLINE/2026-27/001",
 }
 
 
@@ -576,6 +656,23 @@ SCHEMES = [
         ),
         "portal": "National Scholarship Portal - scholarships.gov.in",
         "notice_key": "scholarship_postmatric",
+        "application_steps": [
+            "Register or log in on the National Scholarship Portal (scholarships.gov.in) "
+            "using your Aadhaar number",
+            "Select \"Post-Matric Scholarship for SC/ST Students\" and fill the institute, "
+            "course and bank-account details",
+            "Upload scanned copies of the caste certificate, income certificate, Aadhaar "
+            "card, previous year statement of marks and the Aadhaar-linked bank passbook",
+            "Submit the online application before the window closes on 31 October 2026",
+            "Print the system-generated acknowledgement and hand a signed copy to the "
+            "Scholarship SPOC (Accounts Section) for institute-level verification",
+        ],
+        "after_submission": (
+            "The institute verifies the uploaded documents against originals and forwards "
+            "the application to the Directorate of Technical Education within 15 days of "
+            "the window closing; the student can track status on the portal using the "
+            "application ID, and disbursement follows within 90 days of closure by DBT"
+        ),
     },
     {
         "name": "Rajarshi Shahu Maharaj Merit Scholarship",
@@ -593,6 +690,23 @@ SCHEMES = [
         "disbursement_timeline": "Within 120 days of application window closure, via Maha DBT",
         "portal": "Maha DBT Portal - mahadbt.maharashtra.gov.in",
         "notice_key": "scholarship_shahu_merit",
+        "application_steps": [
+            "Log in to the Maha DBT Portal (mahadbt.maharashtra.gov.in) with your student "
+            "credentials",
+            "Select \"Rajarshi Shahu Maharaj Merit Scholarship\" under the DBATU / KRIET "
+            "institute list",
+            "Enter the previous semester's CGPA (a scanned marksheet must support at least "
+            "6.50) and category details",
+            "Upload the caste certificate, income certificate, domicile certificate and "
+            "previous semester marksheet",
+            "Submit before 15 October 2026 and note the application reference number",
+        ],
+        "after_submission": (
+            "The Scholarship SPOC cross-checks the uploaded CGPA and income certificate "
+            "against institute records within 10 working days; an application failing "
+            "verification is returned on the portal for resubmission, and an accepted "
+            "application is disbursed via Maha DBT within 120 days of closure"
+        ),
     },
     {
         "name": "Rajarshi Shahu Maharaj Freeship for EBC",
@@ -611,6 +725,22 @@ SCHEMES = [
         "disbursement_timeline": "Within 120 days of application window closure, via Maha DBT",
         "portal": "Maha DBT Portal - mahadbt.maharashtra.gov.in",
         "notice_key": "scholarship_shahu_ebc",
+        "application_steps": [
+            "Log in to the Maha DBT Portal (mahadbt.maharashtra.gov.in) with your student "
+            "credentials",
+            "Select \"Rajarshi Shahu Maharaj Freeship for EBC\" under the DBATU / KRIET "
+            "institute list",
+            "Upload the income certificate showing income below Rs. 1,00,000, the "
+            "non-creamy-layer declaration, domicile certificate and previous semester "
+            "marksheet",
+            "Submit before 15 October 2026 and note the application reference number",
+        ],
+        "after_submission": (
+            "The Scholarship SPOC verifies the income certificate and non-creamy-layer "
+            "declaration against institute records within 10 working days; a discrepancy is "
+            "returned on the portal for resubmission, and an accepted application is "
+            "disbursed via Maha DBT within 120 days of closure"
+        ),
     },
     {
         "name": "KRIET Alumni Merit Grant",
@@ -629,6 +759,20 @@ SCHEMES = [
         ),
         "portal": "Internal - apply in person at the Accounts Section",
         "notice_key": "scholarship_alumni_grant",
+        "application_steps": [
+            "Collect the KRIET Alumni Merit Grant application form from the Accounts "
+            "Section (Admin Building, Room 106) or download it from the institute website",
+            "Attach the previous two semester marksheets (CGPA must be at least 8.50) and a "
+            "signed no-backlog declaration",
+            "Submit the form in person to the Scholarship SPOC between 1 and 20 September "
+            "2026 and collect a dated acknowledgement slip",
+        ],
+        "after_submission": (
+            "The Scholarship SPOC verifies the CGPA and no-backlog declaration against "
+            "examination records within 10 working days; the grant is credited directly to "
+            "the tuition-fee ledger before the following semester's fee due date, so no "
+            "separate disbursement step is needed"
+        ),
     },
     {
         "name": "Sports and Cultural Excellence Scholarship",
@@ -646,6 +790,20 @@ SCHEMES = [
         "disbursement_timeline": "Within 60 days of application window closure",
         "portal": "Internal - apply at the Sports Complex Office",
         "notice_key": "scholarship_sports",
+        "application_steps": [
+            "Collect the Sports and Cultural Excellence Scholarship form from the Sports "
+            "Complex Office",
+            "Attach the selection or participation certificate from the state or national "
+            "association and a signed no-backlog declaration",
+            "Submit the form in person to the Sports Officer between 1 and 30 September "
+            "2026 and collect a dated acknowledgement slip",
+        ],
+        "after_submission": (
+            "The Sports Officer verifies the participation certificate with the concerned "
+            "association within 10 working days and forwards the verified list to the "
+            "Accounts Section; disbursement follows within 60 days of the application "
+            "window closing"
+        ),
     },
 ]
 
@@ -671,38 +829,131 @@ ATTENDANCE_POLICY = {
 }
 
 
+# ── sports and cultural benefits ─────────────────────────────────────────────
+# A separate, broader set of benefits from the Sports and Cultural Excellence Scholarship
+# in SCHEMES above: this covers the admission quota, the attendance relaxation for
+# representing the institute, prize money and the annual kit allowance. The attendance
+# relaxation figure below is the same 70% used by the SCHEMES sports scholarship entry — one
+# underlying institute rule, referenced from two documents — and is deliberately different
+# from ATTENDANCE_POLICY["min_attendance_pct"] (75%): a student who represents KRIET is held
+# to a different, lower bar, and an answer that quotes the general policy for such a student
+# is wrong.
+SPORTS_CULTURAL_BENEFITS = {
+    "notice_key": "sports_cultural_benefits",
+    "quota_seats_per_department": 2,
+    "quota_description": (
+        "2 supernumerary seats per department each admission year, reserved for candidates "
+        "holding a state or national level sports/cultural representation certificate, over "
+        "and above the sanctioned intake in DEPARTMENTS"
+    ),
+    "attendance_relaxation_pct": 70,
+    "on_duty_provision": (
+        "Days spent representing KRIET at a recognised state or national sports or cultural "
+        "event are marked \"On Duty\" and counted as present for attendance purposes, on "
+        "production of the participation proof below, provided the student's counted "
+        "attendance does not fall below 70%"
+    ),
+    # level, position, prize money (Rs.)
+    "prize_money": [
+        ("State", "1st", 5000),
+        ("State", "2nd", 3000),
+        ("National", "1st", 15000),
+        ("National", "2nd", 8000),
+    ],
+    "kit_allowance_per_year": 3000,
+    "eligibility_proof_required": [
+        "Selection letter or participation certificate from the state or national sports or "
+        "cultural association",
+        "Event result sheet or proof of position for a prize money claim",
+        "Countersignature of the Sports Officer within 3 days of returning to campus",
+    ],
+    "spoc_key": "sports_officer",
+}
+
+
 # ── placements ────────────────────────────────────────────────────────────────
 # company, role, package (LPA), minimum CGPA, maximum live backlogs allowed, branches
-# eligible (department codes), registration deadline (ISO), drive date (ISO), SPOC.
+# eligible (department codes), registration deadline (ISO), drive date (ISO), SPOC,
+# selection rounds (in order).
 PLACEMENTS = [
     ("Ratnagiri Softworks", "Software Engineer Trainee", 6.2, 7.0, 0,
-     ["COMP", "IT"], "2026-09-08", "2026-09-16", "tpo"),
+     ["COMP", "IT"], "2026-09-08", "2026-09-16", "tpo",
+     ["Online Aptitude Test", "Technical Interview", "HR Interview"]),
     ("Konkangiri Analytics", "Data Analyst", 5.8, 7.2, 0,
-     ["COMP", "IT"], "2026-09-22", "2026-09-30", "tpo"),
+     ["COMP", "IT"], "2026-09-22", "2026-09-30", "tpo",
+     ["Online Aptitude Test", "Case Study Round", "Technical Interview", "HR Interview"]),
     ("Malvan Robotics Pvt Ltd", "Graduate Engineer Trainee", 4.5, 6.5, 1,
-     ["MECH", "EXTC"], "2026-10-06", "2026-10-14", "tpo"),
+     ["MECH", "EXTC"], "2026-10-06", "2026-10-14", "tpo",
+     ["Written Test", "Group Discussion", "Technical Interview", "HR Interview"]),
     ("Vishalgad Power Systems", "Graduate Engineer Trainee (Electronics)", 4.2, 6.2, 2,
-     ["EXTC"], "2026-10-20", "2026-10-28", "tpo"),
+     ["EXTC"], "2026-10-20", "2026-10-28", "tpo",
+     ["Written Test", "Technical Interview", "HR Interview"]),
     ("Devbaug Structall Engineers", "Site Engineer", 4.0, 6.0, 2,
-     ["CIVIL"], "2026-11-03", "2026-11-12", "tpo"),
+     ["CIVIL"], "2026-11-03", "2026-11-12", "tpo",
+     ["Written Test", "Technical Interview", "HR Interview"]),
     ("Sindhu Cloud Systems", "Cloud Support Engineer", 7.5, 7.5, 0,
-     ["COMP", "IT", "EXTC"], "2026-11-17", "2026-11-25", "tpo"),
+     ["COMP", "IT", "EXTC"], "2026-11-17", "2026-11-25", "tpo",
+     ["Online Aptitude Test", "Technical Interview", "Managerial Interview", "HR Interview"]),
 ]
 
 
+# ── placement policy ─────────────────────────────────────────────────────────
+PLACEMENT_POLICY = {
+    "registration_rule": (
+        "Every student in the final and pre-final year must register once with the "
+        "Placement Cell at the start of the placement season (online form circulated by the "
+        "TPO) before appearing for any company drive; a student who has not registered is "
+        "not permitted to sit for any drive that season"
+    ),
+    "one_offer_rule": (
+        "A student who accepts an offer, verbally at the drive or in writing, is placed and "
+        "is withdrawn from all subsequent drives for that academic year; sitting for a "
+        "further drive after accepting an offer requires a written no-objection from the "
+        "TPO, granted only for a package at least 50% higher than the accepted offer"
+    ),
+    "backlog_policy": (
+        "The maximum live backlog count for each drive is set by the recruiting company "
+        "(see the per-drive cut-off in PLACEMENTS); a student with more live backlogs than "
+        "a drive's stated limit is not permitted to register for that specific drive "
+        "regardless of CGPA"
+    ),
+    "dress_code": (
+        "Formal business attire is mandatory for every drive: full-sleeve shirt and formal "
+        "trousers for men, formal Indian or Western business wear for women; jeans, "
+        "T-shirts and sportswear are not permitted"
+    ),
+    "absenteeism_penalty": (
+        "A registered student who does not report for a drive without informing the "
+        "Placement Cell at least 24 hours in advance is debarred from the next two drives"
+    ),
+    "spoc_key": "tpo",
+}
+
+
 # ── training programmes ───────────────────────────────────────────────────────
-# programme, provider, duration, fee (Rs.), eligibility, certification, coordinator.
+# programme, provider, duration, fee (Rs.), eligibility, certification, coordinator,
+# schedule, how to enrol.
 TRAINING = [
     ("AWS Cloud Practitioner Certification Bootcamp", "Konkan Skill Academy",
      "6 weeks (weekend batches)", 4500,
      "Semester 5 or above; Computer Engineering, Information Technology or EXTC",
-     "AWS Cloud Practitioner voucher exam (external, additional Rs. 3,300)", "tpo"),
+     "AWS Cloud Practitioner voucher exam (external, additional Rs. 3,300)", "tpo",
+     "Saturday and Sunday, 10:00-13:00, starting 26 September 2026",
+     "Submit the enrolment form circulated by the TPO office by 20 September 2026; seats "
+     "are confirmed on a first-come basis and the fee is payable at the Accounts Section "
+     "on confirmation"),
     ("Full-Stack Web Development (MERN)", "Vidyasagar Career Foundation",
      "8 weeks", 6000, "Semester 4 or above; any branch",
-     "Course completion certificate; optional proctored MERN assessment", "tpo"),
+     "Course completion certificate; optional proctored MERN assessment", "tpo",
+     "Weekday evenings, Monday-Thursday 17:00-19:00, starting 5 October 2026",
+     "Register at the TPO office with the fee receipt; each batch is capped between 20 and "
+     "40 students and closes once full"),
     ("Embedded Systems and IoT Workshop", "Ratnagiri Institute of Advanced Computing",
      "2 weeks (intensive)", 2500, "EXTC, semester 5 or 6",
-     "Workshop completion certificate", "hod_extc"),
+     "Workshop completion certificate", "hod_extc",
+     "Daily 09:30-16:30, starting 12 January 2027 (winter vacation slot)",
+     "Register with the EXTC HOD's office; departmental priority is given to semester 6 "
+     "students"),
 ]
 
 
@@ -747,6 +998,21 @@ INCUBATION = {
     ],
     "application_deadline_cohort5": "2026-09-30",
     "application_deadline_cohort6": "2027-02-15",
+    "ip_policy": (
+        "Intellectual property generated using Incubation Centre resources (co-working "
+        "space, prototyping lab, seed funding) is jointly owned by the student founder(s) "
+        "and KRIET in a 70:30 (founder:institute) split; the institute waives its share in "
+        "full if the founder(s) exit the incubation programme before availing any seed "
+        "funding tier"
+    ),
+    "seed_grant_terms": (
+        "The Seed Grant (Rs. 2,00,000) is released in two tranches: 60% on sanction and 40% "
+        "on a milestone review conducted 6 months after sanction; the institute takes no "
+        "equity in exchange for any funding tier; recipients must submit a utilisation "
+        "certificate to the Incubation Manager within 12 months of the first tranche and "
+        "acknowledge the Ratnaditya Innovation and Incubation Centre in any resulting "
+        "patent filing, publication or investor deck"
+    ),
 }
 
 
@@ -779,6 +1045,21 @@ LIBRARY = {
     "overdue_notice": (
         "SMS/email reminder sent 2 days before the due date, and a second reminder on "
         "the due date itself"
+    ),
+    "renewal_rule": (
+        "A book may be renewed once for the same loan period, in person or online, provided "
+        "it is not on hold for another reader"
+    ),
+    "remote_access": (
+        "DELNET and the NPTEL Local Chapter Repository are reachable off-campus via "
+        "institute single sign-on (roll number and library password) at "
+        "remote.kriet.ac.in; IEEE Xplore is IP-restricted to the campus network under the "
+        "departmental subscription and has no remote-access option"
+    ),
+    "lost_book_policy": (
+        "The reader pays the current market price of the title plus a Rs. 200 processing "
+        "fee, or replaces it with a fresh copy of the same edition approved by the "
+        "Librarian, within 30 days of the loss being reported"
     ),
 }
 
@@ -820,6 +1101,44 @@ GRIEVANCE = {
 }
 
 
+# ── SPOC directory ────────────────────────────────────────────────────────────
+# task (a plain-English "who do I contact for X" line) -> person-key. This is the
+# consolidated cross-reference the grievance/contacts notice renders as a directory table —
+# the answer to "who do I contact for X" a student should never have to derive by phoning
+# around. Every PEOPLE entry that carries a role (i.e. every SPOC, as opposed to the
+# subject-teaching-only faculty whose "role" is None) appears here exactly once; this is
+# checked by tests/test_student_corpus_services.py rather than by hand, since a role added
+# to PEOPLE without a matching directory row is exactly the kind of silent gap this table
+# exists to prevent.
+SPOC_DIRECTORY = [
+    ("General administration and correspondence", "principal"),
+    ("Registration, certificates, transcripts and official records", "registrar"),
+    ("Computer Engineering department matters", "hod_comp"),
+    ("Electronics and Telecommunication Engineering department matters", "hod_extc"),
+    ("Mechanical Engineering department matters", "hod_mech"),
+    ("Civil Engineering department matters", "hod_civil"),
+    ("Information Technology department matters", "hod_it"),
+    ("Scholarship and fee-waiver applications", "scholarship_spoc"),
+    ("Placement registration and company drives", "tpo"),
+    ("Grievance escalation (Level 2 committee)", "grievance_chair"),
+    ("Anti-ragging complaints and affidavit queries", "antiragging_spoc"),
+    ("Library services, fines and digital access", "librarian"),
+    ("Sports quota, kit allowance and prize money", "sports_officer"),
+    ("Incubation centre applications and seed funding", "incubation_manager"),
+    ("Examination schedule, hall tickets and results", "exam_controller"),
+    ("Attendance shortage and condonation appeals", "attendance_coordinator"),
+    # The six entries below back the fee/ID-card/hostel/transport/activities/NSS SPOCs
+    # added alongside corpus/render_notices.py; kept here so this directory stays the one
+    # complete "who do I contact for X" answer regardless of which renderer a role serves.
+    ("Fee payment and accounts queries", "accounts_spoc"),
+    ("ID cards, certificates and semester registration", "student_section_spoc"),
+    ("Hostel allotment and hostel rules", "hostel_warden"),
+    ("Bus pass issue and renewal", "transport_incharge"),
+    ("Student activities, fests and campus events", "student_activities_officer"),
+    ("NSS enrolment and camps", "nss_officer"),
+]
+
+
 # ── consolidated deadlines ────────────────────────────────────────────────────
 # item, date (ISO), owning SPOC person-key, the notice number that announced it (resolved
 # from NOTICE_LOG above, so it can never drift from what a rendered notice actually prints).
@@ -836,6 +1155,14 @@ DEADLINES = [
      "sports_officer", NOTICE_LOG["scholarship_sports"]),
     ("Ratnagiri Softworks placement registration closes", "2026-09-08",
      "tpo", NOTICE_LOG["placement_ratnagiri_softworks"]),
+    ("Konkangiri Analytics placement registration closes", "2026-09-22",
+     "tpo", NOTICE_LOG["placement_konkangiri_analytics"]),
+    ("Malvan Robotics Pvt Ltd placement registration closes", "2026-10-06",
+     "tpo", NOTICE_LOG["placement_malvan_robotics"]),
+    ("Vishalgad Power Systems placement registration closes", "2026-10-20",
+     "tpo", NOTICE_LOG["placement_vishalgad_power"]),
+    ("Devbaug Structall Engineers placement registration closes", "2026-11-03",
+     "tpo", NOTICE_LOG["placement_devbaug_structall"]),
     ("Sindhu Cloud Systems placement registration closes", "2026-11-17",
      "tpo", NOTICE_LOG["placement_sindhu_cloud"]),
     ("AWS Cloud Practitioner Bootcamp enrollment closes", "2026-09-20",
@@ -852,7 +1179,456 @@ DEADLINES = [
      "librarian", NOTICE_LOG["library_fine_waiver"]),
     ("Anti-ragging affidavit submission deadline (all students)", "2026-08-05",
      "antiragging_spoc", NOTICE_LOG["grievance_affidavit"]),
+    # Below: deadlines behind the notices/events/attendance documents in
+    # corpus/render_notices.py. Each date is also the date printed on the individual notice
+    # named by its notice_key, so the two can never drift apart.
+    ("Hostel room allotment application closes", "2026-07-05",
+     "hostel_warden", NOTICE_LOG["hostel_allotment"]),
+    ("Bus pass renewal window closes", "2026-07-08",
+     "transport_incharge", NOTICE_LOG["bus_pass_renewal"]),
+    ("Odd-term tuition and hostel fee payment due date", "2026-07-20",
+     "accounts_spoc", NOTICE_LOG["fee_payment_odd"]),
+    ("Kokanotsav Technical Festival registration closes", "2026-09-18",
+     "student_activities_officer", NOTICE_LOG["event_tech_fest"]),
+    ("Annual Sports Meet registration closes", "2026-11-14",
+     "sports_officer", NOTICE_LOG["event_sports_meet"]),
+    ("Alumni Meet 2026 registration closes", "2026-12-15",
+     "student_activities_officer", NOTICE_LOG["event_alumni_meet"]),
+    ("NSS Special Winter Camp selection list submission closes", "2026-12-21",
+     "nss_officer", NOTICE_LOG["event_nss_camp"]),
+    ("Even-term semester registration closes", "2026-12-31",
+     "student_section_spoc", NOTICE_LOG["semester_registration_even"]),
+    ("Ranjan Cultural Festival registration closes", "2027-02-05",
+     "student_activities_officer", NOTICE_LOG["event_cultural_fest"]),
+    ("Convocation registration closes", "2027-02-20",
+     "registrar", NOTICE_LOG["convocation_registration"]),
 ]
+
+
+# ── fees ──────────────────────────────────────────────────────────────────────
+# Self-financing engineering college fee structure: tuition varies by department (COMP and
+# IT carry a placement-premium over the other three, mirroring real DTE-approved fee
+# structures where high-demand branches cost more), hostel is flat and the bus fee is
+# zoned by distance. late_fee accrues per day past the due date, capped so a very late
+# payer is not billed an unbounded amount.
+FEES = {
+    "tuition_per_semester": {  # department code -> Rs. per semester
+        "COMP": 68000, "EXTC": 62000, "MECH": 58000, "CIVIL": 58000, "IT": 62000,
+    },
+    "hostel_fee_per_semester": 32000,
+    "bus_fee_per_semester": {  # route zone (see BUS_TRANSPORT routes) -> Rs. per semester
+        "Ratnagiri city (up to 10 km)": 6000,
+        "Outstation (10-25 km)": 9000,
+        "Outstation (above 25 km)": 12000,
+    },
+    "late_fee_per_day": 50,
+    "late_fee_cap": 2000,
+    "odd_term_due_date": "2026-07-20",
+    "even_term_due_date": "2027-01-20",
+    "payment_modes": [
+        "Online via the fee portal (net banking / UPI / debit card)",
+        "Demand draft in favour of \"Konkan Ratna Institute of Engineering and Technology\", "
+        "payable at Ratnagiri",
+    ],
+    "portal": "fees.kriet.ac.in",
+    "spoc_key": "accounts_spoc",
+}
+
+
+# ── student administrative services ──────────────────────────────────────────
+# ID card reissue and the bonafide certificate are the two most-requested one-off Student
+# Section services; semester registration is the once-a-term one every student must complete.
+ID_CARD = {
+    "reissue_fee": 150,
+    "turnaround_days": 7,
+    "documents_required": [
+        "Written application to the Student Section",
+        "Police complaint copy or a signed self-declaration of loss",
+        "Two recent passport-size photographs",
+        "Fee receipt (Rs. 150, paid at the Accounts Section)",
+    ],
+    "spoc_key": "student_section_spoc",
+}
+
+BONAFIDE_CERTIFICATE = {
+    "fee": 0,
+    "turnaround_days": 3,
+    "documents_required": [
+        "Written application to the Student Section stating the purpose",
+        "Latest fee receipt",
+    ],
+    "valid_purposes": [
+        "Bank loan or scholarship application", "Passport application",
+        "Bus/rail concession pass application", "Visa application",
+    ],
+    "spoc_key": "student_section_spoc",
+}
+
+SEMESTER_REGISTRATION = {
+    "even_term_window": ("2026-12-20", "2026-12-31"),
+    "documents_required": [
+        "Previous semester marksheet",
+        "No-dues clearance from the Library and Accounts Section",
+        "Fee payment receipt for the upcoming term",
+    ],
+    "spoc_key": "student_section_spoc",
+}
+
+
+# ── hostel ────────────────────────────────────────────────────────────────────
+HOSTEL = {
+    "warden_key": "hostel_warden",
+    "total_rooms": 180,
+    "occupancy": "2 or 3 students per room depending on block",
+    "blocks": ["Block E (Boys)", "Block F (Girls)"],
+    "application_window": ("2026-06-15", "2026-07-05"),
+    "documents_required": [
+        "Hostel application form", "Income certificate (for fee concession, if applicable)",
+        "Medical fitness certificate", "Parent/guardian consent letter",
+    ],
+    # Distance-from-home applicants (over 40 km) are seated before merit-only applicants,
+    # since a hostel seat is scarcer than a day-scholar's commute problem.
+    "allotment_basis": "Distance from home (over 40 km) first, then merit, until rooms are full",
+    "mess_charges_per_month": 3800,
+}
+
+
+# ── bus transport ─────────────────────────────────────────────────────────────
+BUS_TRANSPORT = {
+    "incharge_key": "transport_incharge",
+    # route name, area covered, fee zone (must match a FEES["bus_fee_per_semester"] key)
+    "routes": [
+        ("Route 1", "Ratnagiri city - Nachane - College", "Ratnagiri city (up to 10 km)"),
+        ("Route 2", "Chiplun - Sangameshwar - College", "Outstation (10-25 km)"),
+        ("Route 3", "Rajapur - Lanja - College", "Outstation (above 25 km)"),
+    ],
+    "renewal_window": ("2026-06-18", "2026-07-08"),
+    "documents_required": ["Previous term's bus pass (for renewal)", "Fee receipt"],
+}
+
+
+# ── dress code ────────────────────────────────────────────────────────────────
+DRESS_CODE = {
+    "weekday_code": (
+        "Formal attire: collared shirt tucked in, formal trousers, closed-toe footwear. "
+        "T-shirts, shorts and slippers are not permitted in academic areas."
+    ),
+    "wednesday_saturday_code": (
+        "Institute uniform (department-colour polo T-shirt) with the ID card worn visibly."
+    ),
+    "lab_code": (
+        "Cotton clothing and closed shoes are mandatory in laboratories handling electrical "
+        "or mechanical equipment; synthetic fabric is not permitted."
+    ),
+    "id_card_rule": (
+        "The ID card must be worn visibly at all times on campus; a student without it may "
+        "be denied entry to the library, laboratories and examination halls."
+    ),
+    "spoc_key": "student_section_spoc",
+}
+
+
+# ── convocation ───────────────────────────────────────────────────────────────
+CONVOCATION = {
+    "ceremony_date": "2027-03-25",
+    "registration_window": ("2027-02-01", "2027-02-20"),
+    "registration_fee": 1500,
+    "gown_hire_fee": 500,
+    "eligibility": (
+        "Final-year students who have cleared all backlogs and been declared eligible by "
+        "the odd-term result date"
+    ),
+    "documents_required": [
+        "Provisional degree certificate application form",
+        "No-dues clearance from the Library, Accounts Section and Hostel",
+        "Convocation registration fee receipt",
+    ],
+    "spoc_key": "registrar",
+}
+
+
+# ── student handbook: code of conduct, examination malpractice, hostel/lab/IT rules, leave ──
+# Dress code lives in DRESS_CODE above and anti-ragging in GRIEVANCE["anti_ragging"] — both
+# reused here rather than restated, so the handbook can never drift from the notices that
+# also quote them.
+CODE_OF_CONDUCT = [
+    "Students must carry their ID card at all times and produce it on demand by any member "
+    "of the faculty or administrative staff.",
+    "Ragging in any form, on campus or off campus, is a punishable offence under UGC "
+    "Regulations 2009 and the Maharashtra Prohibition of Ragging Act, 1999.",
+    "Mobile phones may not be used in classrooms or laboratories during instructional hours "
+    "unless explicitly permitted by the faculty in charge.",
+    "Smoking, consumption of alcohol or any prohibited substance is strictly banned on "
+    "campus and in the hostel premises.",
+    "Students must maintain decorum in the library, laboratories and administrative "
+    "offices; loud conversation and audible mobile phone ringers are not permitted.",
+    "Damage to institute property (furniture, equipment, laboratory apparatus) is "
+    "chargeable to the student(s) responsible, in addition to disciplinary action.",
+    "Harassment or discrimination on the basis of caste, religion, gender or region is "
+    "handled under the Student Grievance Redressal Committee's procedure (see GRIEVANCE).",
+]
+
+# offense, penalty — DBATU-pattern examination malpractice schedule.
+EXAM_MALPRACTICE = [
+    ("Possession of unauthorized material (chits, programmed calculator, mobile phone) in "
+     "the examination hall",
+     "Cancellation of that paper; fine of Rs. 5,000"),
+    ("Copying from another candidate, or allowing another candidate to copy",
+     "Cancellation of that paper for both candidates; fine of Rs. 5,000 each"),
+    ("Impersonation (appearing in an examination on behalf of another candidate)",
+     "Cancellation of admission for the current academic year; matter referred to the "
+     "University"),
+    ("Using or attempting to use an electronic communication device during the examination",
+     "Cancellation of that paper; debarred from the next examination"),
+    ("Misbehaviour with an invigilator or examination staff",
+     "Cancellation of that paper; disciplinary action by the Principal"),
+    ("Tampering with the answer book (removing pages, forging the roll number)",
+     "Cancellation of all papers of that examination; debarred for one academic year"),
+]
+
+HOSTEL_RULES = [
+    "The hostel gate closes at 21:30 on weekdays and 22:30 on weekends; late entry requires "
+    "prior written permission from the Hostel Warden.",
+    "Visitors are received only in the common room, between 16:00 and 19:00, and must sign "
+    "the visitor register at the gate.",
+    "Cooking in hostel rooms is prohibited; the mess is the only sanctioned dining facility.",
+    "Possession of electrical appliances other than a mobile phone charger, laptop charger "
+    "and study lamp requires prior written permission from the Hostel Warden.",
+    "Ragging in any form within the hostel is a punishable offence and is reported to the "
+    "Anti-Ragging Committee immediately.",
+    "Overnight leave from the hostel requires a written application countersigned by the "
+    "parent/guardian, submitted at least 24 hours in advance.",
+]
+
+LAB_SAFETY_RULES = [
+    "Closed-toe footwear, and a laboratory coat where specified, are mandatory in every "
+    "laboratory session.",
+    "Food and beverages are not permitted inside any laboratory.",
+    "Every laboratory incident, however minor, must be reported to the faculty in charge "
+    "immediately; the first-aid box is at the laboratory entrance.",
+    "Equipment must not be operated without the faculty member or laboratory assistant "
+    "present.",
+    "Long hair must be tied back and loose clothing avoided in laboratories with rotating "
+    "machinery (Mechanical workshop, Electronics hardware labs).",
+    "Fire extinguishers are mounted at each laboratory entrance; students are briefed on "
+    "their use during the first laboratory session of every semester.",
+]
+
+IT_ACCEPTABLE_USE = [
+    "Institute Wi-Fi and computer laboratory systems may be used only for academic and "
+    "research purposes.",
+    "Sharing login credentials (Wi-Fi, library portal, learning management system) with "
+    "another person is prohibited.",
+    "Downloading or distributing copyrighted material without authorization, and accessing "
+    "content prohibited under Indian law, results in immediate suspension of network access "
+    "and disciplinary action.",
+    "Installing unauthorized software on laboratory systems is prohibited; software "
+    "installation requests are routed through the department's laboratory in-charge.",
+    "Network usage is logged; misuse, including attempts to bypass the institute firewall "
+    "or access another user's account, is reported to the Principal.",
+]
+
+LEAVE_PROCEDURE = {
+    "types": ["Medical leave", "Personal/casual leave", "On-duty leave (institute-sponsored event)"],
+    "application_route": (
+        "Leave application submitted to the class mentor/class in-charge, countersigned by "
+        "the Head of Department for leave exceeding 3 consecutive days"
+    ),
+    "advance_notice_days": 2,  # for planned (non-medical) leave
+    "on_duty_approval": (
+        "On-duty leave for an institute-sponsored event (sports meet, technical festival, "
+        "NSS camp — see EVENTS) is approved by the Head of Department on the recommendation "
+        "of the event coordinator; the days covered are counted as present for attendance "
+        "purposes"
+    ),
+}
+
+
+# ── annual events ─────────────────────────────────────────────────────────────
+# One entry per institute event notified individually (see render_notices.py). Where
+# registration_deadline is not None, the same date and notice_key are mirrored into
+# DEADLINES below so the event's registration closing date also appears in the consolidated
+# deadline tracker — an event with open attendance (industry visit, guest lecture) has no
+# registration step and so no deadline to track.
+EVENTS = [
+    {
+        "name": "Kokanotsav Technical Festival",
+        "type": "Technical festival",
+        "date_start": "2026-09-25", "date_end": "2026-09-26",
+        "venue": "Main Auditorium and COMP/EXTC Laboratories",
+        "coordinator_key": "student_activities_officer",
+        "registration_deadline": "2026-09-18",
+        "registration_fee": 100,
+        "notice_key": "event_tech_fest",
+        "description": (
+            "Annual technical festival featuring a coding contest, robotics challenge, "
+            "project exhibition and technical paper presentation, open to engineering "
+            "colleges across the Konkan region."
+        ),
+    },
+    {
+        "name": "Ranjan Cultural Festival",
+        "type": "Cultural festival",
+        "date_start": "2027-02-12", "date_end": "2027-02-14",
+        "venue": "Open Air Theatre",
+        "coordinator_key": "student_activities_officer",
+        "registration_deadline": "2027-02-05",
+        "registration_fee": 50,
+        "notice_key": "event_cultural_fest",
+        "description": (
+            "Annual cultural festival with music, dance, drama and fine-arts competitions, "
+            "concluding with a celebrity night."
+        ),
+    },
+    {
+        "name": "Annual Sports Meet",
+        "type": "Sports meet",
+        "date_start": "2026-11-21", "date_end": "2026-11-22",
+        "venue": "Sports Complex Ground",
+        "coordinator_key": "sports_officer",
+        "registration_deadline": "2026-11-14",
+        "registration_fee": 0,
+        "notice_key": "event_sports_meet",
+        "description": (
+            "Inter-departmental athletics, cricket, kabaddi and kho-kho competitions, "
+            "concluding with the prize distribution ceremony."
+        ),
+    },
+    {
+        # Deliberate cross-reference: Malvan Robotics Pvt Ltd is also a PLACEMENTS
+        # recruiter — the same company shows up for two unrelated reasons, as small-region
+        # industry does in practice.
+        "name": "Industry Visit - Malvan Robotics Pvt Ltd",
+        "type": "Industry visit",
+        "date_start": "2026-09-05", "date_end": "2026-09-05",
+        "venue": "Malvan Robotics Pvt Ltd, Chiplun",
+        "coordinator_key": "tpo",
+        "registration_deadline": None,
+        "registration_fee": None,
+        "notice_key": "event_industry_visit",
+        "description": (
+            "One-day industry visit for Mechanical and Electronics and Telecommunication "
+            "Engineering students to observe an industrial automation and robotics assembly "
+            "line."
+        ),
+    },
+    {
+        "name": "Guest Lecture Series - Emerging Technologies",
+        "type": "Guest lecture series",
+        "date_start": "2026-10-10", "date_end": "2026-10-10",
+        "venue": "Seminar Hall, Block D",
+        "coordinator_key": "student_activities_officer",
+        "registration_deadline": None,
+        "registration_fee": None,
+        "notice_key": "event_guest_lecture",
+        "description": (
+            "A single day of three guest lectures on Artificial Intelligence, Renewable "
+            "Energy and Entrepreneurship, open to all semesters."
+        ),
+    },
+    {
+        "name": "Alumni Meet 2026",
+        "type": "Alumni meet",
+        "date_start": "2026-12-27", "date_end": "2026-12-27",
+        "venue": "Main Auditorium",
+        "coordinator_key": "student_activities_officer",
+        "registration_deadline": "2026-12-15",
+        "registration_fee": 0,
+        "notice_key": "event_alumni_meet",
+        "description": (
+            "Annual gathering of graduated alumni with current final-year students, for "
+            "networking and a panel discussion on career pathways."
+        ),
+    },
+    {
+        "name": "NSS Special Winter Camp",
+        "type": "NSS camp",
+        "date_start": "2026-12-28", "date_end": "2027-01-03",
+        "venue": "Adopted Village - Pawas",
+        "coordinator_key": "nss_officer",
+        "registration_deadline": "2026-12-21",
+        "registration_fee": 0,
+        "notice_key": "event_nss_camp",
+        "description": (
+            "Seven-day residential NSS special camp: community service, health awareness "
+            "drives and a cleanliness campaign in the adopted village of Pawas."
+        ),
+    },
+]
+
+
+# ── attendance tiers, condonation procedure and a specimen monthly statement ────
+# Three non-overlapping bands over ATTENDANCE_POLICY's own thresholds (never restated as
+# fresh magic numbers, so the two structures cannot drift apart): [0, debarment_threshold)
+# debarred outright, [debarment_threshold, min_attendance) condonable, [min_attendance, 101)
+# regular. Each tier is (label, min_pct inclusive, max_pct exclusive, consequence).
+ATTENDANCE_TIERS = [
+    (
+        "Below debarment threshold", 0, ATTENDANCE_POLICY["debarment_threshold_pct"],
+        "Debarred outright from the End-Semester examination for the term; no condonation "
+        "is possible at this tier.",
+    ),
+    (
+        "Condonable band",
+        ATTENDANCE_POLICY["condonation_band_low_pct"], ATTENDANCE_POLICY["condonation_band_high_pct"],
+        "Placed on the defaulter list and notified in writing to the parent/guardian; may "
+        "apply for condonation (see CONDONATION_PROCEDURE) to be permitted to sit the "
+        "End-Semester examination.",
+    ),
+    (
+        "Regular", ATTENDANCE_POLICY["min_attendance_pct"], 101,
+        "No action; eligible to appear for the End-Semester examination without condonation.",
+    ),
+]
+
+
+CONDONATION_PROCEDURE = {
+    "eligible_band": (
+        ATTENDANCE_POLICY["condonation_band_low_pct"], ATTENDANCE_POLICY["condonation_band_high_pct"],
+    ),
+    "max_grant_pct": ATTENDANCE_POLICY["condonation_max_grant_pct"],
+    "form_fields": [
+        "Student name, roll number, department, semester and division",
+        "Subject-wise attendance percentage as on the defaulter list publication date",
+        "Reason for shortfall (medical / personal / institute-sponsored duty)",
+        "List of supporting documents attached",
+        "Parent/guardian signature",
+        "Class mentor's recommendation",
+    ],
+    "supporting_documents": [
+        "Medical certificate from a Registered Medical Practitioner (for medical leave)",
+        "On-duty certificate signed by the event coordinator (for institute-sponsored duty, "
+        "see LEAVE_PROCEDURE)",
+        "Parent/guardian's written explanation (for personal reasons)",
+    ],
+    "submission_deadline_days_after_list": 7,  # mirrors ATTENDANCE_POLICY["appeal_route"]
+    "committee": ATTENDANCE_POLICY["committee"],
+    "chair_key": ATTENDANCE_POLICY["committee_chair_key"],
+    "decision_timeline_days": 10,
+}
+
+
+# Specimen only — illustrates how a student reads their own monthly attendance statement, not
+# a real student's record (see the PII note at the top of this module). Subject codes are
+# Computer Engineering semester 3's (see SUBJECTS/TIMETABLE), so the specimen lines up with a
+# real, renderable timetable. Deliberately shows one subject (CO303) below the 75% minimum
+# while the overall percentage is comfortably above it — the way an actual statement can hide
+# a single at-risk subject behind a healthy overall number.
+ATTENDANCE_SPECIMEN = {
+    "note": "Specimen statement for illustration only; does not represent an actual student's record.",
+    "student_label": "Specimen Student, Roll No. COMP-2026-SPECIMEN-01",
+    "dept_code": "COMP", "semester": 3, "division": "A",
+    "month": "September 2026",
+    # subject code, lectures held, lectures attended
+    "rows": [
+        ("CO301", 12, 10),
+        ("CO302", 12, 11),
+        ("CO303", 12, 8),
+        ("CO304", 12, 12),
+        ("CO305", 4, 4),
+        ("CO306", 4, 3),
+    ],
+}
 
 
 def rupees(n: int) -> str:
