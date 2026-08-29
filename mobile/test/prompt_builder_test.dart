@@ -6,7 +6,7 @@ import 'package:company_brain/local/models.dart';
 void main() {
   group('buildPrompt', () {
     test('includes the abstention instruction verbatim', () {
-      final result = RetrievalResult(
+      final result = const RetrievalResult(
         route: 'FACT',
         context: 'Photosynthesis conversion efficiency is 3-6%.',
         sources: const [],
@@ -22,7 +22,7 @@ void main() {
 
     test('includes the retrieved context', () {
       const context = 'Covalent bonds form when atoms share electron pairs.';
-      final result = RetrievalResult(
+      final result = const RetrievalResult(
         route: 'FACT',
         context: context,
         sources: const [],
@@ -35,7 +35,7 @@ void main() {
 
     test('includes the question', () {
       const question = 'What is cellular respiration?';
-      final result = RetrievalResult(
+      final result = const RetrievalResult(
         route: 'FACT',
         context: 'Cellular respiration breaks down glucose to release ATP.',
         sources: const [],
@@ -49,7 +49,7 @@ void main() {
     test('throws when called with a TABULAR result, per the documented '
         'contract that TABULAR answers must never be sent to the model',
         () {
-      final result = RetrievalResult(
+      final result = const RetrievalResult(
         route: 'TABULAR',
         context: 'Pass percentage: 60.00% (3/5 students).',
         sources: const [],
@@ -64,7 +64,7 @@ void main() {
 
     test('an empty-context retrieval still produces a valid prompt that '
         'instructs abstention', () {
-      final result = RetrievalResult(
+      final result = const RetrievalResult(
         route: 'FACT',
         context: '',
         sources: const [],
