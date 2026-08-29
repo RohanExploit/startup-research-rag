@@ -7,6 +7,8 @@ import '../llm/prompt_builder.dart';
 import '../local/brain_db.dart';
 import '../local/local_retriever.dart';
 import '../local/models.dart';
+import '../widgets/status_bar.dart';
+import '../widgets/suggestion_chips.dart';
 
 /// The three states the ask screen can be in before it's ready to answer
 /// questions.
@@ -32,6 +34,11 @@ class _AnsweredTurn {
   bool streaming;
   final Stopwatch stopwatch;
   int tokenCount;
+  // True only when this turn actually went through the on-device model's
+  // token stream, as opposed to a SQL/TABULAR answer or the retrieval-only
+  // fallback -- both of which also fill tokenCount for word-count purposes
+  // but never "streamed" anything worth a tok/s figure.
+  bool usedModel;
 
   _AnsweredTurn({
     required this.question,
@@ -39,7 +46,8 @@ class _AnsweredTurn {
   })  : answer = '',
         streaming = true,
         stopwatch = Stopwatch()..start(),
-        tokenCount = 0;
+        tokenCount = 0,
+        usedModel = false;
 
   double get elapsedSeconds => stopwatch.elapsedMilliseconds / 1000.0;
 
@@ -66,6 +74,8 @@ class _AskScreenState extends State<AskScreen> {
   BrainDb? _brainDb;
   LocalRetriever? _retriever;
   final LlmService _llmService = LlmService();
+  int _chunkCount = 0;
+  int _studentCount = 0;
 
   final TextEditingController _controller = TextEditingController();
   final List<_AnsweredTurn> _turns = [];
@@ -118,6 +128,7 @@ class _AskScreenState extends State<AskScreen> {
       // fail, and neither should stop a student asking a question the SQL layer
       // can answer exactly and instantly.
       unawaited(_warmModel());
+      unawaited(_loadMeta(db));
     } on BrainDbMissingException {
       if (!mounted) return;
       setState(() {
@@ -131,6 +142,22 @@ class _AskScreenState extends State<AskScreen> {
         _modelMissingMessage = e.message;
         _setupState = _SetupState.missing;
       });
+    }
+  }
+
+  /// Reads chunk/student counts from the corpus for the status bar. Best
+  /// effort: if `meta` is missing keys or parsing fails, the pills just show
+  /// 0 rather than breaking anything already working.
+  Future<void> _loadMeta(BrainDb db) async {
+    try {
+      final meta = await db.meta();
+      if (!mounted) return;
+      setState(() {
+        _chunkCount = int.tryParse(meta['chunk_count'] ?? '') ?? 0;
+        _studentCount = int.tryParse(meta['student_count'] ?? '') ?? 0;
+      });
+    } catch (_) {
+      // Leave counts at 0 -- not worth surfacing an error for display text.
     }
   }
 
@@ -197,6 +224,7 @@ class _AskScreenState extends State<AskScreen> {
     }
 
     final prompt = buildPrompt(question: question, retrieval: retrieval);
+    turn.usedModel = true;
     try {
       await for (final token in _llmService.generateStream(prompt)) {
         turn.answer += token;
@@ -210,6 +238,12 @@ class _AskScreenState extends State<AskScreen> {
       turn.stopwatch.stop();
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  void _askSuggestion(String suggestion) {
+    if (_busy) return;
+    _controller.text = suggestion;
+    _submit();
   }
 
   @override
@@ -232,6 +266,10 @@ class _AskScreenState extends State<AskScreen> {
             turns: _turns,
             busy: _busy,
             onSubmit: _submit,
+            onSuggestion: _askSuggestion,
+            chunkCount: _chunkCount,
+            studentCount: _studentCount,
+            llmReady: _llmReady,
           ),
       },
     );
@@ -327,28 +365,61 @@ class _ChatView extends StatelessWidget {
   final List<_AnsweredTurn> turns;
   final bool busy;
   final VoidCallback onSubmit;
+  final ValueChanged<String> onSuggestion;
+  final int chunkCount;
+  final int studentCount;
+  final bool llmReady;
 
   const _ChatView({
     required this.controller,
     required this.turns,
     required this.busy,
     required this.onSubmit,
+    required this.onSuggestion,
+    required this.chunkCount,
+    required this.studentCount,
+    required this.llmReady,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
+        StatusBar(
+          chunkCount: chunkCount,
+          studentCount: studentCount,
+          llmReady: llmReady,
+        ),
         Expanded(
           child: turns.isEmpty
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text(
-                      'Ask a question. Everything runs on this phone -- '
-                      'no network, no server.',
-                      textAlign: TextAlign.center,
-                    ),
+              ? SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 24),
+                      Icon(
+                        Icons.psychology_alt_outlined,
+                        size: 56,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Ask your college anything',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Everything runs on this phone. No network, no server.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      SuggestionChips(onSelected: onSuggestion, enabled: !busy),
+                    ],
                   ),
                 )
               : ListView.builder(
@@ -418,15 +489,24 @@ class _TurnCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sources = turn.retrieval.sources;
+    final isTabular = turn.retrieval.route == 'TABULAR';
     return Card(
+      elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(turn.question, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
+            Text(
+              turn.question,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w300,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Chip(
@@ -444,16 +524,26 @@ class _TurnCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
-            SelectableText(turn.answer.isEmpty ? '…' : turn.answer),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
+            SelectableText(
+              turn.answer.isEmpty ? '…' : turn.answer,
+              style: isTabular
+                  ? Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontFamily: 'monospace',
+                        height: 1.4,
+                      )
+                  : Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 10),
             Text(
               '${turn.elapsedSeconds.toStringAsFixed(1)}s'
-              '${turn.retrieval.route == 'TABULAR' ? '' : ' · ${turn.tokensPerSecond.toStringAsFixed(1)} tok/s'}',
+              '${turn.usedModel ? ' · ${turn.tokensPerSecond.toStringAsFixed(1)} tok/s' : ''}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             if (sources.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
+              const Divider(height: 1),
+              const SizedBox(height: 10),
               Text('Sources', style: Theme.of(context).textTheme.labelMedium),
               const SizedBox(height: 4),
               ...sources.map(
