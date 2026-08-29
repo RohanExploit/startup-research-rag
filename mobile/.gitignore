@@ -10,3 +10,9 @@ build/
 # asset; wiring pubspec.yaml assets: entry is a later task), and the
 # retrieval-layer tests build their own hermetic fixture database instead.
 assets/brain.db
+
+# The exported corpus bundle. Never committed: it holds 369 real student names,
+# roll numbers and results, and this repository is public. It reaches the phone
+# by `adb push` instead — see docs/MOBILE_RUNBOOK.md. Rebuild it any time with
+#   python scripts/export_mobile_bundle.py
+assets/brain.db
