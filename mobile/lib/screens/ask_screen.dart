@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../demo/curated_answers.dart' as curated;
 import '../llm/cloud_service.dart';
 import '../llm/llm_service.dart';
 import '../llm/prompt_builder.dart';
@@ -200,7 +201,21 @@ class _AskScreenState extends State<AskScreen> {
     setState(() => _busy = true);
 
     final retrieval = await retriever.retrieve(question);
-    final turn = _AnsweredTurn(question: question, retrieval: retrieval);
+    // TABULAR keeps absolute priority: it's live SQL and must never be
+    // shadowed by a canned answer, so the curated layer is only consulted
+    // when the route isn't TABULAR.
+    final curatedHit =
+        retrieval.route == 'TABULAR' ? null : curated.lookup(question);
+    final effectiveRetrieval = curatedHit == null
+        ? retrieval
+        : RetrievalResult(
+            route: 'FACT',
+            context: retrieval.context,
+            sources: retrieval.sources,
+            debugSql: retrieval.debugSql,
+          );
+    final turn =
+        _AnsweredTurn(question: question, retrieval: effectiveRetrieval);
     setState(() => _turns.insert(0, turn));
 
     if (retrieval.route == 'TABULAR') {
@@ -208,6 +223,17 @@ class _AskScreenState extends State<AskScreen> {
       // prompt_builder.dart's contract note on TABULAR routes.
       turn.answer = retrieval.context;
       turn.tokenCount = retrieval.context.split(RegExp(r'\s+')).length;
+      turn.streaming = false;
+      turn.stopwatch.stop();
+      setState(() => _busy = false);
+      return;
+    }
+
+    if (curatedHit != null) {
+      turn.answer = '${curatedHit.answer}\n\n'
+          '[Curated answer, verified against ${curatedHit.sourceDoc} - '
+          '${curatedHit.sourceSection}.]';
+      turn.tokenCount = turn.answer.split(RegExp(r'\s+')).length;
       turn.streaming = false;
       turn.stopwatch.stop();
       setState(() => _busy = false);
