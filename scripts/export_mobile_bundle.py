@@ -61,7 +61,13 @@ CREATE TABLE students (
   sgpa REAL,
   estimated_sgpa REAL,
   total_marks INTEGER,
-  result TEXT,
+  -- NOT NULL is load-bearing, not decoration. The phone computes pass% and
+  -- fail% as two COUNT(*) FILTER clauses over one shared COUNT(*) denominator.
+  -- Under SQL three-valued logic a NULL result is excluded from BOTH filters
+  -- while still counting in the denominator, so the two percentages would
+  -- silently stop summing to 100 -- the same shape as the bug where filtering
+  -- before aggregating made fail% always exactly 100. Fail at export instead.
+  result TEXT NOT NULL,
   is_supply INTEGER,
   seat_cancelled INTEGER
 );
