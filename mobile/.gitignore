@@ -4,3 +4,9 @@ build/
 .flutter-plugins-dependencies
 .packages
 *.iml
+
+# Real exported bundle contains student PII; never commit it. The Android
+# workflow does not need it (flutter build apk works with an empty/missing
+# asset; wiring pubspec.yaml assets: entry is a later task), and the
+# retrieval-layer tests build their own hermetic fixture database instead.
+assets/brain.db
