@@ -1,4 +1,4 @@
-/// Data models shared by the on-device retrieval layer.
+// Data models shared by the on-device retrieval layer.
 
 /// A single chunk retrieved from the local database, with the score that
 /// ranked it (BM25 rank for FTS, cosine similarity for vector search, or
