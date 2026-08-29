@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'screens/ask_screen.dart';
+
 void main() => runApp(const CompanyBrainApp());
 
 class CompanyBrainApp extends StatelessWidget {
@@ -10,7 +12,7 @@ class CompanyBrainApp extends StatelessWidget {
     return MaterialApp(
       title: 'Company Brain',
       theme: ThemeData.dark(useMaterial3: true),
-      home: const Scaffold(body: Center(child: Text('Company Brain'))),
+      home: const AskScreen(),
     );
   }
 }

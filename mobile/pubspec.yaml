@@ -15,6 +15,10 @@ dependencies:
   # On-device generation. Needs Dart >=3.12, which is why the CI Flutter
   # pin moved to 3.47.2 -- no earlier flutter_gemma supports .litertlm.
   flutter_gemma: 1.6.5
+  # flutter_gemma 1.6+ is a thin core with opt-in engine packages; this is
+  # the .litertlm (LiteRT-LM) inference engine, needed for
+  # gemma-4-E2B-it-gpu.litertlm. Requires flutter_gemma ^1.6.1 (satisfied).
+  flutter_gemma_litertlm: 1.5.3
 
 dev_dependencies:
   flutter_test:
