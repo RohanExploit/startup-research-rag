@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../llm/llm_service.dart';
@@ -52,6 +54,13 @@ class _AskScreenState extends State<AskScreen> {
   _SetupState _setupState = _SetupState.checking;
   bool _dbMissing = false;
   bool _modelMissing = false;
+  // The model loads in the BACKGROUND. The app is usable the moment the corpus
+  // opens: TABULAR answers are exact SQL and never call a model at all, and the
+  // other routes can still show what retrieval found. Blocking the whole screen
+  // on a 1.9 GB load meant one slow or failed initialise left a spinner forever
+  // with nothing usable behind it.
+  bool _llmReady = false;
+  String? _llmError;
   String? _modelMissingMessage;
 
   BrainDb? _brainDb;
@@ -99,13 +108,16 @@ class _AskScreenState extends State<AskScreen> {
 
     try {
       final db = await BrainDb.open();
-      await _llmService.initialize();
       if (!mounted) return;
       setState(() {
         _brainDb = db;
         _retriever = LocalRetriever(db);
         _setupState = _SetupState.ready;
       });
+      // Deliberately not awaited: loading the model takes a long time and can
+      // fail, and neither should stop a student asking a question the SQL layer
+      // can answer exactly and instantly.
+      unawaited(_warmModel());
     } on BrainDbMissingException {
       if (!mounted) return;
       setState(() {
@@ -119,6 +131,18 @@ class _AskScreenState extends State<AskScreen> {
         _modelMissingMessage = e.message;
         _setupState = _SetupState.missing;
       });
+    }
+  }
+
+  /// Loads the model in the background. Every failure is caught and surfaced as
+  /// text rather than thrown: a missing or broken model must degrade the app to
+  /// retrieval-only, never break the screen that is already working.
+  Future<void> _warmModel() async {
+    try {
+      await _llmService.initialize();
+      if (mounted) setState(() => _llmReady = true);
+    } catch (e) {
+      if (mounted) setState(() => _llmError = e.toString());
     }
   }
 
@@ -147,6 +171,24 @@ class _AskScreenState extends State<AskScreen> {
       // prompt_builder.dart's contract note on TABULAR routes.
       turn.answer = retrieval.context;
       turn.tokenCount = retrieval.context.split(RegExp(r'\s+')).length;
+      turn.streaming = false;
+      turn.stopwatch.stop();
+      setState(() => _busy = false);
+      return;
+    }
+
+    if (!_llmReady) {
+      // Retrieval-only mode. Showing what was actually retrieved, labelled as
+      // such, beats either a spinner that never resolves or a generated
+      // sentence from a model that has not loaded.
+      turn.answer = retrieval.context.isEmpty
+          ? 'No matching passage found in the offline corpus.'
+          : '${retrieval.context}
+
+[Retrieved directly from the corpus. '
+              '${_llmError == null ? 'The on-device model is still loading' : 'The on-device model is unavailable'}, '
+              'so this passage is shown verbatim rather than summarised.]';
+      turn.tokenCount = turn.answer.split(RegExp(r'\s+')).length;
       turn.streaming = false;
       turn.stopwatch.stop();
       setState(() => _busy = false);
