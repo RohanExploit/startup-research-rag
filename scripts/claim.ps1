@@ -1,14 +1,14 @@
 <#
-    claim.ps1 — tell the other machines what this one is doing.
+    claim.ps1  -  tell the other machines what this one is doing.
 
-        powershell -File scripts\claim.ps1 -Lane mobile -Task "Android Task 2 — Answer model"
+        powershell -File scripts\claim.ps1 -Lane mobile -Task "Android Task 2  -  Answer model"
         powershell -File scripts\claim.ps1 -Release
         powershell -File scripts\claim.ps1 -Show
 
     Writes .claims/<device>.md, commits ONLY that file, rebases, and pushes.
 
     One file per device on purpose. A single shared "who is doing what" file
-    would conflict every time two machines updated it at once — which is
+    would conflict every time two machines updated it at once  -  which is
     precisely the situation it exists to prevent. Separate files never conflict,
     so this can never be the thing that breaks your push.
 #>

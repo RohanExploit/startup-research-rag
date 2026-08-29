@@ -1,5 +1,5 @@
 <#
-    demo_up.ps1 — bring the whole Company Brain stack up for a live demo.
+    demo_up.ps1  -  bring the whole Company Brain stack up for a live demo.
 
         powershell -ExecutionPolicy Bypass -File scripts\demo_up.ps1
 
@@ -64,7 +64,7 @@ if ($Lan) {
 }
 
 if (-not (Test-Path $Python)) {
-    Say "venv missing at $Python — run: python -m venv .venv312; .venv312\Scripts\pip install -r requirements.txt" "Red"
+    Say "venv missing at $Python  -  run: python -m venv .venv312; .venv312\Scripts\pip install -r requirements.txt" "Red"
     exit 1
 }
 
@@ -72,7 +72,7 @@ if (-not (Test-Path $Python)) {
 # `ollama list` starts the server as a side effect if it isn't already up.
 Say "starting Ollama"
 $ollama = "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe"
-if (Test-Path $ollama) { & $ollama list | Out-Null } else { Say "ollama.exe not found — is Ollama installed?" "Yellow" }
+if (Test-Path $ollama) { & $ollama list | Out-Null } else { Say "ollama.exe not found  -  is Ollama installed?" "Yellow" }
 
 # --- 2. API -----------------------------------------------------------------
 Say "starting API on ${ApiHost}:$ApiPort"
@@ -84,7 +84,7 @@ Start-Process -FilePath $Python `
     -RedirectStandardError  (Join-Path $Logs "api_demo.err")
 
 # First boot downloads/loads MiniLM and warms the 4B model into 4 GB of VRAM.
-# That is the slow leg — a minute is normal, not a hang.
+# That is the slow leg  -  a minute is normal, not a hang.
 Say "waiting for API (model warmup can take ~60s on a cold GPU)"
 if (-not (Wait-Http "http://127.0.0.1:$ApiPort/health" "API")) {
     Get-Content (Join-Path $Logs "api_demo.err") -Tail 25

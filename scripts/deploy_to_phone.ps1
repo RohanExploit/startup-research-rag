@@ -1,5 +1,5 @@
 <#
-    deploy_to_phone.ps1 — put the standalone app on the handset, end to end.
+    deploy_to_phone.ps1  -  put the standalone app on the handset, end to end.
 
         powershell -ExecutionPolicy Bypass -File scripts\deploy_to_phone.ps1
 
@@ -39,7 +39,7 @@ function Assert-Match($localPath, $remotePath, $label) {
     $local  = (Get-FileHash $localPath -Algorithm MD5).Hash.ToLower()
     $remote = (& $Adb shell "md5sum $remotePath" 2>$null).Split(" ")[0].Trim()
     if ($local -ne $remote) {
-        Say "$label CHECKSUM MISMATCH — local $local vs device $remote" "Red"
+        Say "$label CHECKSUM MISMATCH  -  local $local vs device $remote" "Red"
         Say "The push did not land intact. Do not demo this build." "Red"
         exit 1
     }
@@ -87,10 +87,10 @@ Assert-Match $Db "$Remote/brain.db" "corpus"
 
 if (-not $NoModel) {
     if (-not (Test-Path $Model)) {
-        Say "model not found at $Model — skipping. Retrieval will work; generation will not." "Yellow"
+        Say "model not found at $Model  -  skipping. Retrieval will work; generation will not." "Yellow"
     } else {
         $sizeGb = [math]::Round((Get-Item $Model).Length/1GB, 2)
-        Say "pushing model ($sizeGb GB) — this takes a minute over USB"
+        Say "pushing model ($sizeGb GB)  -  this takes a minute over USB"
         & $Adb push $Model "$Remote/$(Split-Path $Model -Leaf)"
         Assert-Match $Model "$Remote/$(Split-Path $Model -Leaf)" "model"
     }

@@ -1,5 +1,5 @@
 <#
-    demo_down.ps1 — stop the demo stack started by demo_up.ps1.
+    demo_down.ps1  -  stop the demo stack started by demo_up.ps1.
 
         powershell -ExecutionPolicy Bypass -File scripts\demo_down.ps1
 
