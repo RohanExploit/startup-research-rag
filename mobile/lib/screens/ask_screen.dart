@@ -181,13 +181,14 @@ class _AskScreenState extends State<AskScreen> {
       // Retrieval-only mode. Showing what was actually retrieved, labelled as
       // such, beats either a spinner that never resolves or a generated
       // sentence from a model that has not loaded.
+      final status = _llmError == null
+          ? 'The on-device model is still loading'
+          : 'The on-device model is unavailable';
       turn.answer = retrieval.context.isEmpty
           ? 'No matching passage found in the offline corpus.'
-          : '${retrieval.context}
-
-[Retrieved directly from the corpus. '
-              '${_llmError == null ? 'The on-device model is still loading' : 'The on-device model is unavailable'}, '
-              'so this passage is shown verbatim rather than summarised.]';
+          : '${retrieval.context}\n\n[Retrieved directly from the corpus. '
+              '$status, so this passage is shown verbatim rather than '
+              'summarised.]';
       turn.tokenCount = turn.answer.split(RegExp(r'\s+')).length;
       turn.streaming = false;
       turn.stopwatch.stop();
