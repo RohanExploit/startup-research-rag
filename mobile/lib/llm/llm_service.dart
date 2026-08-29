@@ -118,9 +118,7 @@ class LlmService {
     }
 
     if (!_engineRegistered) {
-      // Not a const list: LiteRtLmEngine's constructor is not guaranteed
-      // const across versions, and this only runs once per process anyway.
-      await FlutterGemma.initialize(inferenceEngines: [LiteRtLmEngine()]);
+      await FlutterGemma.initialize(inferenceEngines: const [LiteRtLmEngine()]);
       _engineRegistered = true;
     }
 

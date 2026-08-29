@@ -34,9 +34,9 @@ class _AnsweredTurn {
   _AnsweredTurn({
     required this.question,
     required this.retrieval,
-    this.answer = '',
-    this.streaming = true,
-  })  : stopwatch = Stopwatch()..start(),
+  })  : answer = '',
+        streaming = true,
+        stopwatch = Stopwatch()..start(),
         tokenCount = 0;
 
   double get elapsedSeconds => stopwatch.elapsedMilliseconds / 1000.0;
@@ -196,7 +196,7 @@ class _AskScreenState extends State<AskScreen> {
 }
 
 class _CheckingView extends StatelessWidget {
-  const _CheckingView({super.key});
+  const _CheckingView();
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +211,6 @@ class _SetupMissingView extends StatelessWidget {
   final VoidCallback onRetry;
 
   const _SetupMissingView({
-    super.key,
     required this.dbMissing,
     required this.modelMissing,
     required this.modelMissingMessage,
@@ -262,7 +261,7 @@ class _MissingItem extends StatelessWidget {
   final String title;
   final String detail;
 
-  const _MissingItem({super.key, required this.title, required this.detail});
+  const _MissingItem({required this.title, required this.detail});
 
   @override
   Widget build(BuildContext context) {
@@ -287,7 +286,6 @@ class _ChatView extends StatelessWidget {
   final VoidCallback onSubmit;
 
   const _ChatView({
-    super.key,
     required this.controller,
     required this.turns,
     required this.busy,
@@ -357,7 +355,7 @@ class _ChatView extends StatelessWidget {
 class _TurnCard extends StatelessWidget {
   final _AnsweredTurn turn;
 
-  const _TurnCard({super.key, required this.turn});
+  const _TurnCard({required this.turn});
 
   Color _routeColor(BuildContext context) {
     switch (turn.retrieval.route) {
