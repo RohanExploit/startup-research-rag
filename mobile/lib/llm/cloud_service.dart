@@ -104,7 +104,7 @@ class CloudConfig {
 class CloudService {
   static const String _endpoint =
       'https://api.groq.com/openai/v1/chat/completions';
-  static const Duration _timeout = Duration(seconds: 20);
+  static const Duration _timeout = Duration(seconds: 8);
 
   final http.Client _client;
 

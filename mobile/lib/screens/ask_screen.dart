@@ -192,7 +192,21 @@ class _AskScreenState extends State<AskScreen> {
     super.dispose();
   }
 
+  /// Wrapper that guarantees _busy is cleared no matter which branch runs or
+  /// what throws. A stuck _busy disables the send button permanently, which on
+  /// a handset looks exactly like a hung app and has no recovery short of a
+  /// force-stop.
   Future<void> _submit() async {
+    try {
+      await _submitInner();
+    } catch (e) {
+      debugPrint('submit failed: $e');
+    } finally {
+      if (mounted && _busy) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _submitInner() async {
     final question = _controller.text.trim();
     final retriever = _retriever;
     if (question.isEmpty || retriever == null || _busy) return;
@@ -256,8 +270,13 @@ class _AskScreenState extends State<AskScreen> {
           setState(() => _busy = false);
           return;
         }
-      } on CloudUnavailableException {
-        // Fall through to the retrieval-only fallback below.
+      } catch (_) {
+        // Catch EVERYTHING, not just CloudUnavailableException. A socket
+        // error, a DNS failure or a TimeoutException are all thrown as their
+        // own types, and any one of them escaping here left _busy stuck true
+        // and the send button spinning forever with no way back -- observed on
+        // the handset on a venue network. Falling through to the retrieval-only
+        // answer is always better than a spinner that never resolves.
       } finally {
         cloud.dispose();
       }
