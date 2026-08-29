@@ -22,7 +22,7 @@ class StatusBar extends StatelessWidget {
         spacing: 6,
         runSpacing: 6,
         children: [
-          _Pill(
+          const _Pill(
             label: 'OFFLINE',
             color: Colors.green,
             icon: Icons.wifi_off,
