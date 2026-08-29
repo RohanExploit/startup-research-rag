@@ -6,14 +6,15 @@
 
         <!-- GPU inference for the on-device model. flutter_gemma's LiteRT engine
              reaches the Adreno GPU through OpenCL, and Android will not let an app
-             dlopen a vendor native library it has not declared here -- without these
+             dlopen a vendor native library it has not declared here. Without these
              the engine silently falls back to CPU on a device that has a perfectly
              good GPU.
 
-             required="false" on every entry is deliberate: the app must still install
-             and run on a handset whose vendor ships none of these, where CPU fallback
-             is the correct outcome rather than an install failure. The three names
-             cover stock Qualcomm/ARM, automotive, and Pixel builds. -->
+             required="false" on every entry is deliberate: the app must still
+             install and run on a handset whose vendor ships none of these, where
+             CPU fallback is the correct outcome rather than an install failure.
+             The three names cover stock Qualcomm or ARM, automotive, and Pixel
+             builds. -->
         <uses-native-library android:name="libOpenCL.so" android:required="false" />
         <uses-native-library android:name="libOpenCL-car.so" android:required="false" />
         <uses-native-library android:name="libOpenCL-pixel.so" android:required="false" />
