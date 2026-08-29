@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../llm/cloud_service.dart';
 import '../llm/llm_service.dart';
 import '../llm/prompt_builder.dart';
 import '../local/brain_db.dart';
@@ -13,6 +14,14 @@ import '../widgets/suggestion_chips.dart';
 /// The three states the ask screen can be in before it's ready to answer
 /// questions.
 enum _SetupState { checking, missing, ready }
+
+/// Appended to every answer produced by the Groq cloud fallback. The
+/// product's central claim is that everything runs on-device with zero
+/// network; a cloud answer that looks identical to an on-device one would
+/// turn that claim into a lie in front of an audience, so this marker is
+/// never omitted and never just a tooltip.
+const String kCloudAnswerMarker =
+    '[Answered via Groq cloud - network was used for this answer.]';
 
 /// Top-level screen: types a question, gets an answer, entirely on-device.
 ///
@@ -205,6 +214,27 @@ class _AskScreenState extends State<AskScreen> {
     }
 
     if (!_llmReady) {
+      // On-device model isn't ready. Before falling back to showing the raw
+      // retrieved passage, try the Groq cloud fallback -- if it's
+      // configured -- so non-TABULAR questions still get a written answer.
+      final cloudPrompt = buildPrompt(question: question, retrieval: retrieval);
+      final cloud = CloudService();
+      try {
+        if (await cloud.isConfigured()) {
+          final cloudAnswer = await cloud.complete(cloudPrompt);
+          turn.answer = '$cloudAnswer\n\n$kCloudAnswerMarker';
+          turn.tokenCount = turn.answer.split(RegExp(r'\s+')).length;
+          turn.streaming = false;
+          turn.stopwatch.stop();
+          setState(() => _busy = false);
+          return;
+        }
+      } on CloudUnavailableException {
+        // Fall through to the retrieval-only fallback below.
+      } finally {
+        cloud.dispose();
+      }
+
       // Retrieval-only mode. Showing what was actually retrieved, labelled as
       // such, beats either a spinner that never resolves or a generated
       // sentence from a model that has not loaded.

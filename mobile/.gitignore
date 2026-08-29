@@ -24,3 +24,7 @@ android/.gradle/
 android/app/build/
 android/build/
 *.iml
+
+# Runtime secrets pushed to the device, never committed. The repo is public.
+assets/config.json
+config.json
