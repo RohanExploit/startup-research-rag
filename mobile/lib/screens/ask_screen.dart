@@ -8,6 +8,7 @@ import '../llm/prompt_builder.dart';
 import '../local/brain_db.dart';
 import '../local/local_retriever.dart';
 import '../local/models.dart';
+import 'self_test_screen.dart';
 import '../widgets/status_bar.dart';
 import '../widgets/suggestion_chips.dart';
 
@@ -279,7 +280,22 @@ class _AskScreenState extends State<AskScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Company Brain')),
+      appBar: AppBar(
+        title: const Text('Company Brain'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.fact_check_outlined),
+            tooltip: 'Self-test',
+            onPressed: _retriever == null
+                ? null
+                : () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => SelfTestScreen(retriever: _retriever!),
+                      ),
+                    ),
+          ),
+        ],
+      ),
       body: switch (_setupState) {
         _SetupState.checking => const _CheckingView(),
         _SetupState.missing => _SetupMissingView(
