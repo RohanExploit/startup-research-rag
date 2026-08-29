@@ -180,13 +180,21 @@ class LocalRetriever {
   /// Returns an empty string if nothing usable remains, so callers can
   /// short-circuit instead of sending an empty MATCH expression (itself a
   /// syntax error).
+  ///
+  /// Tokens are joined with an explicit OR, not FTS5's implicit AND: a
+  /// natural-language question ("What is photosynthesis conversion
+  /// efficiency?") contains filler words ("what", "is") that plain
+  /// content chunks won't literally contain, so requiring every token to
+  /// match would return zero rows for almost every real question. BM25
+  /// still ranks chunks that match more/rarer terms higher.
   static String _sanitizeForFts(String query) {
     final cleaned = query.replaceAll(_ftsOperatorChars, ' ');
     final tokens = cleaned
         .split(RegExp(r'\s+'))
+        .map((t) => t.replaceAll(RegExp(r'[?!.,;]+$'), ''))
         .where((t) => t.isNotEmpty)
         .where((t) => !_ftsKeywords.contains(t.toUpperCase()));
-    return tokens.map((t) => '"$t"').join(' ');
+    return tokens.map((t) => '"$t"').join(' OR ');
   }
 
   /// Brute-force cosine similarity search over all embeddings. 774 vectors
