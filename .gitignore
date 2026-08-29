@@ -60,3 +60,9 @@ node_modules/
 # Office lock/residue files
 ~$*
 **/~$*
+
+# The blanket *.png above exists to keep screenshots out of the repo, but it
+# also swallowed the Android launcher icons, and their absence fails the build
+# with "resource mipmap/ic_launcher not found" -- a long way from the cause.
+# These are Flutter template assets, a few KB, and required to build.
+!mobile/android/app/src/main/res/**/*.png
